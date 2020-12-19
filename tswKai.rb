@@ -1,6 +1,6 @@
 BASE_ADDRESS = 0x400000
 OFFSETS = [0xb8688, 0xb868c, 0xb8690, 0xb8694, 0xb8698, 0xb869c, 0xb86a0, 0xb86a4,
-           0xb86a8, 0xb86ac, 0xb86b0, 0xb86c4, 0xb86c8, 0xb86cc, 0xb86d0, 0xb86d4,
+           0xb86a8, 0xb86b0, 0xb86ac, 0xb86c4, 0xb86c8, 0xb86cc, 0xb86d0, 0xb86d4,
            0xb86d8, 0xb86dc, 0xb86e0, 0xb86e4, 0xb86e8, 0xb86ec, 0xb86f0, 0xb86f4,
            0xb86f8, 0xb86fc, 0xb8700, 0xb8704]
 OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'S', 'I', '0', '1',
@@ -72,7 +72,7 @@ def refresh() # main
       if v > 50 then v = 50; print "\a" end
     when 6..7
       print 'A):     ' + oldVal
-      v = getch('0123456789A').to_i(16)
+      v = getch('0123456789A').to_s.to_i(16)
     when 11..12
       print '5):     ' + oldVal
       v = getch('012345').to_i
@@ -94,7 +94,7 @@ def refresh() # main
       `pause`
     end
   end
-  refresh
+  print "\a"; refresh
 end
 
 $pid = `tasklist /FI "IMAGENAME eq tsw.exe"`[/\d+/].to_i # find pID
