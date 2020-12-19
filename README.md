@@ -15,3 +15,4 @@ This mod can only be applied to TSW English Ver 1.2. You can download its instal
 * Each variable is denoted as a single letter or number (labeled in brackets or in yellow). Press the corresponding key to select that variable, or press <kbd>Z</kbd> to simply refresh the list. / 各变量用单个字母或数字表示（已标黄或括起来），按下对应按键以选择该变量。若按<kbd>Z</kbd>键则刷新此列表。
 * Follow the instructions to input the desired new value. Note the upper and lower limits. And then press <kbd>Enter</kbd> to continue. 根据提示输入想要的新数值，请注意上限及下限。随后按<kbd>Enter</kbd>继续。
 * At any time, press <kbd><kbd>Ctrl</kbd>+<kbd>C</kbd></kbd> to abort the current operation. / 无论何时可按下<kbd><kbd>Ctrl</kbd>+<kbd>C</kbd></kbd>中止当前操作。
+* **IMPORTANT**: Although the change of value of the variable will take effect immediately, the game process itself will not refresh until next relevant event takes place, e.g. battle, obtaining or using an item, etc. / **重要**：尽管变量值的更改会立即生效，但游戏进程内部并不会实时刷新；只有当下次触发“相关事件”后（如战斗、得到或用掉某件道具等）才会刷新。
