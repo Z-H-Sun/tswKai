@@ -1,6 +1,8 @@
 # tswKai
 Tower of the Sorcerer for Windows Kai (改): Modifier of game variables / 魔塔英文原版修改器
 
+See Also / 另请参见: [tswMovePoint（座標移動）](https://github.com/Z-H-Sun/tswMP)
+
 ## Scope of application / 适用范围
 This mod can only be applied to TSW English Ver 1.2. You can download its installer <ins>[here](https://ftp.vector.co.jp/14/65/3171/tsw12.exe)</ins> or visit [the official website](http://hp.vector.co.jp/authors/VA013374/game/egame0.html). You will have to run the executable **as administrator** to install. / 本修改器仅适用于英文原版魔塔V1.2，可于<ins>[此处](https://ftp.vector.co.jp/14/65/3171/tsw12.exe)</ins>下载其安装包，或[点此](http://hp.vector.co.jp/authors/VA013374/game/egame0.html)访问官网。必须右键**以管理员权限运行**才可成功安装。
 
