@@ -97,7 +97,7 @@ def refresh() # main
   print "\a"; refresh
 end
 
-$pid = `tasklist /FI "IMAGENAME eq tsw.exe"`[/\d+/].to_i # find pID
+$pid = `tasklist /FI "IMAGENAME eq tsw.*"`[/\d+/].to_i # find pID
 if $pid.zero?
   system('title tswKai - err')
   print "\e[1;33mCan`t find a process of TSW\e[0m. Please manually enter its PID: "
