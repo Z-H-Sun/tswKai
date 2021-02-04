@@ -91,7 +91,7 @@ def refresh() # main
   refresh
 end
 
-$pid = `tasklist /FI "IMAGENAME eq tsw.exe"`[/\d+/].to_i # find pID
+$pid = `tasklist /FI "IMAGENAME eq tsw.*"`[/\d+/].to_i # find pID
 if $pid.zero?
   print 'Cannot find the process of TSW. Please manually enter its PID: '
   $pid = getch.to_i
