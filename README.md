@@ -1,14 +1,22 @@
 # tswKai
-Tower of the Sorcerer for Windows Kai (改): Modifier of game variables / 魔塔英文原版修改器
+Tower of the Sorcerer for Windows Kai (改): Modifier of game variables and improvement of game experience / 魔塔英文原版修改器 及 汉化、提升游戏体验补丁
 
 See Also / 另请参见: [tswMovePoint（座標移動）](https://github.com/Z-H-Sun/tswMP)
+
+![Preview of tswKai](/2.png)|![汉化](/1.png)
+---|---
 
 ## Scope of application / 适用范围
 This mod can only be applied to TSW English Ver 1.2. You can download its installer <ins>[here](https://ftp.vector.co.jp/14/65/3171/tsw12.exe)</ins> or visit [the official website](http://hp.vector.co.jp/authors/VA013374/game/egame0.html). You will have to run the executable **as administrator** to install. / 本修改器仅适用于英文原版魔塔V1.2，可于<ins>[此处](https://ftp.vector.co.jp/14/65/3171/tsw12.exe)</ins>下载其安装包，或[点此](http://hp.vector.co.jp/authors/VA013374/game/egame0.html)访问官网。必须右键**以管理员权限运行**才可成功安装。
 
+#### Game experience improvement / 提升游戏体验
+* I modified the original TSW program to improve game experience by a little bit. Previously, the refresh rate was too low, so I increased it to make the game run smoother (150 ms → 75 ms for high speed, 250 ms → 150 ms for normal speed, and 350 ms → 250 ms for low speed); the white text on gray background could hardly be read, so I changed the text color. In addition, a Chinese translated version was also included. You can opt to download <ins>[this patch archive file](https://github.com/Z-H-Sun/tswKai/raw/main/tsw.patch.zip)</ins>, and extract all contents in the installation folder of TSW (for example, `C:\Program Files (x86)\Tower of the Sorcerer`). Run `TSW.EN.exe` (English) or `TSW.CN.exe` (Chinese) instead of `TSW.exe`. / 为提升游戏体验，可选择使用补丁：原先魔塔程序刷新速率太低，导致很卡，目前将原先的高速、中速、低速分别由150、250、350毫秒的刷新间隔缩短至75、150、250毫秒；原先对话框灰底白字看不清楚，因此修改了字色；此外，还添加了汉化版。使用方法：将<ins>[此补丁压缩包](https://github.com/Z-H-Sun/tswKai/raw/main/tsw.patch.zip)</ins>解压至安装目录下（例如`C:\Program Files (x86)\Tower of the Sorcerer`），并运行`TSW.EN.exe`（英文版）或`TSW.CN.exe`（汉化版）。
+* An Excel spreadsheet was made to facilitate calculation of battle loss since the “orb of hero” cannot provide some important information. For example, the effect of cross and dragon slayer is taken into consideration; the details of battle are quantified to formulate better strategy; the macro has been used to directly link with the game process without the need for manual input of data. Download <ins>[the Excel file](https://github.com/Z-H-Sun/tswKai/raw/main/tsw.xlsm)</ins>, enable the macro, run TSW, click the `Link2TSW` button, and throw away your calculator! / 游戏中的“英雄之杖（怪物手册）”提供的信息过少，可选择使用<ins>[此 Excel 电子表格](https://github.com/Z-H-Sun/tswKai/raw/main/tsw.xlsm)</ins>来减少游戏计算量。该文档考虑了十字架和屠龙匕的作用（怪物手册没有）；显示了战斗伤害的细节（回合伤害、回合数、临界值）以方便制定加攻防策略；使用宏与游戏进程直接连接从而无需手动输入游戏数据。下载后，启用宏，打开魔塔，点击`Link2TSW`按钮，再也不用手按计算器了！
+![Damage calculator](/3.png)
+
 ## Which to download / 下载链接
-* For Windows 7 / XP Users, please download <ins>[the basic version](https://github.com/Z-H-Sun/tswKai/releases/download/v2.02/tswKaiBasic.exe)</ins> which is compatible with the old OS. / Win 7或XP用户请下载适配旧操作系统的<ins>[基本版](https://github.com/Z-H-Sun/tswKai/releases/download/v2.02/tswKaiBasic.exe)</ins>。
-* For Windows 10 Users, please download <ins>[the full version](https://github.com/Z-H-Sun/tswKai/releases/download/v2.02/tswKai.exe)</ins> which is optimized for the latest console features. **However, if you use the legacy console mode** ([What's this?](https://go.microsoft.com/fwlink/?LinkId=871150)), please fall back on the basic version. / Win 10用户请下载为新版控制台特性而优化的<ins>[完整版](https://github.com/Z-H-Sun/tswKai/releases/download/v2.02/tswKai.exe)</ins>；但如果使用了旧版控制台模式（[了解更多](https://go.microsoft.com/fwlink/?LinkId=871150)）**导致显示不正确**，请回退至基本版。
+* For Windows 7 / XP Users, please download <ins>[the basic version](https://github.com/Z-H-Sun/tswKai/releases/latest/download/tswKaiBasic.exe)</ins> which is compatible with the old OS. / Win 7或XP用户请下载适配旧操作系统的<ins>[基本版](https://github.com/Z-H-Sun/tswKai/releases/latest/download/tswKaiBasic.exe)</ins>。
+* For Windows 10 Users, please download <ins>[the full version](https://github.com/Z-H-Sun/tswKai/releases/latest/download/tswKai.exe)</ins> which is optimized for the latest console features. **However, if you use the legacy console mode** ([What's this?](https://go.microsoft.com/fwlink/?LinkId=871150)), please fall back on the basic version. / Win 10用户请下载为新版控制台特性而优化的<ins>[完整版](https://github.com/Z-H-Sun/tswKai/releases/latest/download/tswKai.exe)</ins>；但如果使用了旧版控制台模式（[了解更多](https://go.microsoft.com/fwlink/?LinkId=871150)）**导致显示不正确**，请回退至基本版。
 * It is just one single executable; double click to run. / 下载后仅单个可执行文件，双击运行即可。
 
 ## Usage / 使用方法
