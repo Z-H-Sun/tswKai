@@ -9,7 +9,7 @@ general:
 file:
   tswKaiBasic.rb:
   Win32API.so:
-    file: C:/ruby187/lib/ruby/1.8/i386-mingw32/Win32API.so
+    file: d:/ruby22-x64/lib/ruby/1.8/i386-mingw32/Win32API.so
     type: extension-library
 
 resource:
@@ -17,13 +17,13 @@ resource:
   - width : 16
     height: 16
     color : 8
-    file : 1.ico
+    file : 2.ico
   - width : 48
     height: 48
     color : 8
-    file : 1.ico
+    file : 2.ico
   version:
-    file_version_number : 2.0.2.1
-    product_version_number: 2.0.2.1
+    file_version_number : 2.0.2.2
+    product_version_number: 2.0.2.2
     company_name : Zack Sun
     product_name : tswKai (Basic)
