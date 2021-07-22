@@ -40,6 +40,7 @@ rescue Interrupt # Ctrl-C
   return -1
 end
 def int(str)
+  return str if str.is_a? Integer
   return str[0, 2] == '0x' ? str[2..-1].to_i(16) : str.to_i 
 end
 def reeval()
