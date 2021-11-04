@@ -1,7 +1,9 @@
 # tswKai
 Tower of the Sorcerer for Windows Kai (改): Modifier of game variables and improvement of game experience / 魔塔英文原版修改器 及 汉化、提升游戏体验补丁
 
-See Also / 另请参见: [tswMovePoint（座標移動）](https://github.com/Z-H-Sun/tswMP); [tswSaveLoad（快捷存档）](https://github.com/Z-H-Sun/tswSL)
+See Also / 另请参见: [tswMovePoint（座標移動）](https://github.com/Z-H-Sun/tswMP); [tswSaveLoad（快捷存档）](https://github.com/Z-H-Sun/tswSL); [tswBGM（背景音乐）](https://github.com/Z-H-Sun/tswBGM)
+
+***\* A visual user guide can be found here! / 用法视频详解参见此处！*** <ins>[BV1n341117tw](https://www.bilibili.com/video/BV1n341117tw)</ins>
 
 ![Preview of tswKai](/2.png)|![汉化](/1.png)
 ---|---
