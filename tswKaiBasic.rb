@@ -34,7 +34,7 @@ def getch(choice=nil) # user input
   if choice.nil?
     return `cmd /V /C "set /p var=&& echo !var!"`.chomp # STDIN.gets will not work after calling `choice`
   else
-    return `choice /C #{choice} /N`.chomp
+    return `choice /C:#{choice} /N`.chomp
   end
 rescue Interrupt # Ctrl-C
   return -1
