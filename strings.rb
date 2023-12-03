@@ -23,6 +23,19 @@ shield. Do you want to disarm Sacred Shield, though you will
 no longer be able to resist the magic attacks from wizards?',
 'Refresh List   Press ESC to quit.',
 
+'--- tswKai ---  
+Waiting for   
+TSW to start ', # 20
+'Do you want to stop waiting for the TSW game to start?
+
+Choose "Yes" to quit this app; "Cancel" to do nothing;
+"No" to continue waiting but hide this status window.',
+'The TSW game process has ended. Do you want to put this
+app to hibernate and wait for the next TSW game?',
+
+'','','','','','','',
+'tswKai Cheat Console - pID=%d', # 30
+
 '.' # -1
     ]
   end
@@ -39,6 +52,18 @@ no longer be able to resist the magic attacks from wizards?',
 注意：这么做将丧失对魔法使的魔法攻击的免疫能力。',
 '刷 新 列 表     请按 ESC 退出程序',
 
+'--- tswKai ---  
+正在等待魔塔
+主进程启动…', # 20
+'是否停止等待魔塔主程序 TSW 启动？
+
+按“是”将退出本程序；按“取消”则继续待机；
+按“否”也将继续等待，但会隐藏此状态窗口。',
+'魔塔游戏进程已结束，是否休眠等待其下次运行？',
+
+'','','','','','','',
+'tswKai 作弊控制台 - pID=%d', # 30
+
 '。' # -1
     ]
   end
@@ -54,6 +79,11 @@ no longer be able to resist the magic attacks from wizards?',
     @strlen
   end
   def isCHN()
+    if $isCHN == 1 # always use Chinese
+      $str = Str::StrCN; return true
+    elsif $isCHN == nil # always use English
+      $str = Str::StrEN; return false
+    end
     ReadProcessMemory.call_r($hPrc, TTSW10_TITLE_STR_ADDR, $buf, 32, 0)
     title = $buf[0, 32]
     if title.include?(APP_VERSION)

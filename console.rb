@@ -4,11 +4,6 @@
 
 MF_GRAYED = 1
 SC_CLOSE = 0xF060
-GWL_STYLE = -16
-WS_SYSMENU = 0x80000
-WS_MINIMIZEBOX = 0x20000
-WS_MAXIMIZEBOX = 0x10000
-WS_SIZEBOX = 0x40000
 STD_INPUT_HANDLE = -10
 STD_OUTPUT_HANDLE = -11
 FOREGROUND_BLUE = 1
@@ -37,8 +32,6 @@ KEY_EVENT = 1
 GetConsoleWindow = API.new('GetConsoleWindow', 'V', 'L', 'kernel32')
 GetSystemMenu = API.new('GetSystemMenu', 'LL', 'L', 'user32')
 EnableMenuItem = API.new('EnableMenuItem', 'LLL', 'L', 'user32')
-GetWindowLong = API.new('GetWindowLong', 'LL', 'L', 'user32')
-SetWindowLong = API.new('SetWindowLong', 'LLL', 'L', 'user32')
 
 GetStdHandle = API.new('GetStdHandle', 'I', 'L', 'kernel32')
 AllocConsole = API.new('AllocConsole', 'V', 'L', 'kernel32')
@@ -47,6 +40,7 @@ SetConsoleScreenBufferSize = API.new('SetConsoleScreenBufferSize', 'LL', 'L', 'k
 SetConsoleWindowInfo = API.new('SetConsoleWindowInfo', 'LLS', 'L', 'kernel32')
 SetConsoleCtrlHandler = API.new('SetConsoleCtrlHandler', 'PL', 'L', 'kernel32')
 SetConsoleTitle = API.new('SetConsoleTitleA', 'S', 'L', 'kernel32')
+SetConsoleTitleW = API.new('SetConsoleTitleW', 'S', 'L', 'kernel32')
 SetConsoleMode = API.new('SetConsoleMode','LL','L','kernel32')
 
 ReadConsole = API.new('ReadConsole', 'LPLPL', 'L', 'kernel32')
@@ -66,10 +60,17 @@ SetConsoleCursorPosition = API.new('SetConsoleCursorPosition', 'LL', 'L', 'kerne
 GetConsoleScreenBufferInfo = API.new('GetConsoleScreenBufferInfo', 'LP', 'L', 'kernel32')
 SetConsoleCursorInfo = API.new('SetConsoleCursorInfo', 'LP', 'L', 'kernel32')
 
+ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
 ShowScrollBar = API.new('ShowScrollBar', 'LII', 'L', 'user32')
 SB_BOTH = 3
 
+class TSWQuitedError < TSWKaiError
+end
+
 class Console
+  class STDINTimeoutError < TSWKaiError
+  end
+
   attr_reader :hConIn
   attr_reader :hConOut
   attr_reader :hConWin
@@ -86,10 +87,12 @@ class Console
     end
     @hConIn = GetStdHandle.call_r(STD_INPUT_HANDLE)
     @hConOut = GetStdHandle.call_r(STD_OUTPUT_HANDLE)
+    $bufHWait[POINTER_SIZE, POINTER_SIZE] = [@hConIn].pack(HANDLE_ARRAY_STRUCT) # $bufHWait: [0] is $hPrc; [1] is @hConIn
 
     @conWidth, @conHeight = conWidth, conHeight
     @conSize = @conWidth*@conHeight
-    @active = true
+    @active = false
+    @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
     SetConsoleCtrlHandler.call(nil, 1) # depress Ctrl-C
 
@@ -103,30 +106,61 @@ class Console
   end
   def switchLang()
     if $isCHN
+      alias :title :titleW
       alias :print :printW
       alias :print_pos :print_posW
+      isCHN = true # redefine: 1 or true ==> true
     else
+      alias :title :titleA
       alias :print :printA
       alias :print_pos :print_posA
+      isCHN = false # redefine: nil or false ==> false
     end
+    return false if @lastIsCHN == isCHN # no need to reload interface
+    @lastIsCHN = isCHN
     return true # need to reload interface
   end
   def setConWinProp()
-    title($appTitle || 'tswKai3')
+    title($str::STRINGS[30], $pID)
     ShowScrollBar.call_r(@hConWin, SB_BOTH, 0) # sometimes, even if window size == buffer size, scroll bars will unexpectedly show up, blocking part of texts, which is very annoying
     stl = GetWindowLong.call(@hConWin, GWL_STYLE)
-    if !(stl & WS_SYSMENU).zero? && SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~WS_SYSMENU).zero? # disable resize/maximize/minimize/close (XP won't work for console win, so only disable close)
-      hConMenu = GetSystemMenu.call(@hConWin, 0)
-      EnableMenuItem.call(hConMenu, SC_CLOSE, MF_GRAYED) # disable close
-    end
+#   exstl = GetWindowLong.call(@hConWin, GWL_EXSTYLE)
+    hConMenu = GetSystemMenu.call(@hConWin, 0)
+    EnableMenuItem.call(hConMenu, SC_CLOSE, MF_GRAYED) # disable close
+#   SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
+#   SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW).zero? # hide from taskbar for owned window (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE | WS_MINIMIZEBOX).zero? # disable resize/maximize (caveat: XP won't work for console win)
   end
   def show(active, tswActive=true) # active=true/false : show/hide console window; tswActive: if TSW is still running, determining whether to do further operations
     return if self === active
-    @active = active
-    ### TODO...
+    if active
+      API.focusTSW()
+      @active = true
+      ShowWindow.call(@hConWin, SW_RESTORE)
+      SetForegroundWindow.call(@hConWin)
+      return unless tswActive
+      IsWindow.call_r($hWnd)
+      checkTSWsize()
+      xy = [$MAP_LEFT, $MAP_TOP].pack('l2')
+      ClientToScreen.call_r($hWnd, xy)
+      x, y = xy.unpack('l2')
+      SetWindowPos.call(@hConWin, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
+    else
+      @active = false
+      ShowWindow.call(@hConWin, SW_HIDE)
+      unless tswActive
+#       SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
+        return
+      end
+      IsWindow.call_r($hWnd)
+      API.focusTSW()
+    end
   end
-  def title(title, *argv)
+  def titleA(title, *argv)
     SetConsoleTitle.call(title % argv)
+  end
+  def titleW(title, *argv)
+    SetConsoleTitleW.call(Str.utf8toWChar(title % argv))
   end
   def gets(strip=true)
     ReadConsole.call_r(@hConIn, $buf, BUFFER_SIZE, $bufDWORD, 0)
@@ -263,11 +297,24 @@ class Console
     s = s.inspect unless s.is_a?(String)
     return s % argv
   end
-  def get_input()
-    ReadConsoleInput.call_r(@hConIn, $buf, BUFFER_EVENT_SIZE, $bufDWORD)
+  def get_input(timeout=-1)
+    case MsgWaitForMultipleObjects.call_r(2, $bufHWait, 0, timeout, QS_HOTKEY)
+    when 0 # TSW has quitted
+      raise TSWQuitedError
+    when 1 # console input
+    when 2 # main thread loop messages (hotkeys)
+      while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
+# TODO
+      end
+      return EMPTY_EVENT_ARRAY
+    when WAIT_TIMEOUT
+      raise STDINTimeoutError
+    end
+
+    PeekConsoleInput.call_r(@hConIn, $buf, BUFFER_EVENT_SIZE, $bufDWORD)
     eventCount = $bufDWORD.unpack('L')[0]
     return EMPTY_EVENT_ARRAY if eventCount.zero?
-    FlushConsoleInputBuffer.call(@hConIn) unless eventCount < BUFFER_EVENT_SIZE # discard excess input
+    FlushConsoleInputBuffer.call(@hConIn) # discard excess input
     res = Array.new(eventCount) { Hash.new }
     for i in 0...eventCount
       event = $buf[20*i, 20].unpack('S2LS4L') # eventtype align keydown? repeat# vkey scancode chr controlkey

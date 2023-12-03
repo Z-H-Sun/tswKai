@@ -1,59 +1,14 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 
-require './common'
 require './console'
 
 DISP_ADDR = 0x4cb34 + BASE_ADDRESS # TTSW10.disp
 KEY_DISP_ADDR = 0x4bed8 + BASE_ADDRESS # TTSW10.keydisplay
 ITEM_DISP_ADDR = 0x4ccd8 + BASE_ADDRESS # TTSW10.itemdisp
-BGM_ID_ADDR = 0xb87f0 + BASE_ADDRESS
-BGM_PLAY_ADDR = 0x7c2bc + BASE_ADDRESS # TTSW10.soundplay
 
 KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I',  'Z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
-
-def init()
-  $hWnd = FindWindow.call(TSW_CLS_NAME, 0)
-  $tID = GetWindowThreadProcessId.call($hWnd, $buf)
-  $pID = $buf.unpack('L')[0]
-  begin
-    load('tswKaiDebug.txt')
-  rescue Exception
-  end
-  raise("Cannot find the TSW process and/or window. Please check if TSW V1.2 is currently running. tswKai has stopped.") if $hWnd.zero? or $pID.zero? or $tID.zero?
-  $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION, 0, $pID)
-  tApp = readMemoryDWORD(TAPPLICATION_ADDR)
-  $hWndTApp = readMemoryDWORD(tApp+OFFSET_OWNER_HWND)
-  $TTSW = readMemoryDWORD(TTSW_ADDR)
-
-  if Str.isCHN()
-    alias :msgboxTxt :msgboxTxtW
-  else
-    alias :msgboxTxt :msgboxTxtA
-  end
-end
-
-def bgmRoutine(floor) # routine BGM based on floor number; refer to `TTSW10.soundcheck`
-  case floor
-  when 0
-    21
-  when 1..10
-    5
-  when 11..20
-    6
-  when 21..30
-    17
-  when 31..40
-    8
-  when 44
-    $BGMtakeOver ? 22 : 9 # 22 is the newly added BGM 'theme of the phantom floor'
-  when 41..49
-    9
-  when 50
-    10
-  end
-end
 
 def reeval()
   ReadProcessMemory.call_r($hPrc, STATUS_ADDR, $buf, STATUS_LEN << 2, 0)
@@ -77,6 +32,7 @@ def cheaterMain()
   reeval
   $console.show_cursor(false)
   c = $console.choice(KAI_OPTIONS)
+  reeval
   return nil if c == -1 # ESC
   return true if c == 14 # 'Z'
   if c < 14 # status or sword/shield
@@ -116,8 +72,8 @@ def cheaterMain()
     a = ITEM_DISP_ADDR
   end
 
-  $console.cls_pos(r, y, w-13, false)
-  $console.attr_pos(x, y, STYLE_NORMAL, w)
+  $console.cls_pos(r, y, w-13, false) # clear tips
+  $console.attr_pos(x, y, STYLE_NORMAL, w) # cancel highlights
   $console.p_rect(r, y, 1, 1, KAI_OPTIONS[c], STYLE_B_YELLOW_U)
   return true if v < 0 # ESC
 
@@ -125,6 +81,7 @@ def cheaterMain()
   return true if i == 5 or i == 11 # highest floor / altar visits
 
   callFunc(a) # refresh status display
+  callFunc(ITEM_LIVE_ADDR) if i > 13 # enable mouse click for choosing items
   if i == 13 # shield
     if v == 5
       return true unless readMemoryDWORD(SACREDSHIELD_ADDR).zero?
@@ -139,15 +96,21 @@ def cheaterMain()
     end
   elsif i == 4 # floor
     callFunc(DISP_ADDR)
-    bgmID_orig = readMemoryDWORD(BGM_ID_ADDR)
-    return true if bgmID_orig.zero? # disabled BGM
-    bgmID = bgmRoutine(v)
-    return true if bgmID == bgmID_orig
+    bgmID = readMemoryDWORD(BGM_ID_ADDR)
+    return true if bgmID.zero? # disabled BGM
+    callFunc(BGM_CHECK_ADDR)
+    return true if bgmID == readMemoryDWORD(BGM_ID_ADDR) # disregard same BGM
     $console.print_posA(31, 4, '%2d', v)
-    writeMemoryDWORD(BGM_ID_ADDR, bgmID)
     callFunc(BGM_PLAY_ADDR) # caution: changing BGM will cause game and this thread to freeze for a while if BGM is not taken over by tswBGM (i.e. using TSW's own BGM treatment)
   end
   return true
+rescue TSWKaiError
+  if c # the choice has been made and is currently inputting values
+    $console.cls_pos(r, y, w-13, false) # clear tips
+    $console.attr_pos(x, y, STYLE_NORMAL, w) # cancel highlights
+    $console.p_rect(r, y, 1, 1, KAI_OPTIONS[c], STYLE_B_YELLOW_U)
+  end
+  return ! $!.is_a?(TSWQuitedError) # stop if TSW has quitted
 end
 
 def initCheaterInterface() # print table headers
@@ -162,15 +125,16 @@ def initCheaterInterface() # print table headers
   $str::LONGNAMES[14, 15].each_with_index {|x, i| $console.print_pos(36, i, x)}
   $console.p_rect(49, 0, 1, 15, KAI_OPTIONS[15, 15].join, STYLE_B_YELLOW_U)
 end
-init()
 
 def KaiMain()
   $console = Console.new if $console.nil?
   initCheaterInterface() if $console.switchLang()
   $console.setConWinProp()
-
-  loop { break unless cheaterMain }
-  preExit(13)
-  exit
+  $console.show(true)
+  res = nil
+  loop { break unless (res=cheaterMain) }
+  if res.nil? # ESC pressed
+    quit()
+  end
+  # otherwise, if res==false (TSW quitted), the remainder will be processed in the main loop
 end
-KaiMain()
