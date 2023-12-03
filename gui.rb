@@ -54,14 +54,56 @@ $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be ju
 hWndStaticIco = CreateWindowEx.call_r(0, 'STATIC', nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)
 
+$hWndDialogParent = CreateWindowEx.call_r(0, '#32770', nil, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
+# TODO...
+
+$lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
+$movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
+
+def Static1_3D(sunken=false) # when mouse/key down, sunken; up, raised
+  SetWindowLong.call($hWndStatic1, GWL_EXSTYLE, sunken ? ($stlStatic1 & ~ WS_EX_DLGMODALFRAME) : $stlStatic1)
+  SetWindowPos.call($hWndStatic1, 0, 0, 0, 0, 0, SWP_UPDATELONGONLY)
+end
+
 def Static1_CheckMsg(msg)
   case msg[1]
-  when WM_LBUTTONDOWN..WM_RBUTTONUP
-    case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION)
-    when IDYES
-      quit()
-    when IDNO
-      ShowWindow.call($hWndStatic1, SW_HIDE)
+  when WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_KEYDOWN
+    if msg[1] == WM_KEYDOWN # if keystroke, must be ESC or SPACE or RETN
+      Static1_3D(true) if msg[2] == VK_ESCAPE or msg[2] == VK_SPACE or msg[2] == VK_RETURN
+    else
+      $movingStatic1 = false
+      $lastMousePos = msg[5] # msg[3], i.e. lparam, relative coordinate w.r.t. client area left top, is not accurate, can differ by 1 pixel in both x and y direction when mouse is / isn't down (why?), so I can't use this. On the contrary, msg[5], absolute coordinate, is much more reliable
+      Static1_3D(true)
+    end
+  when WM_MOUSEMOVE
+    curMousePos = msg[5]
+    return if curMousePos == $lastMousePos # continue only if mouse moves to a different position
+    return if msg[2] != MK_LBUTTON and msg[2] != MK_RBUTTON # continue only if dragging with mouse down
+    x, y = curMousePos.unpack('l2')
+    SetCapture.call($hWndStatic1) # send WM_MOUSEMOVE msg even when the mouse moves outside of the client area
+    if $movingStatic1
+      SetWindowPos.call($hWndStatic1, 0, x-$movingStatic1[0], y-$movingStatic1[1], 0, 0, SWP_NOSIZE)
+    elsif (x_o, y_o = $lastMousePos.unpack('l2'); (x-x_o).abs+(y-y_o).abs > WINDOW_MOVE_THRESHOLD_PIXEL) # make sure the moving range is large enough
+      Static1_3D()
+      $movingStatic1 = [msg[3]].pack('L').unpack('s2') # lparam is the mouse position with respect to the top left corner of the client area; loword=x; hiword=y
+    else return # do not assign $lastMousePos if the moving range is not large enough
+    end
+    $lastMousePos = curMousePos
+  when WM_LBUTTONUP, WM_RBUTTONUP, WM_KEYUP
+    return if msg[1] == WM_KEYUP and msg[2] != VK_ESCAPE and msg[2] != VK_SPACE and msg[2] != VK_RETURN # if keystroke, continue only with ESC or SPACE or RETN
+    if $movingStatic1
+      ReleaseCapture.call() # counteract `SetCapture` above
+      $movingStatic1 = false
+    else
+      Static1_3D()
+      case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION)
+      when IDYES
+        quit()
+      when IDNO
+        ShowWindow.call($hWndStatic1, SW_HIDE)
+      when IDCANCEL # if you press ESC or RETN, the $hWndStatic1 window will be focused, and another WM_KEYUP message will be generated, and you will get in a loop
+        SetForegroundWindow.call($hWndDialogParent) # so just set focus to a different window to prevent another WM_KEYUP from $hWndStatic1
+      end
     end
   end
 end

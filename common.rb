@@ -106,12 +106,12 @@ VK_RWIN = 0x5c
 POINTER_SIZE = [nil].pack('p').size
 case POINTER_SIZE # pointer directive "J" is introduced in Ruby 2.3, for backward compatibility, use fixed-length integer directives here
 when 4 # 32-bit ruby
-  MSG_INFO_STRUCT = 'L7'
+  MSG_INFO_STRUCT = 'L5a8'
   HANDLE_ARRAY_STRUCT = 'L*'
   GetWindowLong = API.new('GetWindowLong', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLong', 'LIL', 'L', 'user32')
 when 8 # 64-bit
-  MSG_INFO_STRUCT = 'Q4L3'
+  MSG_INFO_STRUCT = 'Q4La8'
   HANDLE_ARRAY_STRUCT = 'Q*'
   GetWindowLong = API.new('GetWindowLongPtr', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLongPtr', 'LIL', 'L', 'user32')

@@ -8,6 +8,21 @@
 # The following line makes this app always shown in Chinese language
 $isCHN = 1
 # Uncomment the following line to make this app always shown in English language
-# $isCHN = nil
+#$isCHN = nil
 # Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running
-# $isCHN = false
+#$isCHN = false
+
+# Uncomment the following line to hide the status tip window after TSW has quitted
+#$CONshowStatusTip = false
+# Although the previous line hides the tip window, it will still show up if you press a hotkey. To always hide the tip window even if a hotkey is pressed, use the following line.
+#$CONshowStatusTip = nil
+# The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
+$CONaskOnTSWquit = false
+
+# Set the interval for checking TSW status (in msec; default 500 ms)
+# For example, when TSW is not running, this app will check every `INTERVAL_TSW_RECHECK` msec if a new TSW instance has started up
+INTERVAL_TSW_RECHECK = 250
+
+# Changes the sensitivity of the mouse drag to move the status window. This design is to avoid misoperation
+# Only when the mouse is dragged over this distance (|dx| + |dy|, in pixels), the window will be moved; otherwise, it will be viewed as a mouse click event
+WINDOW_MOVE_THRESHOLD_PIXEL = 10
