@@ -1,0 +1,13 @@
+#!/usr/bin/env ruby
+# encoding: ASCII-8Bit
+# If there is any non-ASCII characters in this file, please save it with ANSI (locale) encoding, not UTF-8
+
+# Unless otherwise noted, all settings here will be updated every time you start a new TSW process
+# i.e., while TSW is not running, and this app is hibernating, you can modify and save this file, and these settings will be applied the next time you start TSW
+
+# The following line makes this app always shown in Chinese language
+$isCHN = 1
+# Uncomment the following line to make this app always shown in English language
+# $isCHN = nil
+# Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running
+# $isCHN = false

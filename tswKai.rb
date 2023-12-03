@@ -1,131 +1,176 @@
-BASE_ADDRESS = 0x400000
-AUTO_REFRESH_FLAG = 0x7d2dd + BASE_ADDRESS
-OFFSETS = [0xb8688, 0xb868c, 0xb8690, 0xb8694, 0xb8698, 0xb869c, 0xb86a0, 0xb86a4,
-           0xb86a8, 0xb86b0, 0xb86ac, 0xb86c4, 0xb86c8, 0xb86cc, 0xb86d0, 0xb86d4,
-           0xb86d8, 0xb86dc, 0xb86e0, 0xb86e4, 0xb86e8, 0xb86ec, 0xb86f0, 0xb86f4,
-           0xb86f8, 0xb86fc, 0xb8700, 0xb8704]
-OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'S', 'I', '0', '1',
-           '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
-LONGNAMES = ['"L"ife', '"O"ffense', 'Defe"n"se', '"G"old', '"F"loor', '"H"ighest',
-             '"X"-pos', '"Y"-pos', 'Yel"K"ey', 'Bl"u"eKey', '"R"edKey', '"S"word',
-             'Sh"i"eld', 'OrbHero   "0"', 'OrbWisdom "1"', 'OrbFly    "2"',
-             'Cross     "3"', 'Elixir    "4"', 'Mattock   "5"', 'BombBall  "6"',
-             'SpaceWing "7"', 'UpperWing "8"', 'LowerWing "9"', 'DragonSl  "A"',
-             'SnowFlake "B"', 'MagicKey  "C"', 'SuperMatk "D"', 'LuckyGold "E"']
-$values = Array.new(29){"\0"*4} # pointers of the variables
-$bytesRead = '    ' # pointers of the number of read bytes
-$handle = 0 # handle of the opened process
+#!/usr/bin/env ruby
+# encoding: ASCII-8Bit
 
-`mode con cols=70 lines=15`
-`chcp 437`
-`title tswKai - init`
-require 'Win32API'
-OpPrc = Win32API.new('kernel32', 'OpenProcess', 'lll', 'l')
-RdPrc = Win32API.new('kernel32', 'ReadProcessMemory', 'llplp', 'l')
-WtPrc = Win32API.new('kernel32', 'WriteProcessMemory', 'llplp', 'l')
-ClHdl = Win32API.new('kernel32', 'CloseHandle', 'l', 'l')
-LstErr = Win32API.new('kernel32', 'GetLastError', '', 'l')
-SndMsg = Win32API.new('user32', 'SendMessage', 'lllp', 'l')
-PROCESS_VM_WRITE = 0x20
-PROCESS_VM_READ = 0x10
-PROCESS_VM_OPERATION = 0x8
+require './common'
+require './console'
 
-def getch(choice=nil) # user input
-  if choice.nil?
-    return `cmd /V /C "set /p var=&& echo !var!"`.chomp # STDIN.gets will not work after calling `choice`
+DISP_ADDR = 0x4cb34 + BASE_ADDRESS # TTSW10.disp
+KEY_DISP_ADDR = 0x4bed8 + BASE_ADDRESS # TTSW10.keydisplay
+ITEM_DISP_ADDR = 0x4ccd8 + BASE_ADDRESS # TTSW10.itemdisp
+BGM_ID_ADDR = 0xb87f0 + BASE_ADDRESS
+BGM_PLAY_ADDR = 0x7c2bc + BASE_ADDRESS # TTSW10.soundplay
+
+KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I',  'Z',
+  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
+
+def init()
+  $hWnd = FindWindow.call(TSW_CLS_NAME, 0)
+  $tID = GetWindowThreadProcessId.call($hWnd, $buf)
+  $pID = $buf.unpack('L')[0]
+  begin
+    load('tswKaiDebug.txt')
+  rescue Exception
+  end
+  raise("Cannot find the TSW process and/or window. Please check if TSW V1.2 is currently running. tswKai has stopped.") if $hWnd.zero? or $pID.zero? or $tID.zero?
+  $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION, 0, $pID)
+  tApp = readMemoryDWORD(TAPPLICATION_ADDR)
+  $hWndTApp = readMemoryDWORD(tApp+OFFSET_OWNER_HWND)
+  $TTSW = readMemoryDWORD(TTSW_ADDR)
+
+  if Str.isCHN()
+    alias :msgboxTxt :msgboxTxtW
   else
-    return `choice /C #{choice} /N`.chomp
+    alias :msgboxTxt :msgboxTxtA
   end
-rescue Interrupt # Ctrl-C
-  return -1
 end
-def int(str)
-  return str if str.is_a? Integer
-  return str[0, 2] == '0x' ? str[2..-1].to_i(16) : str.to_i 
+
+def bgmRoutine(floor) # routine BGM based on floor number; refer to `TTSW10.soundcheck`
+  case floor
+  when 0
+    21
+  when 1..10
+    5
+  when 11..20
+    6
+  when 21..30
+    17
+  when 31..40
+    8
+  when 44
+    $BGMtakeOver ? 22 : 9 # 22 is the newly added BGM 'theme of the phantom floor'
+  when 41..49
+    9
+  when 50
+    10
+  end
 end
+
 def reeval()
-  system('cls')
-  for i in 0..27
-    print LONGNAMES[i].ljust(20).sub(/\"(.)\"/, "\e[4;1;33m\\1\e[0m")
-    if RdPrc.call($handle, BASE_ADDRESS+OFFSETS[i], $values[i], 4, $bytesRead).zero? # read memory
-      print "\e[1;31mErr 0x#{LstErr.call.to_s(16).rjust(4, '0')}\e[0m"
-    else
-      print $values[i].unpack('l')[0].to_s.rjust(10)
-    end
-    print (i%2).zero? ? ' '*12 : "\n" # format
-  end
-  print "Refresh   \e[4;1;33mZ\e[0m"+' '*16
+  ReadProcessMemory.call_r($hPrc, STATUS_ADDR, $buf, STATUS_LEN << 2, 0)
+  $heroStatus = $buf.unpack(STATUS_TYPE)
+  ReadProcessMemory.call_r($hPrc, ITEM_ADDR, $buf, ITEM_LEN << 2, 0)
+  $heroItems = $buf.unpack(ITEM_TYPE)
+  for i in 0..14
+    $console.print_posA(22, i, '%11d', i < 12 ? $heroStatus[STATUS_INDEX[i]] : $heroItems[ITEM_INDEX[i-12]]) if i != 14 # left column
 
+    itemVal = $heroItems[ITEM_INDEX[i+2]] # right column
+    if i == 7
+      itemVal = itemVal > 99 ? '>99' : ('%3d' % itemVal)
+    else
+      if itemVal == 0 then itemVal = '  0' elsif itemVal == 1 then itemVal = '  1' else itemVal = 'N/A' end
+    end
+    $console.print_posA(56, i, itemVal)
+  end
 end
-def refresh() # main
+
+def cheaterMain()
   reeval
-  if (c = getch(OPTIONS.join+'Z')).to_i < 0
-    ClHdl.call($handle) # release resource
-    print "\a"; system('pause'); exit
+  $console.show_cursor(false)
+  c = $console.choice(KAI_OPTIONS)
+  return nil if c == -1 # ESC
+  return true if c == 14 # 'Z'
+  if c < 14 # status or sword/shield
+    i, x, y, w, r, p = c, 0, c, 33, 13, 23
+  else # item
+    i, x, y, w, r, p = c-1, 36, c-15, 23, 49, 57
   end
-  if c != 'Z'
-    reeval
-    c = OPTIONS.index(c)
-    print "\e[#{c/2+1};#{c%2*41}H" # move cursor to pos
-    print "\e[7m"
-    print LONGNAMES[c].gsub('"', '').ljust(7)[0..8]
-    print "(0-"
-    oldVal = $values[c].unpack('l')[0].to_s.rjust(10) + "\e[0m" + "\b"*10
-    case c
-    when 0..3, 8..10
-      print '2^31-1):' + oldVal
-      v = int(getch)
-      if v >= 2**31 then v = 2**31-1; print "\a" end
-    when 4..5
-      print '50):    ' + oldVal
-      v = int(getch)
-      if v > 50 then v = 50; print "\a" end
-    when 6..7
-      print 'A):     ' + oldVal
-      v = getch('0123456789A').to_s.to_i(16)
-    when 11..12
-      print '5):     ' + oldVal
-      v = getch('012345').to_i
-    when 20
-      print '3):   ' + oldVal
-      v = getch('0123').to_i
+  $console.attr_pos(x, y, STYLE_INVERT, w) # highlight
+  $console.cursor(p, y)
+  $console.show_cursor(true)
+  case i
+  when 0..3, 8..11
+    $console.print_posA(r, y, '[0,2^31): ')
+    v = $console.get_num(10)
+    v = 0x7FFFFFFF unless v < 0 or (v >> 31).zero?
+    a = i > 3 ? KEY_DISP_ADDR : DISP_ADDR
+  when 4..5
+    $console.print_posA(r, y, '[0,50]:')
+    v = $console.get_num(2)
+    v = 50 if v > 50
+    a = REFRESH_XYPOS_ADDR
+  when 6..7
+    $console.print_posA(r, y, '[0, A]:')
+    v = $console.choice('0123456789A')
+    a = REFRESH_XYPOS_ADDR
+  when 12..13
+    $console.print_posA(r, y, '[0, 5]:')
+    v = $console.choice('012345')
+    a = ITEM_DISP_ADDR
+  when 21
+    $console.print_posA(r, y, '[0,99]: ')
+    v = $console.get_num(2)
+    a = ITEM_DISP_ADDR
+  else
+    $console.print_posA(r, y, '[0, 1]:  ')
+    v = $console.choice('01')
+    a = ITEM_DISP_ADDR
+  end
+
+  $console.cls_pos(r, y, w-13, false)
+  $console.attr_pos(x, y, STYLE_NORMAL, w)
+  $console.p_rect(r, y, 1, 1, KAI_OPTIONS[c], STYLE_B_YELLOW_U)
+  return true if v < 0 # ESC
+
+  writeMemoryDWORD(i < 12 ? STATUS_ADDR+(STATUS_INDEX[i] << 2) : ITEM_ADDR+(ITEM_INDEX[i-12] << 2), v)
+  return true if i == 5 or i == 11 # highest floor / altar visits
+
+  callFunc(a) # refresh status display
+  if i == 13 # shield
+    if v == 5
+      return true unless readMemoryDWORD(SACREDSHIELD_ADDR).zero?
+      $console.print_posA(32, 13, v)
+      return true if msgboxTxt(17, MB_YESNO | MB_ICONQUESTION) == IDNO
+      writeMemoryDWORD(SACREDSHIELD_ADDR, 1)
     else
-      print '1):   ' + oldVal
-      v = getch('01').to_i
+      return true if readMemoryDWORD(SACREDSHIELD_ADDR).zero?
+      $console.print_posA(32, 13, v)
+      return true if msgboxTxt(18, MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) == IDNO
+      writeMemoryDWORD(SACREDSHIELD_ADDR, 0)
     end
-    print "\a" # beep
-    unless v < 0
-      print "\e[#{c/2+1};#{c%2*40+19}H"
-      if WtPrc.call($handle, BASE_ADDRESS+OFFSETS[c], [v].pack('l'), 4, $bytesRead).zero? # write memory
-        print "\e[7;31mErr 0x#{LstErr.call.to_s(16).rjust(4, '0')}\e[0m"
-        `pause`
-      end
-      unless $hwnd.zero? # TSW window is found
-        RdPrc.call($handle, AUTO_REFRESH_FLAG, $values[28], 1, $bytesRead) # check tswMP flag
-        SndMsg.call($hwnd, 0x111, 54, 0) if $values[28]=="\xc3\0\0\0" # refresh
-      end
-    end
+  elsif i == 4 # floor
+    callFunc(DISP_ADDR)
+    bgmID_orig = readMemoryDWORD(BGM_ID_ADDR)
+    return true if bgmID_orig.zero? # disabled BGM
+    bgmID = bgmRoutine(v)
+    return true if bgmID == bgmID_orig
+    $console.print_posA(31, 4, '%2d', v)
+    writeMemoryDWORD(BGM_ID_ADDR, bgmID)
+    callFunc(BGM_PLAY_ADDR) # caution: changing BGM will cause game and this thread to freeze for a while if BGM is not taken over by tswBGM (i.e. using TSW's own BGM treatment)
   end
-  print "\a"; refresh
+  return true
 end
 
-$hwnd = Win32API.new('user32', 'FindWindow', 'pi', 'l').call('TTSW10', 0)
-$pid = "\0\0\0\0"
-Win32API.new('user32', 'GetWindowThreadProcessId', 'lp', 'l').call($hwnd, $pid)
-$pid = $pid.unpack('L')[0]
-if $pid.zero?
-  system('title tswKai - err')
-  print "\e[1;33mCan`t find a process of TSW\e[0m. Please manually enter its PID: "
-  $pid = int(getch)
-  if $pid <= 0 then system('pause'); exit end
-  print "Please manually enter its hWnd (optional): "
-  $hwnd = int(getch)
-  $hwnd = 0 if $hwnd == -1
+def initCheaterInterface() # print table headers
+  $console.cls()
+  $console.print_pos(0, 14, $str::STRINGS[19])
+  $console.attr_pos(21, 14, STYLE_INVERT, 3)
+  $str::LONGNAMES[0, 14].each_with_index {|x, i| $console.print_pos(0, i, x)} # \r\n does not seem to be properly treated as line breaks using `WriteConsoleOutputCharacter`, so have to do this line by line
+  $console.p_rect(13, 0, 1, 15, KAI_OPTIONS[0, 15].join, STYLE_B_YELLOW_U)
+
+  $console.p_rect(34, 0, 1, 15, '|'*15, STYLE_NORMAL)
+
+  $str::LONGNAMES[14, 15].each_with_index {|x, i| $console.print_pos(36, i, x)}
+  $console.p_rect(49, 0, 1, 15, KAI_OPTIONS[15, 15].join, STYLE_B_YELLOW_U)
 end
-`title tswKai - PID=#{$pid}`
-$handle = OpPrc.call(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION, 0, $pid) # open process
-if $handle.zero?
-  print "\e[1;31mCan`t open process #{$pid}: Err 0x#{LstErr.call.to_s(16)}.\e[0m "
-  system('pause'); exit
+init()
+
+def KaiMain()
+  $console = Console.new if $console.nil?
+  initCheaterInterface() if $console.switchLang()
+  $console.setConWinProp()
+
+  loop { break unless cheaterMain }
+  preExit(13)
+  exit
 end
-refresh
+KaiMain()
