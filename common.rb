@@ -162,12 +162,13 @@ module Win32
       end
       err = '0x%04X' % API.last_error
       case function_name
-      when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx'
-        reason = "Cannot open / read from / write to / alloc memory for the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
+      when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx', 'MsgWaitForMultipleObjects'
+        reason = "Cannot open / read from / write to / alloc memory for / synchronize with the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
       when 'RegisterHotKey'
-        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of tswKai3. Please close them to avoid confliction..."
+        i = argv[1].zero?; prefix = i ? 'MP' : 'CON'
+        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of tswKai3. Please close them to avoid confliction. Default: #{i ? '0+ 118' : '0+ 119'}; current: (#{argv[2]}+ #{argv[3]}). As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
       when /Console/
-        reason = 'Console related...'
+        reason = 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.'
       else
         reason = 'This is a fatal error. That is all we know.'
       end
@@ -241,6 +242,11 @@ MAP_TYPE = 'C121'
 
 require './strings'
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
+  HookProcAPI.unhookK
+  HookProcAPI.unhookM(true)
+  DeleteObject.call($hBMP || 0)
+  DeleteDC.call($hMemDC || 0)
+  ReleaseDC.call($hWnd || 0, $hDC || 0)
   CloseHandle.call($hPrc || 0)
   $appTitle = nil
   if $console === true # hide console on TSW exit
@@ -250,8 +256,16 @@ end
 def preExit(msg=nil) # finalize
   return if $preExitProcessed # do not exec twice
   $preExitProcessed = true
+  begin
+    showMsgTxtbox(-1)
+  rescue Exception
+  end
   disposeRes()
   msgboxTxt(msg) if msg
+  DeleteObject.call($hPen || 0)
+  DeleteObject.call($hPen2 || 0)
+  DeleteObject.call($hGUIFont || 0)
+  UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
   FreeConsole.call()
 end
@@ -270,6 +284,7 @@ def checkTSWsize()
 
   $MAP_LEFT = readMemoryDWORD(MAP_LEFT_ADDR)
   $MAP_TOP = readMemoryDWORD(MAP_TOP_ADDR)
+  checkTSWrects()
 end
 
 def readMemoryDWORD(address)
