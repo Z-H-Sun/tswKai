@@ -2,6 +2,9 @@ require './common'
 require './gui'
 require './tswKai'
 
+RegisterHotKey = API.new('RegisterHotKey', 'LILL', 'L', 'user32')
+UnregisterHotKey = API.new('UnregisterHotKey', 'LI', 'L', 'user32')
+
 INTERVAL_TSW_RECHECK = 500 # in msec: when TSW is not running, check every 500 ms if a new TSW instance has started up
 $CONshowStatusTip = true # whether to show status tip window when TSW is not running (true: always show; false: do not show immediately you quit TSW but show upon pressing hotkey; nil: never show)
 $CONaskOnTSWquit = true # if on, will ask whether to continue or not once TSW has quitted; if off, always continue
@@ -56,9 +59,11 @@ def init()
   ShowWindow.call($hWndStatic1, SW_HIDE)
   Str.isCHN()
   initLang()
-  $appTitle = 'tswKai - pID=%d' % $pID
+  $appTitle = 'tswKai3 - pID=%d' % $pID
   $appTitle = Str.utf8toWChar($appTitle) if $isCHN
 
+  checkTSWsize()
+  msgboxTxt(11)
   return true
 end
 def waitInit()
@@ -76,7 +81,7 @@ def waitInit()
     end
   end
 end
-def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, no dialog #####
+def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, no dialog; 2=console; 3=dialog
   while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
     msg = $buf.unpack(MSG_INFO_STRUCT)
     hWnd = msg[0]
@@ -84,8 +89,18 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, n
     if hWnd == $hWndStatic1
       Static1_CheckMsg(msg)
     elsif msgType == WM_HOTKEY
+      case msg[2]
+      when 0
       # TODO
-        next
+      when 1
+        if state == 1
+          KaiMain() # show console
+        elsif !state and !$CONshowStatusTip.nil? # show status tip window
+          ShowWindow.call($hWndStatic1, SW_SHOW)
+          SetForegroundWindow.call($hWndStatic1)
+        end
+      end
+      next
     elsif msgType == WM_APP
       HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
     end
@@ -99,10 +114,9 @@ CUR_PATH = Dir.pwd
 APP_PATH = File.dirname($Exerb ? ExerbRuntime.filepath : __FILE__) # after packed by ExeRB into exe, __FILE__ will be useless
 initSettings()
 initLang()
-$bufHWait = "\0" * (POINTER_SIZE << 1)
 
+RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
 waitInit() unless init()
-KaiMain()
 
 loop do
   case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
@@ -110,7 +124,6 @@ loop do
     disposeRes()
     if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end
     waitInit()
-    KaiMain() ###
     next
   when 1 # this thread's msg
     checkMsg()

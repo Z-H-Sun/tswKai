@@ -124,37 +124,42 @@ class Console
     title($str::STRINGS[30], $pID)
     ShowScrollBar.call_r(@hConWin, SB_BOTH, 0) # sometimes, even if window size == buffer size, scroll bars will unexpectedly show up, blocking part of texts, which is very annoying
     stl = GetWindowLong.call(@hConWin, GWL_STYLE)
-#   exstl = GetWindowLong.call(@hConWin, GWL_EXSTYLE)
+    exstl = GetWindowLong.call(@hConWin, GWL_EXSTYLE)
     hConMenu = GetSystemMenu.call(@hConWin, 0)
     EnableMenuItem.call(hConMenu, SC_CLOSE, MF_GRAYED) # disable close
-#   SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
-#   SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW).zero? # hide from taskbar for owned window (caveat: XP won't work for console win)
-    SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE | WS_MINIMIZEBOX).zero? # disable resize/maximize (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW).zero? # hide from taskbar for owned window (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE).zero? # disable resize/maximize/minimize (caveat: XP won't work for console win)
   end
   def show(active, tswActive=true) # active=true/false : show/hide console window; tswActive: if TSW is still running, determining whether to do further operations
-    return if self === active
+    return false if self === active
     if active
-      API.focusTSW()
+      if tswActive and API.focusTSW() != $hWnd # has popup child
+        msgboxTxt(28, MB_ICONASTERISK); return nil # fail
+      end
       @active = true
       ShowWindow.call(@hConWin, SW_RESTORE)
       SetForegroundWindow.call(@hConWin)
-      return unless tswActive
+      return true unless tswActive
       IsWindow.call_r($hWnd)
       checkTSWsize()
       xy = [$MAP_LEFT, $MAP_TOP].pack('l2')
       ClientToScreen.call_r($hWnd, xy)
       x, y = xy.unpack('l2')
       SetWindowPos.call(@hConWin, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
+      EnableWindow.call($hWnd, 0) # disable TSW
     else
       @active = false
+      EnableWindow.call($hWnd, 1) # re-enable TSW
       ShowWindow.call(@hConWin, SW_HIDE)
-      unless tswActive
-#       SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
-        return
+      if tswActive
+        IsWindow.call_r($hWnd)
+        API.focusTSW()
+      else
+        SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
       end
-      IsWindow.call_r($hWnd)
-      API.focusTSW()
     end
+    return true
   end
   def titleA(title, *argv)
     SetConsoleTitle.call(title % argv)
@@ -297,15 +302,13 @@ class Console
     s = s.inspect unless s.is_a?(String)
     return s % argv
   end
-  def get_input(timeout=-1)
+  def get_input(timeout=-1) # -1 means no timeout
     case MsgWaitForMultipleObjects.call_r(2, $bufHWait, 0, timeout, QS_HOTKEY)
     when 0 # TSW has quitted
       raise TSWQuitedError
     when 1 # console input
     when 2 # main thread loop messages (hotkeys)
-      while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
-# TODO
-      end
+      checkMsg(2)
       return EMPTY_EVENT_ARRAY
     when WAIT_TIMEOUT
       raise STDINTimeoutError

@@ -15,26 +15,36 @@ module Str
 'Weapon(Sword)', 'Shield Level', 'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
     STRINGS = [
 '','','','','','','','','','','', # 10
-'','','tswKai has stopped.','','','',
+'tswKai3 is running. Here is a summary of the usage:
+
+Press F8 once  	= Open cheat console.',
+'',
+'tswKai3 has stopped.',
+'','','',
+
 'You just obtained Sacred Shield. Do you want to arm it
 to screen you from the magic attacks of wizards?',
 'You have Sacred Shield but just switched to a lower level
 shield. Do you want to disarm Sacred Shield, though you will
 no longer be able to resist the magic attacks from wizards?',
-'Refresh List   Press ESC to quit.',
+'Refresh List   Press ESC to leave',
 
-'--- tswKai ---  
+'-- tswKai3 --  
 Waiting for   
 TSW to start ', # 20
 'Do you want to stop waiting for the TSW game to start?
 
 Choose "Yes" to quit this app; "Cancel" to do nothing;
-"No" to continue waiting but hide this status window.',
+"No" to continue waiting but hide this status window,
+and you can press F7 or F8 to show it again later.',
 'The TSW game process has ended. Do you want to put this
 app to hibernate and wait for the next TSW game?',
 
-'','','','','','','',
-'tswKai Cheat Console - pID=%d', # 30
+'','','','','',
+'The game now has an active popup child window;
+please close it and then try again.',
+
+'', 'tswKai3 Cheat Console - pID=%d', # 30
 
 '.' # -1
     ]
@@ -45,24 +55,34 @@ app to hibernate and wait for the next TSW game?',
 '佩 剑 等 级', '盾 牌 等 级', '勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
     STRINGS = [
 '','','','','','','','','','','', # 10
-'','','tswKai 已退出。','','','',
+'tswKai3 已开启，以下为使用方法摘要。
+
+按一次 F8   	＝打开作弊控制台。',
+'',
+'tswKai3 已退出。',
+'','','',
+
 '获得了「神盾」。是否装备以免除魔法使的魔法攻击？',
 '现有装备中存有「神盾」，但目前切换到了等级较低的
 盾牌。是否解除「神盾」装备？
 注意：这么做将丧失对魔法使的魔法攻击的免疫能力。',
-'刷 新 列 表     请按 ESC 退出程序',
+'刷 新 列 表     请按 ESC 返回游戏',
 
-'--- tswKai ---  
+'-- tswKai3 --  
 正在等待魔塔
 主进程启动…', # 20
 '是否停止等待魔塔主程序 TSW 启动？
 
 按“是”将退出本程序；按“取消”则继续待机；
-按“否”也将继续等待，但会隐藏此状态窗口。',
+按“否”也将继续等待，但会隐藏此状态窗口，
+之后可按 F7 或 F8 等快捷键重新显示。',
 '魔塔游戏进程已结束，是否休眠等待其下次运行？',
 
-'','','','','','','',
-'tswKai 作弊控制台 - pID=%d', # 30
+'','','','','',
+'当前游戏界面存在活动的弹出式子窗口，
+请将其关闭后再重试。',
+
+'', 'tswKai3 作弊控制台 - pID=%d', # 30
 
 '。' # -1
     ]

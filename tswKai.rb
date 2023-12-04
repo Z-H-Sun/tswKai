@@ -10,6 +10,9 @@ ITEM_DISP_ADDR = 0x4ccd8 + BASE_ADDRESS # TTSW10.itemdisp
 KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I',  'Z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
 
+CON_MODIFIER = 0 # hotkey and modifier for showing configs
+CON_HOTKEY = 119 # F8
+
 def reeval()
   ReadProcessMemory.call_r($hPrc, STATUS_ADDR, $buf, STATUS_LEN << 2, 0)
   $heroStatus = $buf.unpack(STATUS_TYPE)
@@ -130,11 +133,9 @@ def KaiMain()
   $console = Console.new if $console.nil?
   initCheaterInterface() if $console.switchLang()
   $console.setConWinProp()
-  $console.show(true)
+  return if $console.show(true).nil? # fail
   res = nil
   loop { break unless (res=cheaterMain) }
-  if res.nil? # ESC pressed
-    quit()
-  end
+  $console.show(false) if res.nil? # ESC pressed
   # otherwise, if res==false (TSW quitted), the remainder will be processed in the main loop
 end

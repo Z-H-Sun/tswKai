@@ -149,7 +149,7 @@ module Win32
 # because if use $hWnd as parent in such cases, the main window will be activated,
 # causing a) the popup window losing focus and b) the adverse effect discussed earlier
       end
-      title = (ansi ? 'tswKai' : "t\0s\0w\0K\0a\0i\0\0") unless $appTitle
+      title = (ansi ? 'tswKai3' : "t\0s\0w\0K\0a\0i\0003\0\0") unless $appTitle
       return api.call(hWnd, text, title, flag | MB_SETFOREGROUND)
     end
     def call_r(*argv) # provide more info if a win32api returns null
@@ -165,13 +165,13 @@ module Win32
       when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx'
         reason = "Cannot open / read from / write to / alloc memory for the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
       when 'RegisterHotKey'
-        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of tswKai. Please close them to avoid confliction..."
+        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of tswKai3. Please close them to avoid confliction..."
       when /Console/
         reason = 'Console related...'
       else
         reason = 'This is a fatal error. That is all we know.'
       end
-      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}.\n#{reason} tswKai has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
+      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}.\n#{reason} tswKai3 has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
     end
   end
 end
@@ -252,6 +252,7 @@ def preExit(msg=nil) # finalize
   $preExitProcessed = true
   disposeRes()
   msgboxTxt(msg) if msg
+  UnregisterHotKey.call(0, 1)
   FreeConsole.call()
 end
 def quit()
