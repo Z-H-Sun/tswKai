@@ -11,6 +11,8 @@ GetModuleHandle = API.new('GetModuleHandle', 'I', 'L', 'kernel32')
 OpenProcess = API.new('OpenProcess', 'LLL', 'L', 'kernel32')
 ReadProcessMemory = API.new('ReadProcessMemory', 'LLPLL', 'L', 'kernel32')
 WriteProcessMemory = API.new('WriteProcessMemory', 'LLPLL', 'L', 'kernel32')
+VirtualAllocEx = API.new('VirtualAllocEx', 'LLLLL', 'L', 'kernel32')
+VirtualFreeEx = API.new('VirtualFreeEx', 'LLLL', 'L', 'kernel32')
 CloseHandle = API.new('CloseHandle', 'L', 'L', 'kernel32')
 GetCurrentThreadId = API.new('GetCurrentThreadId', 'V', 'L', 'kernel32')
 GetWindowThreadProcessId = API.new('GetWindowThreadProcessId', 'LP', 'L', 'user32')
@@ -225,9 +227,6 @@ MIDSPEED_ADDR = 0x7f46d + BASE_ADDRESS # so once click event of that menu item i
 MIDSPEED_ORIG = 0x6F # original bytecode (call TTSW10.speedmiddle@0x47f4e0)
 REFRESH_XYPOS_ADDR = 0x42c38 + BASE_ADDRESS # TTSW10.mhyouji
 ITEM_LIVE_ADDR = 0x50880 + BASE_ADDRESS # TTSW10.itemlive
-BGM_ID_ADDR = 0xb87f0 + BASE_ADDRESS
-BGM_CHECK_ADDR = 0x7c8f8 + BASE_ADDRESS # TTSW10.soundcheck
-BGM_PLAY_ADDR = 0x7c2bc + BASE_ADDRESS # TTSW10.soundplay
 SACREDSHIELD_ADDR = 0xb872c + BASE_ADDRESS
 STATUS_ADDR = 0xb8688 + BASE_ADDRESS
 STATUS_INDEX = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 9, 11] # HP; ATK; ... Sword and shield are in item list
@@ -247,6 +246,7 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   DeleteObject.call($hBMP || 0)
   DeleteDC.call($hMemDC || 0)
   ReleaseDC.call($hWnd || 0, $hDC || 0)
+  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
   CloseHandle.call($hPrc || 0)
   $appTitle = nil
   if $console === true # hide console on TSW exit
@@ -258,6 +258,9 @@ def preExit(msg=nil) # finalize
   $preExitProcessed = true
   begin
     showMsgTxtbox(-1)
+    SL.enableAutoSave(false)
+    SL.compatibilizeExtSL(false)
+    BGM.takeOverBGM(false) # restore
   rescue Exception
   end
   disposeRes()

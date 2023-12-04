@@ -2,6 +2,8 @@ require './common'
 require './gui'
 require './tswKai'
 require './tswMP'
+require './tswSL'
+require './tswBGM'
 
 RegisterHotKey = API.new('RegisterHotKey', 'LILL', 'L', 'user32')
 UnregisterHotKey = API.new('UnregisterHotKey', 'LI', 'L', 'user32')
@@ -83,6 +85,9 @@ def init()
   SetBkMode.call($hDC, 1) # transparent
   SetTextColor.call($hDC, HIGHLIGHT_COLOR.last)
 
+  $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
+  SL.init
+  BGM.init
   HookProcAPI.hookK
 
   showMsgTxtbox(9, $pID, $hWnd)

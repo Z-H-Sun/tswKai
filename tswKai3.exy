@@ -13,23 +13,32 @@ file:
     type: extension-library
   ./common.rb:
   ./console.rb:
+  ./connectivity.rb:
+  ./monsters.rb:
   ./gui.rb:
   ./strings.rb:
   ./stringsGBK.rb:
   ./tswKai.rb:
+  ./tswMP.rb:
+  ./tswSL.rb:
+  ./tswBGM.rb:
 
 resource:
   icon:
-  - width : 16
-    height: 16
-    color : 8
+  - width : 256
+    height: 256
+    color : 32
     file : 1.ico
   - width : 48
     height: 48
-    color : 8
+    color : 32
+    file : 1.ico
+  - width : 16
+    height: 16
+    color : 32
     file : 1.ico
   version:
-    file_version_number : 2.8.0.0
-    product_version_number: 2.8.0.0
+    file_version_number : 3.0.0.0
+    product_version_number: 3.0.0.0
     company_name : Zack Sun
-    product_name : tswKai
+    product_name : tswKai3

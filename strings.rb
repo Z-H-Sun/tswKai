@@ -39,15 +39,15 @@ When holding the hotkey, you can also see:
 on the map and in the status bar if you have Orb of Hero.
 
 Use hotkeys to enhance the Load/Save function:
-* Ctrl+L    	= Load data from any file;
-* Ctrl+S    	= Save data to any file;
-* Bksp      	= Rewind to the prev snapshot;
-* Shift+Bksp	= Fast-forward to next snapshot.
+* Ctrl+L       	= Load data from any file;
+* Ctrl+S       	= Save data to any file;
+* Bksp         	= Rewind to the prev snapshot;
+* Shift+Bksp   	= Fast-forward to next snapshot.
 
 In addition, you can:
+Press F8 once  	= Open cheat console;
 Double press F7	= Re-register hotkeys if they stop working;
-Hold F7        	= Quit tswKai3;
-Press F8 once  	= Open cheat console.',
+Hold F7        	= Quit tswKai3.',
 'Re-registered [WIN] and [TAB] hotkeys.',
 'tswKai3 has stopped.',
 'DMG:%s = %s * %sRND | %dG%s',
@@ -72,7 +72,14 @@ and you can press F7 or F8 to show it again later.',
 'The TSW game process has ended. Do you want to put this
 app to hibernate and wait for the next TSW game?',
 
-'','','','','',
+'The path for the mp3 BGM files is %s.
+The BGM enhancement function will be turned off.',
+'The game\'s data storage path is %s.
+A settings dialog box will pop up shortly; please set a
+new path there. Continue?',
+'too short (< 2 bytes)', # 25
+'too long (> 240 bytes)',
+'invalid',
 'The game now has an active popup child window;
 please close it and then try again.',
 
@@ -111,15 +118,15 @@ please close it and then try again.',
   基本属性，并在底部状态栏显示其他重要数据。
 
 使用以下快捷键增强存档和读档的游戏体验：
-* Ctrl+L    	＝读档自任意文件；
-* Ctrl+S    	＝存档至任意文件；
-* 退格      	＝回退到上一节点；
-* Shift+退格	＝快进到下一节点。
+* Ctrl+L       	＝读档自任意文件；
+* Ctrl+S       	＝存档至任意文件；
+* 退格         	＝回退到上一节点；
+* Shift+退格   	＝快进到下一节点。
 
 此外，还可以:
-双击 F7     	＝当快捷键失效时重置快捷键；
-长按 F7     	＝退出本程序；
-按一次 F8   	＝打开作弊控制台。',
+按一次 F8      	＝打开作弊控制台；
+双击 F7        	＝当快捷键失效时重置快捷键；
+长按 F7        	＝退出本程序。',
 '已重置 [WIN] 及 [TAB] 快捷键。',
 'tswKai3 已退出。',
 '伤害：%s = %s × %s回合｜%d金币%s',
@@ -142,7 +149,13 @@ please close it and then try again.',
 之后可按 F7 或 F8 等快捷键重新显示。',
 '魔塔游戏进程已结束，是否休眠等待其下次运行？',
 
-'','','','','',
+'当前 MP3 背景音乐路径%s。
+如果继续，则只能暂停背景音乐增强功能。',
+'当前游戏的存档路径%s。
+请在接下来的设置对话框中选定一个合适的新路径。',
+'过短（< 2 字节）', # 25
+'过长（> 240 字节）',
+'无效或不存在',
 '当前游戏界面存在活动的弹出式子窗口，
 请将其关闭后再重试。',
 
