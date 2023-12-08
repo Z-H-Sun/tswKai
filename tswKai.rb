@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 
-require './console'
+require 'console'
 
 DISP_ADDR = 0x4cb34 + BASE_ADDRESS # TTSW10.disp
 KEY_DISP_ADDR = 0x4bed8 + BASE_ADDRESS # TTSW10.keydisplay
@@ -12,6 +12,7 @@ KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 
 
 CON_MODIFIER = 0 # hotkey and modifier for showing configs
 CON_HOTKEY = 119 # F8
+$_TSWKAI = true # module tswKai is imported
 
 def reeval()
   ReadProcessMemory.call_r($hPrc, STATUS_ADDR, $buf, STATUS_LEN << 2, 0)

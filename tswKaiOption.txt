@@ -4,25 +4,89 @@
 
 # Unless otherwise noted, all settings here will be updated every time you start a new TSW process
 # i.e., while TSW is not running, and this app is hibernating, you can modify and save this file, and these settings will be applied the next time you start TSW
+# This config file uses Ruby language. If you are not familiar with it, do not add new lines but rather stick to the existing instructions
+# In Ruby, the pound sign (#) will comment out everything after it on the same line, so the "uncomment" instruction below means deleting the pound sign (#) at the beginning of the line so as to make this line take effect
 
-# The following line makes this app always shown in Chinese language
-$isCHN = 1
+# Uncomment the following line to always turn off the enhanced damage display
+#$MPshowMapDmg = false # Default: true
+# Uncomment the following line to turn off auto saving temp data (snapshots)
+#$SLautosave = false # Default: true
+# Uncomment the following line to turn off the BGM enhancement function
+#$BGMtakeOver = false # Default: true
+
+# Uncomment the following line to make this app always shown in Chinese language
+#$isCHN = 1
 # Uncomment the following line to make this app always shown in English language
 #$isCHN = nil
-# Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running
+# Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running (Default)
 #$isCHN = false
 
 # Uncomment the following line to hide the status tip window after TSW has quitted
-#$CONshowStatusTip = false
+#$CONshowStatusTip = false # Default: true
 # Although the previous line hides the tip window, it will still show up if you press a hotkey. To always hide the tip window even if a hotkey is pressed, use the following line.
-#$CONshowStatusTip = nil
+#$CONshowStatusTip = nil # Default: true
 # The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
-$CONaskOnTSWquit = false
+#$CONaskOnTSWquit = false
+
+# In the next section, you can modify the hotkeys (usually a combination of modifiers (functional keys) and a keystroke) for this app's functions
+# Modifier 0=None, 1=Alt, 2=Ctrl, 4=Shift, 8=Win
+# Virtual key code: https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes, e.g., A-Z is just their ASCII (65-90). F1-F12 is 112-123
+# For example, to set a hotkey of Ctrl+Shift+Z, you need to assign `*_MODIFIER = 6` and `*_HOTKEY = 90`
+# Uncomment the following lines to modify the hotkey for re-hook and quit to be Alt+F2 (Default: F7)
+#MP_MODIFIER = 1 # Default: 0
+#MP_HOTKEY = 113 # Default: 118
+# Uncomment the following lines to modify the hotkey for showing config and console windows to be Ctrl+Alt+Enter (Default: F8)
+#CON_MODIFIER = 3 # Default: 0
+#CON_HOTKEY = VK_RETURN # Default: 119
+# The following line modifies the hotkeys for teleportation and using items to be `ESC` (Default: Left Windows key). Note: No modifier is allowed
+#MP_KEY1 = VK_ESCAPE # Default: VK_LWIN
+# There can be an alternative hotkey that serves the same purpose as the primary one; if you don't need it, set it as 0 (Default: Tab key)
+#MP_KEY2 = 0 # Default: VK_TAB
+# In each of the following line, the high byte defines the modifier, and the low byte is the virtual key code
+# Uncomment the following lines to modify the 'Load Any Data' hotkey to be 'O' (Default: Ctrl+L)
+#SL_HOTKEYS[0] = 0x000 | 'O'.ord # Default: 0x200 | 'L'.ord
+# This line changes the 'Save Any Data' hotkey to be 'S' (Default: Ctrl+S)
+#SL_HOTKEYS[1] = 0x000 | 'S'.ord # Default: 0x200 | 'S'.ord
+# This line changes the 'Rewind to Prev Snapshot' hotkey to be 'Alt+Bksp' (Default: Bksp)
+#SL_HOTKEYS[2] = 0x100 | VK_BACK # Default: 0x000 | VK_BACK
+# This line changes the 'Fastforward to Next Snapshot' hotkey to be 'Shift+Alt+Bksp' (Default: Shift+Bksp)
+#SL_HOTKEYS[3] = 0x500 | VK_BACK # Default: 0x400 | VK_BACK
+
+# Uncomment the following line to specify the path of all temp data and arbitrary data, disregarding TSW's own saving path
+# Note: this folder must exist, and the length should not be too long; otherwise, TSW's own saving path will be used
+# Note: The encoding of this file must be ANSI if this path contains any non-ASCII char
+#$SLdatapath = 'C:/Game'
+# The following line indicates auto determination of the data saving path, i.e., using TSW's data saving path (Default)
+#$SLdatapath = nil
+
+# Uncomment the following line to specify the absolute path of the BGM mp3 files if this app fails to find it
+# Note: Its length should not exceed 240 bytes, and the encoding of this file must be ANSI if this path contains any non-ASCII char
+#$BGMpath = File.join(ENV['userprofile'], 'Downloads\BGM')
+# The following line indicates auto searching the BGM path (Default). By default, this app looks into the current working directory and this app's own path and find if there is a folder named `BGM_DIRNAME` (see below)
+#$BGMpath = nil
+# The default BGM folder name is 'BGM'; modify the following line if you want to rename the folder
+# It can also be a hierarchical path, e.g., 'BGM/mp3', as long as it is a valid relative path with respect to the current directory (or app path; see above)
+#BGM_DIRNAME = 'mp3' # Default: 'BGM'
+
+# If the game BGM is taken over by this app, the current BGM will fade out before the next BGM is played
+# By default, the BGM fades out in 10 steps, each spanning 150 ms
+# If you desire a finer or faster fading out effect, the number of steps and the interval between steps, respectively, can be tuned in the following lines
+#BGM_FADE_STEPS = 20 # Default: 10; 1 means stop immediately (no fading)
+#BGM_FADE_INTERVAL = 25 # Default: 150; in msec
 
 # Set the interval for checking TSW status (in msec; default 500 ms)
 # For example, when TSW is not running, this app will check every `INTERVAL_TSW_RECHECK` msec if a new TSW instance has started up
-INTERVAL_TSW_RECHECK = 250
+#INTERVAL_TSW_RECHECK = 250 # Default: 500; in msec
 
-# Changes the sensitivity of the mouse drag to move the status window. This design is to avoid misoperation
+# To successfully quit the program by holding the hotkey, you should make sure your keyboard repeat delay is longer than `INTERVAL_REHOOK` AND keyboard repeat rate is shorter than `INTERVAL_QUIT`. The default setting is good as long as you have not made changes to your system settings; otherwise, you should make changes accordingly to the following two lines
+# Note that `INTERVAL_REHOOK` should not be too small (typically >150 ms), because you need to quickly press the hotkey twice within `INTERVAL_REHOOK` to trigger the "rehook" function
+#INTERVAL_REHOOK = 300 # Default: 450; in msec
+#INTERVAL_QUIT = 75 # Default: 50; in msec
+
+# Change the sensitivity of the mouse drag to move the status window. This design is to avoid misoperation
 # Only when the mouse is dragged over this distance (|dx| + |dy|, in pixels), the window will be moved; otherwise, it will be viewed as a mouse click event
-WINDOW_MOVE_THRESHOLD_PIXEL = 10
+#WINDOW_MOVE_THRESHOLD_PIXEL = 10 # Default: 20; in pixels
+# Change where the status window show on the screen. The lines below sets the top left corner coordinates of the window w.r.t. the screen top left
+# Note: Unlike other settings, this will be loaded only ONE-TIME upon initialization of this app and will NOT be updated every time you start a new TSW process; instead, the last position of the window will be applied
+#WINDOW_SCREEN_X = 0 # Default: 20; in pixels
+#WINDOW_SCREEN_Y = 0 # Default: 20; in pixels

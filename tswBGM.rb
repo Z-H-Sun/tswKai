@@ -32,6 +32,7 @@ BGM_FADE_STEPS = 10 # fade out BGM in 10 steps; 1 means no fading out effect
 BGM_FADE_INTERVAL = 150 # each step takes 150 ms
 
 $BGMtakeOver = true
+$_TSWBGM = true # module tswBGM is imported
 
 module BGM
   MCI_CLOSE = 0x804
@@ -143,8 +144,8 @@ module BGM
       else # find in app dir
         @bgm_path = APP_PATH
       end
-      @bgm_path.encode!('filesystem').force_encoding('ASCII-8Bit') if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
       @bgm_path += '/'+BGM_DIRNAME
+      @bgm_path.encode!('filesystem').force_encoding('ASCII-8Bit') if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
     end
     @bgm_path = @bgm_path[0, 2].gsub('/', "\\") + @bgm_path[2..-1].gsub(/[\/\\]+/, "\\").sub(/\\?$/, "\\") # normalize file path (changing / into \; reducing multiple consecutive slashes into 1; always add a tailing \); the first 2 chars might be \\ which should not be reduced
     bgm_filename = @bgm_path + bgm_basename
@@ -283,7 +284,7 @@ BGM_CHECK_EXT.map {|i| [0xf883, i[0], 0x75, i[7], 0xb8, 0, i[5], i[6], 0xa0,
     end
   end
   def raiseInvalDir(reason)
-    quit() if msgboxTxt(23, MB_ICONEXCLAMATION | MB_OKCANCEL, $str::STRINGS[reason]) == IDCANCEL
+    quit() if $BGMtakeOver and msgboxTxt(23, MB_ICONEXCLAMATION | MB_OKCANCEL, $str::STRINGS[reason]) == IDCANCEL
     @bgm_path = nil
   end
 end

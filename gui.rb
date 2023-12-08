@@ -47,9 +47,12 @@ BS_TSWCON = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_NOTIFY | BS_MULTILINE | BS_T
 BM_GETCHECK = 0xf0
 
 WINDOW_MOVE_THRESHOLD_PIXEL = 20 # only when you click and drag the mouse over this distance, the status window will then be moved (this design is to avoid misoperation)
+WINDOW_SCREEN_X, WINDOW_SCREEN_Y = 20, 20 # where the status tip window show on the screen
+$CONshowStatusTip = true # whether to show status tip window when TSW is not running (true: always show; false: do not show immediately you quit TSW but show upon pressing hotkey; nil: never show)
+$CONaskOnTSWquit = true # if on, will ask whether to continue or not once TSW has quitted; if off, always continue
 
 $hIco = LoadImage.call($hMod, APP_ICON_ID, IMAGE_ICON, 48, 48, LR_SHARED)
-$hWndStatic1 = CreateWindowEx.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, 'STATIC', nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, 20, 20, 146, 56, 0, 0, 0, 0)
+$hWndStatic1 = CreateWindowEx.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, 'STATIC', nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, WINDOW_SCREEN_X, WINDOW_SCREEN_Y, 146, 56, 0, 0, 0, 0)
 $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be just 0x89 set as above; additional extended styles will be auto applied, e.g. WS_EX_WINDOWEDGE and WS_EX_STATICEDGE
 hWndStaticIco = CreateWindowEx.call_r(0, 'STATIC', nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)

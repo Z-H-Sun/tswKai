@@ -45,6 +45,7 @@ SL_HOTKEYS = [0x200 | 'L'.ord, 0x200 | 'S'.ord, 0x000 | VK_BACK, 0x400 | VK_BACK
 # high byte = modifier (1=Alt, 2=Ctrl, 4=Shift); low byte = key
 
 $SLautosave = true # whether to enable auto saving temp data
+$_TSWSL = true # module tswSL is imported
 
 module SL
   SL_PATCH_BYTES_1 = [ # address, len, original bytes, patched bytes, variable to insert into patched bytes

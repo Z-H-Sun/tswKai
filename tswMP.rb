@@ -61,14 +61,22 @@ CONSUMABLES = {'position' => [0, 1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13],
   'key' => [72, 78, [VK_LEFT,VK_DOWN, VK_RIGHT,VK_UP], 87, 80, 66, 74, 85, 68, 73, 75, 81], # H N [wasd] W P B J U D I K Q
   'event_addr' => [0x80f60+BASE_ADDRESS, 0x8198c+BASE_ADDRESS, [0x81e80+BASE_ADDRESS, 0x81f59+BASE_ADDRESS, 0x4ed1c+BASE_ADDRESS, 0x4ed94+BASE_ADDRESS, 0x4eaf4+BASE_ADDRESS], 0x8201c+BASE_ADDRESS, 0x82128+BASE_ADDRESS, 0x82234+BASE_ADDRESS, 0x82340+BASE_ADDRESS, 0x8244c+BASE_ADDRESS, 0x82558+BASE_ADDRESS, 0x82664+BASE_ADDRESS, 0x82770+BASE_ADDRESS, 0x8287c+BASE_ADDRESS, 0x50ba0+BASE_ADDRESS]} # imgXXwork; the last is Button38Click (Button_Use)
 
+require 'connectivity'
+require 'monsters'
+
 MP_MODIFIER = 0 # hotkey and modifier for quit and keyboard re-hook
 MP_HOTKEY = 118 # F7
 MP_KEY1 = VK_LWIN
 MP_KEY2 = VK_TAB # hotkeys for teleportation and using items
 $MPshowMapDmg = true # whether to enable enhanced damage display
+$_TSWMP = true # module tswMP is imported
 
-require './connectivity'
-require './monsters'
+$x_pos = $y_pos = -1
+$hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack('L5C8a32'))
+$hSysFont = GetStockObject.call_r(SYSTEM_FONT)
+$hBr = GetStockObject.call_r(DC_BRUSH)
+$hPen = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[4])
+$hPen2 = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[-2])
 
 # https://github.com/ffi/ffi/issues/283#issuecomment-24902987
 # https://github.com/undees/yesbut/blob/master/2008-11-13/hook.rb

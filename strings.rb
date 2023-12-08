@@ -1,31 +1,29 @@
 # encoding: ASCII-8Bit
 # CHN strings encoding is UTF-8
 
-require './stringsGBK'
+require 'stringsGBK'
 
 $isCHN = false
 $str = Str::StrEN
 
 module Str
-  TTSW10_TITLE_STR_ADDR = 0x88E74 + BASE_ADDRESS
-  APP_VERSION = '1.2'
   @strlen = 0
   module StrEN
     LONGNAMES = ['Life Pt (HP)', 'Offense(ATK)', 'Defense(DEF)', 'Gold Count', 'CurrentFloor', 'HighestFloor', 'X Coordinate', 'Y Coordinate', '(Yellow) Key', 'Blue Key', 'Red  Key', 'Altar Visits',
 'Weapon(Sword)', 'Shield Level', 'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
     STRINGS = [
-'tswKai3: Please wait for game event to complete...', # 0
-'tswKai3: Click the mouse to teleport to (%X,%X)%s',
-'tswKai3: Move the mouse to choose a destination to teleport.',
-'tswKai3: (%X,%X) is inaccessible. Move the mouse to choose a different destination.',
-'tswKai3: Press an alphabet/arrow key to use the corresponding item.',
-'tswKai3: Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
+APP_NAME+': Please wait for game event to complete...', # 0
+APP_NAME+': Click the mouse to teleport to (%X,%X)%s',
+APP_NAME+': Move the mouse to choose a destination to teleport.',
+APP_NAME+': (%X,%X) is inaccessible. Move the mouse to choose a different destination.',
+APP_NAME+': Press an alphabet/arrow key to use the corresponding item.',
+APP_NAME+': Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
 ', or press a key to use an item.',
-'tswKai3: Use arrow keys to fly up/down; release the [WIN] or [TAB] key to confirm.',
-'tswKai3: YOU HAVE CHEATED AT THE GAME!',
-'tswKai3: Started. Found TSW running - pID=%d; hWnd=0x%08X',
-'tswKai3: Could not use %s!', # 10
-'tswKai3 is running. Here is a summary of the usage:
+APP_NAME+': Use arrow keys to fly up/down; release the [WIN] or [TAB] key to confirm.',
+APP_NAME+': YOU HAVE CHEATED AT THE GAME!',
+APP_NAME+': Started. Found TSW running - pID=%d; hWnd=0x%08X',
+APP_NAME+': Could not use %s!', # 10
+APP_NAME+' is running. Here is a summary of the usage:
 
 When the [WIN] or [TAB] hotkey is down:
 1) Move the mouse and then click to teleport in the map
@@ -49,7 +47,7 @@ Press F8 once  	= Open cheat console;
 Double press F7	= Re-register hotkeys if they stop working;
 Hold F7        	= Quit tswKai3.',
 'Re-registered [WIN] and [TAB] hotkeys.',
-'tswKai3 has stopped.',
+APP_NAME+' has stopped.',
 'DMG:%s = %s * %sRND | %dG%s',
 ' | PrevCRI:%s', # 15
 ' | NextCRI:%s',
@@ -83,7 +81,7 @@ new path there. Continue?',
 'The game now has an active popup child window;
 please close it and then try again.',
 
-'', 'tswKai3 Cheat Console - pID=%d', # 30
+'', APP_NAME+' Cheat Console - pID=%d', # 30
 
 'Inf', # -2
 '.' # -1
@@ -94,18 +92,18 @@ please close it and then try again.',
     LONGNAMES = ['生 命 力', '攻 击 力', '防 御 力', '金 币 数', '当 前 楼 层', '最 高 楼 层', 'Ｘ 坐 标', 'Ｙ 坐 标', '黄 钥 匙', '蓝 钥 匙', '红 钥 匙', '祭 坛 次 数',
 '佩 剑 等 级', '盾 牌 等 级', '勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
     STRINGS = [
-'tswKai3: 请等待游戏内部事件结束……', # 0
-'tswKai3: 单击鼠标传送至 (%X,%X)%s',
-'tswKai3: 移动鼠标选择一个传送的目的地。',
-'tswKai3: 无法前往 (%X,%X)，请移动鼠标另选一个目的地。',
-'tswKai3: 按下字母键 / 方向键使用相应的宝物。',
-'tswKai3: 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
+APP_NAME+': 请等待游戏内部事件结束……', # 0
+APP_NAME+': 单击鼠标传送至 (%X,%X)%s',
+APP_NAME+': 移动鼠标选择一个传送的目的地。',
+APP_NAME+': 无法前往 (%X,%X)，请移动鼠标另选一个目的地。',
+APP_NAME+': 按下字母键 / 方向键使用相应的宝物。',
+APP_NAME+': 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
 '，或按下对应按键使用宝物。',
-'tswKai3: 使用方向键上 / 下楼，最后松开 [WIN] 或 [TAB] 键确认。',
-'tswKai3: 已 作 弊 ！',
-'tswKai3: 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
-'tswKai3: 无法使用%s！', # 10
-'tswKai3 已开启，以下为使用方法摘要。
+APP_NAME+': 使用方向键上 / 下楼，最后松开 [WIN] 或 [TAB] 键确认。',
+APP_NAME+': 已 作 弊 ！',
+APP_NAME+': 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
+APP_NAME+': 无法使用%s！', # 10
+APP_NAME+' 已开启，以下为使用方法摘要。
 
 当按下 [WIN] 或 [TAB] 快捷键时：
 1) 单击鼠标可传送到地图上的新位置（右键＝作弊）；
@@ -128,7 +126,7 @@ please close it and then try again.',
 双击 F7        	＝当快捷键失效时重置快捷键；
 长按 F7        	＝退出本程序。',
 '已重置 [WIN] 及 [TAB] 快捷键。',
-'tswKai3 已退出。',
+APP_NAME+' 已退出。',
 '伤害：%s = %s × %s回合｜%d金币%s',
 '｜上一临界：%s', # 15
 '｜临界：%s',
@@ -159,7 +157,7 @@ please close it and then try again.',
 '当前游戏界面存在活动的弹出式子窗口，
 请将其关闭后再重试。',
 
-'', 'tswKai3 作弊控制台 - pID=%d', # 30
+'', APP_NAME+' 作弊控制台 - pID=%d', # 30
 
 '∞', # -2
 '。' # -1
@@ -184,11 +182,11 @@ please close it and then try again.',
     end
     ReadProcessMemory.call_r($hPrc, TTSW10_TITLE_STR_ADDR, $buf, 32, 0)
     title = $buf[0, 32]
-    if title.include?(APP_VERSION)
-      if title.include?(StrEN::APP_NAME)
+    if title.include?(APP_TARGET_VERSION)
+      if title.include?(StrEN::APP_TARGET_NAME)
         $str = Str::StrEN
         return ($isCHN = false)
-      elsif title.include?(StrCN::APP_NAME)
+      elsif title.include?(StrCN::APP_TARGET_NAME)
         $str = Str::StrCN
         return ($isCHN = true)
       end

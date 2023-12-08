@@ -39,6 +39,8 @@ SendMessageW = API.new('SendMessageW', 'LLLP', 'L', 'user32')
 TranslateMessage = API.new('TranslateMessage', 'P', 'L', 'user32')
 DispatchMessage = API.new('DispatchMessage', 'P', 'L', 'user32')
 MsgWaitForMultipleObjects = API.new('MsgWaitForMultipleObjects', 'LSILL', 'I', 'user32')
+RegisterHotKey = API.new('RegisterHotKey', 'LILL', 'L', 'user32')
+UnregisterHotKey = API.new('UnregisterHotKey', 'LI', 'L', 'user32')
 GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 
 MEM_COMMIT = 0x1000
@@ -121,7 +123,7 @@ else
   raise Win32APIError, 'Unsupported system or ruby version (neither 32-bit or 64-bit).'
 end
 
-$bufHWait = "\0" * (POINTER_SIZE<<1)
+$bufHWait = "\0" * (POINTER_SIZE << 1)
 $bufDWORD = "\0" * 4
 $buf = "\0" * 640
 $hMod = GetModuleHandle.call(0)
@@ -142,7 +144,7 @@ module Win32
 # it will trigger TTSW10.OnActivate=TTSW10.formactivate subroutine
 # which will show prolog animation and restart the game! (can change the first opcode `push ebp` to `ret` to avoid)
     end
-    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle)
+    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_NAME)
       if IsWindow.call($hWnd || 0).zero?
         hWnd = $hWnd = 0 # if the window has gone, create a system level msgbox
         flag |= MB_TOPMOST
@@ -151,7 +153,7 @@ module Win32
 # because if use $hWnd as parent in such cases, the main window will be activated,
 # causing a) the popup window losing focus and b) the adverse effect discussed earlier
       end
-      title = (ansi ? 'tswKai3' : "t\0s\0w\0K\0a\0i\0003\0\0") unless $appTitle
+      title = Str.utf8toWChar(title) unless ansi
       return api.call(hWnd, text, title, flag | MB_SETFOREGROUND)
     end
     def call_r(*argv) # provide more info if a win32api returns null
@@ -168,13 +170,13 @@ module Win32
         reason = "Cannot open / read from / write to / alloc memory for / synchronize with the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
       when 'RegisterHotKey'
         i = argv[1].zero?; prefix = i ? 'MP' : 'CON'
-        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of tswKai3. Please close them to avoid confliction. Default: #{i ? '0+ 118' : '0+ 119'}; current: (#{argv[2]}+ #{argv[3]}). As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
+        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of #{APP_NAME}. Please close them to avoid confliction. Default: #{i ? '0+ 118' : '0+ 119'}; current: (#{argv[2]}+ #{argv[3]}). As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
       when /Console/
         reason = 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.'
       else
         reason = 'This is a fatal error. That is all we know.'
       end
-      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}.\n#{reason} tswKai3 has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
+      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}.\n#{reason} #{APP_NAME} has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
     end
   end
 end
@@ -239,38 +241,40 @@ ITEM_TYPE = 'l17'
 MAP_ADDR = 0xb8934 + BASE_ADDRESS
 MAP_TYPE = 'C121'
 
-require './strings'
+require 'strings'
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
-  HookProcAPI.unhookK
-  HookProcAPI.unhookM(true)
-  DeleteObject.call($hBMP || 0)
-  DeleteDC.call($hMemDC || 0)
-  ReleaseDC.call($hWnd || 0, $hDC || 0)
-  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
+  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE) if $_TSWSL or $_TSWBGM
   CloseHandle.call($hPrc || 0)
   $appTitle = nil
   if $console === true # hide console on TSW exit
     $console.show(false, $preExitProcessed) # TSW exited: false,false; this app exited: false,true
   end
+  return unless $_TSWMP
+  HookProcAPI.unhookK
+  HookProcAPI.unhookM(true)
+  DeleteObject.call($hBMP || 0)
+  DeleteDC.call($hMemDC || 0)
+  ReleaseDC.call($hWnd || 0, $hDC || 0)
 end
 def preExit(msg=nil) # finalize
   return if $preExitProcessed # do not exec twice
   $preExitProcessed = true
   begin
-    showMsgTxtbox(-1)
-    SL.enableAutoSave(false)
-    SL.compatibilizeExtSL(false)
-    BGM.takeOverBGM(false) # restore
+    showMsgTxtbox(-1) if $_TSWMP
+    SL.enableAutoSave(false) if $_TSWSL
+    SL.compatibilizeExtSL(false) if $_TSWSL
+    BGM.takeOverBGM(false) if $_TSWBGM # restore
   rescue Exception
   end
   disposeRes()
   msgboxTxt(msg) if msg
+  UnregisterHotKey.call(0, 0)
+  UnregisterHotKey.call(0, 1)
+  FreeConsole.call() if $_TSWKAI
+  return unless $_TSWMP
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)
   DeleteObject.call($hGUIFont || 0)
-  UnregisterHotKey.call(0, 0)
-  UnregisterHotKey.call(0, 1)
-  FreeConsole.call()
 end
 def quit()
   preExit(13); exit
@@ -287,7 +291,92 @@ def checkTSWsize()
 
   $MAP_LEFT = readMemoryDWORD(MAP_LEFT_ADDR)
   $MAP_TOP = readMemoryDWORD(MAP_TOP_ADDR)
-  checkTSWrects()
+  checkTSWrects() if $_TSWMP # module tswMP is imported
+end
+def initLang()
+  if $isCHN
+    if $_TSWMP
+      alias :showMsg :showMsgW
+      alias :showMsgTxtbox :showMsgTxtboxW
+    end
+    alias :msgboxTxt :msgboxTxtW
+    alias :setTitle :setTitleW
+  else
+    if $_TSWMP
+      alias :showMsg :showMsgA
+      alias :showMsgTxtbox :showMsgTxtboxA
+    end
+    alias :msgboxTxt :msgboxTxtA
+    alias :setTitle :setTitleA
+  end
+end
+def initSettings()
+  load(File.exist?(APP_SETTINGS_FNAME) ? APP_SETTINGS_FNAME : File.join(APP_PATH, APP_SETTINGS_FNAME))
+rescue Exception
+end
+def updateSettings()
+  mp_m, mp_k = MP_MODIFIER, MP_HOTKEY if $_HOTKEYMP
+  con_m, con_k = CON_MODIFIER, CON_HOTKEY if $_HOTKEYCON
+  initSettings()
+  if $_HOTKEYMP and (mp_m != MP_MODIFIER or mp_k != MP_HOTKEY) # hotkey changes
+    UnregisterHotKey.call(0, 0)
+    RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY)
+  end
+  if $_HOTKEYCON and (con_m != CON_MODIFIER or con_k != CON_HOTKEY)
+    UnregisterHotKey.call(0, 1)
+    RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
+  end
+end
+def waitForTSW()
+  $hWnd = FindWindow.call(TSW_CLS_NAME, 0)
+  $tID = GetWindowThreadProcessId.call($hWnd, $bufDWORD)
+  $pID = $bufDWORD.unpack('L')[0]
+  return if $hWnd.zero? or $pID.zero? or $tID.zero?
+
+  updateSettings()
+  AttachThreadInput.call_r(GetCurrentThreadId.call_r(), $tID, 1) # This is necessary for GetFocus to work: 
+  #https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
+  # Also, this is also critical to circumvent the ForegroundLockTimeout (flashing in taskbar but not activated) because now this app is attached to the input of TSW (see: https://devblogs.microsoft.com/oldnewthing/20080801-00/?p=21393)
+  $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_SYNCHRONIZE, 0, $pID)
+  $bufHWait[0, POINTER_SIZE] = [$hPrc].pack(HANDLE_ARRAY_STRUCT)
+
+  tApp = readMemoryDWORD(TAPPLICATION_ADDR)
+  $hWndTApp = readMemoryDWORD(tApp+OFFSET_OWNER_HWND)
+  $TTSW = readMemoryDWORD(TTSW_ADDR)
+  return unless (edit8 = waitTillAvail($TTSW+OFFSET_EDIT8))
+  return unless ($hWndText = waitTillAvail(edit8+OFFSET_HWND))
+  $appTitle = APP_NAME + ' - pID=%d' % $pID
+  return true
+end
+def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles are not ready yet; need to wait
+  r = readMemoryDWORD(addr)
+  while r.zero?
+    case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
+    when 0 # TSW quits during waiting
+      disposeRes()
+      return
+    when 1 # this thread's msg
+      checkMsg(false)
+    when WAIT_TIMEOUT
+      r = readMemoryDWORD(addr)
+    end
+  end
+  return r
+end
+def waitInit()
+  setTitle($hWndStatic1, 20)
+  if $CONshowStatusTip
+    ShowWindow.call($hWndStatic1, SW_SHOW)
+    SetForegroundWindow.call($hWndStatic1)
+  end
+  loop do # waiting while processing messages
+    case MsgWaitForMultipleObjects.call_r(0, nil, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
+    when 0
+      checkMsg(false)
+    when WAIT_TIMEOUT
+      break if init()
+    end
+  end
 end
 
 def readMemoryDWORD(address)

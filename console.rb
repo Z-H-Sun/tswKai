@@ -183,9 +183,10 @@ class Console
     s = strf(s, *argv).unpack('U*').pack('S*')
     WriteConsoleW.call_r(@hConOut, s, s.size >> 1, $bufDWORD, 0)
   end
-  def p_rect(x, y, w, h, str, attr)
-    suffix = [0, attr].pack('CS') # the first \0 is to convert ASCII to UTF-16
-    buf = str.scan(/./).join(suffix)+suffix
+  def p_rect(x, y, w, h, str, attr) # `attr` can be a WORD array specifying the attribute for each char in `str`; it can also be a single WORD value, indicating each char has the same attribute
+    bytes = str.unpack('C*') # each byte will be converted to a WORD later (ASCII to UTF-16)
+    attr = Array.new(bytes.size, attr) unless attr.is_a?(Array)
+    buf = bytes.zip(attr).flatten.pack('S*')
     WriteConsoleOutput.call_r(@hConOut, buf, packS2(w, h), 0, [x,y,x+w-1,y+h-1].pack('S4')) # -1 is necessary because the last row/col is included
   end
   def cls(clearAttr=true)
