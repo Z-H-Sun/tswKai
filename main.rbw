@@ -44,8 +44,10 @@ def init()
   BGM.init
   HookProcAPI.hookK
 
+  key1 = getKeyName(MP_MODIFIER, MP_HOTKEY); key2 = getKeyName(CON_MODIFIER, CON_HOTKEY); keySL = Array.new(4)
+  (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
   showMsgTxtbox(9, $pID, $hWnd)
-  msgboxTxt(11)
+  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], key2, key1, key1)
   return true
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, no dialog; 2=console; 3=dialog
@@ -67,7 +69,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, n
           next if !state or state==2 # TSW must be running; console must not be running
           showMsgTxtbox(-1)
           HookProcAPI.rehookK {}
-          msgboxTxt(12)
+          msgboxTxt(12, MB_ICONASTERISK, $MPhookKeyName)
         elsif !state and !$CONshowStatusTip.nil? # show status tip window
           ShowWindow.call($hWndStatic1, SW_SHOW)
           SetForegroundWindow.call($hWndStatic1)
@@ -95,6 +97,7 @@ initSettings()
 initLang()
 RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY); $_HOTKEYMP = true
 RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY); $_HOTKEYCON = true
+getRegKeyName()
 waitInit() unless init()
 
 loop do

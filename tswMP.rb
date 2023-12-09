@@ -58,7 +58,7 @@ POINTER_ANSI_STR_ADDR = 0x8c5d4 + BASE_ADDRESS
 ORB_FLIGHT_RULE_MSG_ID = 0x14 # you must be near the stairs to fly
 ORB_FLIGHT_RULE_BYTES = ["\x0F\x85\xA2\0\0\0", "\x90"*6] # 0: original bytes (JNZ); 1: bypass OrbOfFly restriction (NOP)
 CONSUMABLES = {'position' => [0, 1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13],
-  'key' => [72, 78, [VK_LEFT,VK_DOWN, VK_RIGHT,VK_UP], 87, 80, 66, 74, 85, 68, 73, 75, 81], # H N [wasd] W P B J U D I K Q
+  'key' => ['H'.ord, 'N'.ord, [VK_LEFT,VK_DOWN, VK_RIGHT,VK_UP], 'W'.ord, 'P'.ord, 'B'.ord, 'J'.ord, 'U'.ord, 'D'.ord, 'I'.ord, 'K'.ord, 'Q'.ord],
   'event_addr' => [0x80f60+BASE_ADDRESS, 0x8198c+BASE_ADDRESS, [0x81e80+BASE_ADDRESS, 0x81f59+BASE_ADDRESS, 0x4ed1c+BASE_ADDRESS, 0x4ed94+BASE_ADDRESS, 0x4eaf4+BASE_ADDRESS], 0x8201c+BASE_ADDRESS, 0x82128+BASE_ADDRESS, 0x82234+BASE_ADDRESS, 0x82340+BASE_ADDRESS, 0x8244c+BASE_ADDRESS, 0x82558+BASE_ADDRESS, 0x82664+BASE_ADDRESS, 0x82770+BASE_ADDRESS, 0x8287c+BASE_ADDRESS, 0x50ba0+BASE_ADDRESS]} # imgXXwork; the last is Button38Click (Button_Use)
 
 require 'connectivity'
@@ -249,7 +249,8 @@ module HookProcAPI
       if i == 2
         DrawTextW.call($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
       else
-        TextOut.call($hDC, x, y, CONSUMABLES['key'][i].chr, 1)
+        kName = Str.utf8toWChar(getKeyName(0, CONSUMABLES['key'][i]))
+        TextOutW.call($hDC, x, y, kName, Str.strlen())
       end
       SetDCBrushColor.call($hDC, HIGHLIGHT_COLOR[3])
       PatBlt.call($hDC, x, y, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
@@ -453,7 +454,7 @@ module HookProcAPI
               showMsgTxtbox(8) if @flying == 2
               @lastArrow = -1
               UpdateWindow.call($hWnd) # update immediately to clear the invalidated rect
-              showMsg(@flying, 7)
+              showMsg(@flying, 7, $MPhookKeyName)
               SetBkMode.call($hDC, 2) # opaque
               DrawTextW.call($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
               PatBlt.call($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
@@ -560,4 +561,10 @@ def showMsgTxtboxA(textIndex, *argv)
 end
 def showMsgTxtboxW(textIndex, *argv)
   SendMessageW.call($hWndText, WM_SETTEXT, 0, textIndex < 0 ? "\0\0" : Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv))
+end
+
+def getHookKeyName()
+  raise_r('The hotkey `MP_KEY1` must be set.') unless MP_KEY1
+  $MPhookKeyName = '[' + getKeyName(0, MP_KEY1) + ']'
+  $MPhookKeyName += ' / [' + getKeyName(0, MP_KEY2) + ']' if MP_KEY2
 end

@@ -294,6 +294,8 @@ def checkTSWsize()
   checkTSWrects() if $_TSWMP # module tswMP is imported
 end
 def initLang()
+  getRegKeyName()
+  getHookKeyName() if $_TSWMP
   if $isCHN
     if $_TSWMP
       alias :showMsg :showMsgW
@@ -402,4 +404,26 @@ def setTitleA(hWnd, textIndex, *argv)
 end
 def setTitleW(hWnd, textIndex, *argv)
   SetWindowTextW.call_r(hWnd, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv))
+end
+
+def getKeyName(modifier, key)
+  return nil unless key
+  res = ''
+  res += 'Ctrl+' unless (modifier & 2).zero?
+  res += 'Shift+' unless (modifier & 4).zero?
+  res += 'Win+' unless (modifier & 8).zero?
+  res += 'Alt+' unless (modifier & 1).zero?
+  key = 0 if key > 223
+  res += $str::VKEYNAMES[key]
+  return res
+end
+def getRegKeyName()
+  if $_HOTKEYMP
+    $regKeyName = getKeyName(MP_MODIFIER, MP_HOTKEY)
+    $regKeyName += ' / ' + getKeyName(CON_MODIFIER, CON_HOTKEY) if $_HOTKEYCON
+  elsif $_HOTKEYCON
+    $regKeyName = getKeyName(CON_MODIFIER, CON_HOTKEY)
+  else
+    $regKeyName = nil
+  end
 end

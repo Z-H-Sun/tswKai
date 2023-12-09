@@ -52,6 +52,21 @@
 # This line changes the 'Fastforward to Next Snapshot' hotkey to be 'Shift+Alt+Bksp' (Default: Shift+Bksp)
 #SL_HOTKEYS[3] = 0x500 | VK_BACK # Default: 0x400 | VK_BACK
 
+# You can change the shortcut key for each status variable in the cheat console interface
+# For example, the first line below changes the keys for the 12th and 13th variables (Sword and Shield) to 'W' and 'S' respectively
+# The second line changes the key for refreshing the list to 'J'
+#KAI_OPTIONS[12..13] = ['W', 'S'] # Default: ['S', 'I']
+#KAI_OPTIONS[14] = 'J' # Default: 'Z'
+# You can change the shortcut key for using each item when pressing the WIN or TAB hotkey
+# For example, the three lines below changes the keys for all items except the orb of flight to 0-9 and Space, sequentially
+# Do not change the key for orb of flight (CONSUMABLES['key'][2])
+#CONSUMABLES['key'][0..1] = [0x30, 0x31] # Default: ['H'.ord, 'N'.ord]
+#CONSUMABLES['key'][3..-2] = (0x32..0x39).to_a # Default: ['W'.ord, 'P'.ord, 'B'.ord, 'J'.ord, 'U'.ord, 'D'.ord, 'I'.ord, 'K'.ord, 'Q'.ord]
+#CONSUMABLES['key'][-1] = VK_SPACE # Default: 'Q'.ord
+# Below shows the default definitions of `KAI_OPTIONS` and `CONSUMABLES['key']`; and you can also customize their values based on these lines:
+#KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
+#CONSUMABLES['key'] = ['H'.ord, 'N'.ord, [VK_LEFT,VK_DOWN, VK_RIGHT,VK_UP], 'W'.ord, 'P'.ord, 'B'.ord, 'J'.ord, 'U'.ord, 'D'.ord, 'I'.ord, 'K'.ord, 'Q'.ord]
+
 # Uncomment the following line to specify the path of all temp data and arbitrary data, disregarding TSW's own saving path
 # Note: this folder must exist, and the length should not be too long; otherwise, TSW's own saving path will be used
 # Note: The encoding of this file must be ANSI if this path contains any non-ASCII char

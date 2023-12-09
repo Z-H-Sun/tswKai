@@ -11,17 +11,17 @@ file:
   win32/api.so:
     file: D:/ruby187/lib/ruby/1.8/i386-mingw32/win32/api.so
     type: extension-library
-  ./common.rb:
-  ./console.rb:
-  ./connectivity.rb:
-  ./monsters.rb:
-  ./gui.rb:
-  ./strings.rb:
-  ./stringsGBK.rb:
-  ./tswKai.rb:
-  ./tswMP.rb:
-  ./tswSL.rb:
-  ./tswBGM.rb:
+  common.rb:
+  console.rb:
+  connectivity.rb:
+  monsters.rb:
+  gui.rb:
+  strings.rb:
+  stringsGBK.rb:
+  tswKai.rb:
+  tswMP.rb:
+  tswSL.rb:
+  tswBGM.rb:
 
 resource:
   icon:
