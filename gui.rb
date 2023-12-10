@@ -99,7 +99,7 @@ def Static1_CheckMsg(msg)
       $movingStatic1 = false
     else
       Static1_3D()
-      case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION, $regKeyName)
+      case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION, *$regKeyName.compact)
       when IDYES
         quit()
       when IDNO

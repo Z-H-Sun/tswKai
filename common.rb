@@ -169,8 +169,8 @@ module Win32
       when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx', 'MsgWaitForMultipleObjects'
         reason = "Cannot open / read from / write to / alloc memory for / synchronize with the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
       when 'RegisterHotKey'
-        i = argv[1].zero?; prefix = i ? 'MP' : 'CON'
-        reason = "Cannot register hotkey. It might be currently occupied by other processes or another instance of #{APP_NAME}. Please close them to avoid confliction. Default: #{i ? '0+ 118' : '0+ 119'}; current: (#{argv[2]}+ #{argv[3]}). As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
+        prefix = ['MP', 'CON'][argv[1]]
+        reason = "Cannot register hotkey #{$regKeyName[argv[1]]}. It might be currently occupied by other processes or another instance of #{APP_NAME}. Please close them to avoid confliction. As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
       when /Console/
         reason = 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.'
       else
@@ -418,12 +418,6 @@ def getKeyName(modifier, key)
   return res
 end
 def getRegKeyName()
-  if $_HOTKEYMP
-    $regKeyName = getKeyName(MP_MODIFIER, MP_HOTKEY)
-    $regKeyName += ' / ' + getKeyName(CON_MODIFIER, CON_HOTKEY) if $_HOTKEYCON
-  elsif $_HOTKEYCON
-    $regKeyName = getKeyName(CON_MODIFIER, CON_HOTKEY)
-  else
-    $regKeyName = nil
-  end
+  $regKeyName[0] = getKeyName(MP_MODIFIER, MP_HOTKEY) if $_HOTKEYMP
+  $regKeyName[1] = getKeyName(CON_MODIFIER, CON_HOTKEY) if $_HOTKEYCON
 end

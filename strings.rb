@@ -66,7 +66,7 @@ TSW to start ', # 20
 
 Choose "Yes" to quit this app; "Cancel" to do nothing;
 "No" to continue waiting but hide this status window,
-and you can press %s to show it again later.',
+and you can press %s or %s to show it again later.',
 'The TSW game process has ended. Do you want to put this
 app to hibernate and wait for the next TSW game?',
 
@@ -160,7 +160,7 @@ APP_NAME+' 已退出。',
 
 按“是”将退出本程序；按“取消”则继续待机；
 按“否”也将继续等待，但会隐藏此状态窗口，
-之后可按 %s 快捷键重新显示。',
+之后可按 %s 或 %s 快捷键重新显示。',
 '魔塔游戏进程已结束，是否休眠等待其下次运行？',
 
 '当前 MP3 背景音乐路径%s。

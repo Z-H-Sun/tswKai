@@ -44,10 +44,10 @@ def init()
   BGM.init
   HookProcAPI.hookK
 
-  key1 = getKeyName(MP_MODIFIER, MP_HOTKEY); key2 = getKeyName(CON_MODIFIER, CON_HOTKEY); keySL = Array.new(4)
+  keySL = Array.new(4)
   (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
   showMsgTxtbox(9, $pID, $hWnd)
-  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], key2, key1, key1)
+  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[0], $regKeyName[0])
   return true
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, no dialog; 2=console; 3=dialog
@@ -93,11 +93,14 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, n
 end
 
 $time = 0
+$regKeyName = Array.new(2)
+$_HOTKEYMP = true
+$_HOTKEYCON = true
 initSettings()
 initLang()
-RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY); $_HOTKEYMP = true
-RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY); $_HOTKEYCON = true
 getRegKeyName()
+RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY)
+RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
 waitInit() unless init()
 
 loop do
