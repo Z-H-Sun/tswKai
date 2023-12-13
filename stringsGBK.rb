@@ -2,7 +2,7 @@
 # CHN strings encoding is GBK
 
 module Str
-  TTSW10_TITLE_STR_ADDR = 0x88E74 + BASE_ADDRESS
+  OFFSET_TTSW10_TITLE_STR = 0x88E74
   APP_TARGET_VERSION = '1.2'
   module StrEN
     APP_TARGET_NAME = 'Tower of the Sorcerer'

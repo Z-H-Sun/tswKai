@@ -1,4 +1,3 @@
-#!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 # If there is any non-ASCII characters in this file, please save it with ANSI (locale) encoding, not UTF-8
 
@@ -9,6 +8,8 @@
 
 # Uncomment the following line to always turn off the enhanced damage display
 #$MPshowMapDmg = false # Default: true
+# Uncomment the following line to always turn on the enhanced damage display even if you don't own the orb of hero
+#$MPshowMapDmg = 1
 # Uncomment the following line to turn off auto saving temp data (snapshots)
 #$SLautosave = false # Default: true
 # Uncomment the following line to turn off the BGM enhancement function
@@ -21,12 +22,27 @@
 # Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running (Default)
 #$isCHN = false
 
+# The following lines determine which patch to apply upon app startup (provided `$CONonTSWstartup` is true; see below)
+# For more information, such as why to do these patches, please see the comments in the config window and also the documentation
+# By default, tswKai3 will make TSW show only one-turn battle animation to save time. Uncomment the following line to cancel
+#$CONmodStatus[0] = false # Default: true
+# By default, tswKai3 will fix the 47F MagicianA bug. Uncomment the following line to cancel
+#$CONmodStatus[1] = false # Default: true
+# By default, tswKai3 will fix the 45F Merchant bug in the backside tower. Uncomment the following line to cancel
+#$CONmodStatus[2] = false # Default: true
+# By default, tswKai3 will fix the 50F Zeno bug in the backside tower. Uncomment the following line to cancel
+#$CONmodStatus[3] = false # Default: true
+# By default, tswKai3 will increase the dialog window margins to make the text less busy. Uncomment the following line to cancel
+#$CONmodStatus[4] = false # Default: true
+
+# By default, tswKai3 will apply several patches (defined as above) and show the config dialog upon app startup. Uncomment the following line to cancel
+$CONonTSWstartup = false # Default: true
+# The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
+#$CONaskOnTSWquit = false
 # Uncomment the following line to hide the status tip window after TSW has quitted
 #$CONshowStatusTip = false # Default: true
 # Although the previous line hides the tip window, it will still show up if you press a hotkey. To always hide the tip window even if a hotkey is pressed, use the following line.
 #$CONshowStatusTip = nil # Default: true
-# The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
-#$CONaskOnTSWquit = false
 
 # In the next section, you can modify the hotkeys (usually a combination of modifiers (functional keys) and a keystroke) for this app's functions
 # Modifier 0=None, 1=Alt, 2=Ctrl, 4=Shift, 8=Win

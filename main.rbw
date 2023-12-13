@@ -13,6 +13,7 @@ require 'tswKai'
 require 'tswMP'
 require 'tswSL'
 require 'tswBGM'
+require 'tswMod'
 
 INTERVAL_REHOOK = 450 # the interval for rehook (in msec)
 INTERVAL_QUIT = 50 # for quit (in msec)
@@ -42,21 +43,31 @@ def init()
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
   SL.init
   BGM.init
+  Mod.init
   HookProcAPI.hookK
 
+  showWelcomingMsg() unless $CONonTSWstartup # if `$CONonTSWstartup`, will be handled elsewhere after the dialog window is gone
+  return true
+end
+def showWelcomingMsg()
   keySL = Array.new(4)
   (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
   showMsgTxtbox(9, $pID, $hWnd)
-  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[0], $regKeyName[0])
-  return true
+  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0])
 end
-def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, no dialog; 2=console; 3=dialog
+def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2=console
   while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
     msg = $buf.unpack(MSG_INFO_STRUCT)
     hWnd = msg[0]
     msgType = msg[1]
     if hWnd == $hWndStatic1
       Static1_CheckMsg(msg)
+    elsif hWnd == $hWndDialog
+      Dialog_CheckMsg(msg)
+      next unless IsDialogMessage.call($hWndDialog, $buf).zero?
+    elsif (i=$hWndChkBoxes.index(hWnd))
+      ChkBox_CheckMsg(i, msg)
+      next unless IsDialogMessage.call($hWndDialog, $buf).zero?
     elsif msgType == WM_HOTKEY
       case msg[2]
       when 0
@@ -66,17 +77,27 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console, n
         if diff < INTERVAL_QUIT # hold
           quit()
         elsif diff < INTERVAL_REHOOK # twice
-          next if !state or state==2 # TSW must be running; console must not be running
+          next if !state or state==2 or $configDlg # TSW must be running; console/dialog must not be running
           showMsgTxtbox(-1)
-          HookProcAPI.rehookK {}
+          HookProcAPI.rehookK
           msgboxTxt(12, MB_ICONASTERISK, $MPhookKeyName)
         elsif !state and !$CONshowStatusTip.nil? # show status tip window
           ShowWindow.call($hWndStatic1, SW_SHOW)
           SetForegroundWindow.call($hWndStatic1)
         end
       when 1
-        if state == 1 # show console
-          HookProcAPI.rehookK { KaiMain() } # console loop can cause significant delay when working in combination with hook, so need to stop hook temporarily and reinstall after it is done
+        if state == 1
+          if $configDlg # dialog -> console
+            next if $configDlg == 'init' # do not do this if it's shown during startup
+            $configDlg = false
+            ShowWindow.call($hWndDialog, SW_HIDE)
+            KaiMain()
+          else # nothing -> dialog
+            HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
+            HookProcAPI.abandon(true)
+            showMsgTxtbox(-1)
+            Mod.showDialog(true)
+          end
         elsif !state and !$CONshowStatusTip.nil? # show status tip window
           ShowWindow.call($hWndStatic1, SW_SHOW)
           SetForegroundWindow.call($hWndStatic1)
@@ -104,7 +125,7 @@ RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
 waitInit() unless init()
 
 loop do
-  case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
+  case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, $configDlg ? QS_ALLINPUT : QS_ALLBUTTIMER) # For XP-style checkboxes, there is an animation with changed checked state, so WM_TIMER should still be processed for redrawing the checkboxes
   when 0 # TSW has quitted
     disposeRes()
     if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end

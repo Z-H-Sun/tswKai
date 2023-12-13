@@ -1,11 +1,15 @@
+#!/usr/bin/env ruby
+# encoding: ASCII-8Bit
+
+ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
 CreateWindowEx = API.new('CreateWindowEx', 'LSSLIIIILLLL', 'L', 'user32')
 SendMessagePtr = API.new('SendMessageA', 'LLLL', 'L', 'user32')
 SetCapture = API.new('SetCapture', 'L', 'L', 'user32')
 ReleaseCapture = API.new('ReleaseCapture', 'V', 'L', 'user32')
 LoadImage = API.new('LoadImage', 'LLIIII', 'L', 'user32')
+CreateFontIndirect = API.new('CreateFontIndirect', 'S', 'L','gdi32')
 
 LR_SHARED = 0x8000
-DEFAULT_GUI_FONT = 17
 IMAGE_ICON = 1
 ICON_BIG = 1
 MK_LBUTTON = 1
@@ -39,12 +43,11 @@ SS_NOTIFY = 0x100
 SS_ICON = 3
 SS_RIGHT = 2
 STM_SETICON = 0x170
-BS_NOTIFY = 0x4000
-BS_MULTILINE = 0x2000
-BS_TOP = 0x400
-BS_AUTOCHECKBOX = 3
-BS_TSWCON = WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_NOTIFY | BS_MULTILINE | BS_TOP | BS_AUTOCHECKBOX
-BM_GETCHECK = 0xf0
+LOGFONT_STRUCT = 'L5C8a32'
+DIALOG_CLASS_NAME = '#32770'
+STATIC_CLASS_NAME = 'Static'
+BUTTON_CLASS_NAME = 'Button'
+APP_MUTEX_TITLE = APP_NAME+'_mutex'
 
 WINDOW_MOVE_THRESHOLD_PIXEL = 20 # only when you click and drag the mouse over this distance, the status window will then be moved (this design is to avoid misoperation)
 WINDOW_SCREEN_X, WINDOW_SCREEN_Y = 20, 20 # where the status tip window show on the screen
@@ -52,13 +55,18 @@ $CONshowStatusTip = true # whether to show status tip window when TSW is not run
 $CONaskOnTSWquit = true # if on, will ask whether to continue or not once TSW has quitted; if off, always continue
 
 $hIco = LoadImage.call($hMod, APP_ICON_ID, IMAGE_ICON, 48, 48, LR_SHARED)
-$hWndStatic1 = CreateWindowEx.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, 'STATIC', nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, WINDOW_SCREEN_X, WINDOW_SCREEN_Y, 146, 56, 0, 0, 0, 0)
+$hWndStatic1 = CreateWindowEx.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, STATIC_CLASS_NAME, nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, WINDOW_SCREEN_X, WINDOW_SCREEN_Y, 146, 56, 0, 0, 0, 0)
 $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be just 0x89 set as above; additional extended styles will be auto applied, e.g. WS_EX_WINDOWEDGE and WS_EX_STATICEDGE
-hWndStaticIco = CreateWindowEx.call_r(0, 'STATIC', nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
+hWndStaticIco = CreateWindowEx.call_r(0, STATIC_CLASS_NAME, nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)
 
-$hWndDialogParent = CreateWindowEx.call_r(0, '#32770', nil, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
-# TODO...
+unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero?
+  GetWindowThreadProcessId.call(hWnd, $bufDWORD)
+  initSettings(); msgbox = $isCHN ? :msgboxTxtW : :msgboxTxtA
+  send(msgbox, 29, MB_ICONERROR, $bufDWORD.unpack('L')[0])
+  exit
+end
+$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
 
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client

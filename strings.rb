@@ -43,7 +43,8 @@ Use hotkeys to enhance the Load/Save function:
 * %-13s	= Fast-forward to next snapshot.
 
 In addition, you can:
-Press %s once	= Open cheat console;
+Press %s once	= Open config dialog;
+Press %s twice	= Open cheat console;
 Double press %s	= Re-register hotkeys if they stop working;
 Hold %-10s	= Quit tswKai3.',
 'Re-registered %s hotkeys.',
@@ -81,7 +82,29 @@ new path there. Continue?',
 'The game now has an active popup child window;
 please close it and then try again.',
 
-'', APP_NAME+' Cheat Console - pID=%d', # 30
+APP_NAME+' is already running with pID=%s.',
+APP_NAME+' Cheat Console - pID=%p', # 30
+APP_NAME+' Config (Static)',
+APP_NAME+' Config (Dynamic) - pID=%p',
+'Show only one-turn battle animation
+This can also bypass the 2500-round limit bug',
+'Fix 47F Magician_A movement bug
+Rectify their behavior in first/last row/col',
+'Fix 45F Merchant bug in the backside tower
+Add 88000 instead of 2000 HP (>=2nd round)', # 35
+'Fix 50F Zeno status bug in the backside tower
+44 mistakenly multiplied twice (>=3rd round)',
+'Increase the margins of the dialog window',
+
+'Display
+damage',
+'Auto save
+snapshots',
+'Enhance
+BGM play', # 40
+
+'This TSW\'s binary data associated with this configuration
+does not seem right. Continue anyway?',
 
 'Inf', # -2
 '.' # -1
@@ -138,7 +161,8 @@ APP_NAME+' 已开启，以下为使用方法摘要。
 * %-15s	＝快进到下一节点。
 
 此外，还可以:
-按一次 %-8s	＝打开作弊控制台；
+按一次 %-8s	＝打开设置对话框；
+按两次 %-8s	＝打开作弊控制台；
 双击 %-10s	＝当快捷键失效时重置快捷键；
 长按 %-10s	＝退出本程序。',
 '已重置 %s 快捷键。',
@@ -173,7 +197,29 @@ APP_NAME+' 已退出。',
 '当前游戏界面存在活动的弹出式子窗口，
 请将其关闭后再重试。',
 
-'', APP_NAME+' 作弊控制台 - pID=%d', # 30
+APP_NAME+' 不可重复运行，已在进程 pID=%s 中打开。',
+APP_NAME+' 作弊控制台 - pID=%p', # 30
+
+APP_NAME+' 设置（静态）',
+APP_NAME+' 设置（动态）- pID=%p',
+'对战只显示一回合战斗动画以节省时间
+(这也能解决2500回合战斗上限的溢出Bug)',
+'修正47层「魔術士A」魔法回退路线Bug
+(指其在首行/首列/末行/末列的后撤行为)',
+'修正45层里侧塔「商人」的加血点数Bug
+(二周目以上属性加点应×44: 2000→88000)', # 35
+'修正50层里侧塔「芝诺」的属性Bug
+(三周目以上有时芝诺属性会错误地多×44)',
+'增加对话窗格内部文字边距，不至于太挤',
+
+'在地图上
+显示伤害',
+'重要节点
+自动存档',
+'背景音乐
+播放增强', # 40
+
+'当前魔塔中此设置相关二进制数据不正确。仍然继续？',
 
 '∞', # -2
 '。' # -1
@@ -212,7 +258,7 @@ APP_NAME+' 已退出。',
     elsif $isCHN == nil # always use English
       $str = Str::StrEN; return false
     end
-    ReadProcessMemory.call_r($hPrc, TTSW10_TITLE_STR_ADDR, $buf, 32, 0)
+    ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)
     title = $buf[0, 32]
     if title.include?(APP_TARGET_VERSION)
       if title.include?(StrEN::APP_TARGET_NAME)

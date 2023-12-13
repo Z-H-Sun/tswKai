@@ -2,8 +2,8 @@
 # encoding: ASCII-8Bit
 # main repo: https://github.com/Z-H-Sun/tswMP.git
 
-FillRect = API.new('FillRect', 'LSL', 'L', 'user32')
 UpdateWindow = API.new('UpdateWindow', 'L', 'L', 'user32')
+FillRect = API.new('FillRect', 'LSL', 'L', 'user32')
 DrawText = API.new('DrawTextA', 'LSIPL', 'L', 'user32')
 DrawTextW = API.new('DrawTextW', 'LSIPL', 'L', 'user32')
 TextOut = API.new('TextOutA', 'LLLSL', 'L', 'gdi32')
@@ -21,6 +21,7 @@ DeleteDC = API.new('DeleteDC', 'L', 'L', 'gdi32')
 GetDC = API.new('GetDC', 'L', 'L', 'user32')
 ReleaseDC = API.new('ReleaseDC', 'LL', 'L', 'user32')
 CreatePen = API.new('CreatePen', 'IIL', 'L', 'gdi32')
+GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 DeleteObject = API.new('DeleteObject', 'L', 'L', 'gdi32')
 SelectObject = API.new('SelectObject', 'LL', 'L', 'gdi32')
 SetDCBrushColor = API.new('SetDCBrushColor', 'LL', 'L', 'gdi32')
@@ -28,7 +29,6 @@ SetTextColor = API.new('SetTextColor', 'LL', 'L', 'gdi32')
 SetBkColor = API.new('SetBkColor', 'LL', 'L', 'gdi32')
 SetBkMode = API.new('SetBkMode', 'LI', 'L', 'gdi32')
 SetROP2 = API.new('SetROP2', 'LI', 'L', 'gdi32')
-CreateFontIndirect = API.new('CreateFontIndirect', 'S', 'L','gdi32')
 
 DC_BRUSH = 18
 DT_CENTER = 1
@@ -72,7 +72,7 @@ $MPshowMapDmg = true # whether to enable enhanced damage display
 $_TSWMP = true # module tswMP is imported
 
 $x_pos = $y_pos = -1
-$hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack('L5C8a32'))
+$hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack(LOGFONT_STRUCT))
 $hSysFont = GetStockObject.call_r(SYSTEM_FONT)
 $hBr = GetStockObject.call_r(DC_BRUSH)
 $hPen = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[4])
@@ -179,7 +179,7 @@ module HookProcAPI
     Monsters.heroATK = hero[1]
     Monsters.heroDEF = hero[2]
     Monsters.statusFactor = mFac
-    Monsters.heroOrb = $MPshowMapDmg && ($heroItems[ITEM_INDEX[2]]==1)
+    Monsters.heroOrb = ($MPshowMapDmg == 1) || ($MPshowMapDmg && ($heroItems[ITEM_INDEX[2]]==1))
     Monsters.cross = ($heroItems[ITEM_INDEX[5]]==1)
     Monsters.dragonSlayer = ($heroItems[ITEM_INDEX[12]]==1)
     Monsters.luckyGold = ($heroItems[ITEM_INDEX[16]]==1)
@@ -502,7 +502,6 @@ module HookProcAPI
   def rehookK
     unhookK
     abandon
-    yield
     hookK
   end
   def hookM

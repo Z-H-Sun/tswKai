@@ -18,7 +18,7 @@ GetCurrentThreadId = API.new('GetCurrentThreadId', 'V', 'L', 'kernel32')
 GetWindowThreadProcessId = API.new('GetWindowThreadProcessId', 'LP', 'L', 'user32')
 AttachThreadInput = API.new('AttachThreadInput', 'III', 'I', 'user32')
 GetClientRect = API.new('GetClientRect', 'LP', 'L', 'user32')
-FindWindow = API.new('FindWindow', 'SL', 'L', 'user32')
+FindWindow = API.new('FindWindow', 'SS', 'L', 'user32')
 ShowWindow = API.new('ShowWindow', 'LL', 'L', 'user32')
 EnableWindow = API.new('EnableWindow', 'LI', 'L', 'user32')
 SetWindowText = API.new('SetWindowTextA', 'LS', 'L', 'user32')
@@ -41,7 +41,6 @@ DispatchMessage = API.new('DispatchMessage', 'P', 'L', 'user32')
 MsgWaitForMultipleObjects = API.new('MsgWaitForMultipleObjects', 'LSILL', 'I', 'user32')
 RegisterHotKey = API.new('RegisterHotKey', 'LILL', 'L', 'user32')
 UnregisterHotKey = API.new('UnregisterHotKey', 'LI', 'L', 'user32')
-GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 
 MEM_COMMIT = 0x1000
 MEM_RESERVE = 0x2000
@@ -133,6 +132,8 @@ module Win32
     def self.focusTSW()
       if $console === true
         hWnd = $console.hConWin
+      elsif $configDlg
+        hWnd = $hWndDialog
       else
         hWnd = GetLastActivePopup.call($hWndTApp) # there is a popup child
         hWnd = $hWnd if hWnd == $hWndTApp
@@ -160,7 +161,9 @@ module Win32
       r = call(*argv)
       return r if $preExitProcessed # do not throw error if ready to exit
       if function_name == 'MsgWaitForMultipleObjects'
-        return r if r >= 0 # WAIT_FAILED = (DWORD)0xFFFFFFFF
+        return r if r != -1 # WAIT_FAILED = (DWORD)0xFFFFFFFF
+      elsif function_name == 'SendMessageA'
+        return r if r != -1 and r != -2 # LB_ERR = -1; LB_ERRSPACE = -2
       else
         return r unless r.zero?
       end
@@ -216,7 +219,7 @@ OFFSET_OWNER_HWND = 0x20
 OFFSET_CTL_LEFT = 0x24
 OFFSET_CTL_TOP = 0x28
 OFFSET_CTL_WIDTH = 0x2c
-# OFFSET_CTL_HEIGHT = 0x30
+OFFSET_CTL_HEIGHT = 0x30
 # OFFSET_CTL_VISIBLE = 0x37 # byte
 # OFFSET_CTL_ENABLED = 0x38 # byte
 TTSW_ADDR = 0x8c510 + BASE_ADDRESS
@@ -248,10 +251,12 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   $appTitle = nil
   if $console === true # hide console on TSW exit
     $console.show(false, $preExitProcessed) # TSW exited: false,false; this app exited: false,true
+  elsif $configDlg # hide dialog on TSW exit
+    Mod.showDialog(false, $preExitProcessed) # TSW exited: false,false; this app exited: false,true
   end
   return unless $_TSWMP
   HookProcAPI.unhookK
-  HookProcAPI.unhookM(true)
+  HookProcAPI.abandon(true)
   DeleteObject.call($hBMP || 0)
   DeleteDC.call($hMemDC || 0)
   ReleaseDC.call($hWnd || 0, $hDC || 0)
@@ -271,6 +276,7 @@ def preExit(msg=nil) # finalize
   UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
   FreeConsole.call() if $_TSWKAI
+  DeleteObject.call($hGUIFont2 || 0) if $_TSWMOD
   return unless $_TSWMP
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)
@@ -311,6 +317,10 @@ def initLang()
     alias :msgboxTxt :msgboxTxtA
     alias :setTitle :setTitleA
   end
+  setTitle($hWndStatic1, 20)
+  return unless $_TSWMOD
+  setTitle($hWndDialog, 32, $pID)
+  (0...MOD_TOTAL_OPTION_COUNT).each {|i| setTitle($hWndChkBoxes[i], 33+i)}
 end
 def initSettings()
   load(File.exist?(APP_SETTINGS_FNAME) ? APP_SETTINGS_FNAME : File.join(APP_PATH, APP_SETTINGS_FNAME))
@@ -330,7 +340,7 @@ def updateSettings()
   end
 end
 def waitForTSW()
-  $hWnd = FindWindow.call(TSW_CLS_NAME, 0)
+  $hWnd = FindWindow.call(TSW_CLS_NAME, nil)
   $tID = GetWindowThreadProcessId.call($hWnd, $bufDWORD)
   $pID = $bufDWORD.unpack('L')[0]
   return if $hWnd.zero? or $pID.zero? or $tID.zero?
@@ -366,7 +376,6 @@ def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles a
   return r
 end
 def waitInit()
-  setTitle($hWndStatic1, 20)
   if $CONshowStatusTip
     ShowWindow.call($hWndStatic1, SW_SHOW)
     SetForegroundWindow.call($hWndStatic1)

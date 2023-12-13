@@ -60,7 +60,6 @@ SetConsoleCursorPosition = API.new('SetConsoleCursorPosition', 'LL', 'L', 'kerne
 GetConsoleScreenBufferInfo = API.new('GetConsoleScreenBufferInfo', 'LP', 'L', 'kernel32')
 SetConsoleCursorInfo = API.new('SetConsoleCursorInfo', 'LP', 'L', 'kernel32')
 
-ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
 ShowScrollBar = API.new('ShowScrollBar', 'LII', 'L', 'user32')
 SB_BOTH = 3
 
@@ -155,6 +154,7 @@ class Console
       if tswActive
         IsWindow.call_r($hWnd)
         API.focusTSW()
+        HookProcAPI.hookK() if $_TSWMP # reenable tswMP hook
       else
         SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
       end
