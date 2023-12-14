@@ -20,12 +20,12 @@ INTERVAL_QUIT = 50 # for quit (in msec)
 INTERVAL_TSW_RECHECK = 500 # in msec: when TSW is not running, check every 500 ms if a new TSW instance has started up
 
 def init()
-  return unless waitForTSW()
+  return nil unless waitForTSW()
   $IMAGE6 = readMemoryDWORD($TTSW+OFFSET_IMAGE6)
   $hWndMemo = [] # reset as empty here and will be assigned later, because during prologue, these textboxes' hWnd are not assigned yet (a potential workaround is to `mov eax, TTSW10.TMemo1/2/3` and `call TWinControl.HandleNeeded`, but I'm lazy and it is really not worth the trouble)
 
   ShowWindow.call($hWndStatic1, SW_HIDE)
-  Str.isCHN()
+  return false if Str.isCHN().nil? # incompatible TSW game
   initLang()
 
   checkTSWsize()
@@ -122,7 +122,8 @@ initLang()
 getRegKeyName()
 RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY)
 RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
-waitInit() unless init()
+res = init()
+waitInit(!res.nil?) unless res
 
 loop do
   case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, $configDlg ? QS_ALLINPUT : QS_ALLBUTTIMER) # For XP-style checkboxes, there is an animation with changed checked state, so WM_TIMER should still be processed for redrawing the checkboxes

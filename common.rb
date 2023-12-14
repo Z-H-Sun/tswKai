@@ -179,7 +179,7 @@ module Win32
       else
         reason = 'This is a fatal error. That is all we know.'
       end
-      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}.\n#{reason} #{APP_NAME} has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
+      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}, which returns #{r}.\n#{reason} #{APP_NAME} has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
     end
   end
 end
@@ -375,17 +375,36 @@ def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles a
   end
   return r
 end
-def waitInit()
+def waitInit(waitForNextCompatibleTSW = false)
   if $CONshowStatusTip
     ShowWindow.call($hWndStatic1, SW_SHOW)
     SetForegroundWindow.call($hWndStatic1)
   end
   loop do # waiting while processing messages
-    case MsgWaitForMultipleObjects.call_r(0, nil, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
-    when 0
-      checkMsg(false)
-    when WAIT_TIMEOUT
-      break if init()
+    if waitForNextCompatibleTSW # though unlikely, if current TSW is incompatible, wait till its end
+      case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
+      when 0 # incompatible TSW is ended
+        CloseHandle.call($hPrc)
+        waitForNextCompatibleTSW = false
+      when 1 # current thread's msg
+        checkMsg(false)
+      end
+    else
+      case MsgWaitForMultipleObjects.call_r(0, nil, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
+      when 0
+        checkMsg(false)
+      when WAIT_TIMEOUT
+        res = init()
+        break if res
+        next if res.nil?
+        # though unlikely, if current TSW is incompatible, reshow waiting status window and wait till its end
+        if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end
+        waitForNextCompatibleTSW = true
+        if $CONshowStatusTip
+          ShowWindow.call($hWndStatic1, SW_SHOW)
+          SetForegroundWindow.call($hWndStatic1)
+        end
+      end
     end
   end
 end

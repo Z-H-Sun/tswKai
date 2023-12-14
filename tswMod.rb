@@ -19,7 +19,6 @@ LB_GETCOUNT = 0x18b
 SetFocus = API.new('SetFocus', 'L', 'L', 'user32')
 IsDialogMessage = API.new('IsDialogMessage', 'LP', 'I', 'user32')
 
-BASE_ADDRESS_STATIC = -0xC00
 LISTBOX2_45FMERCHANT_DIALOG_ID = 256
 LISTBOX2_NEWENTRY_DIALOG_ID = 268
 OFFSET_LISTBOX2 = 0x44c
@@ -212,18 +211,18 @@ module Mod
     # extra treatment
     if i == 2 and s == 1 # merchant dialog content
       diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
-      raise_r('This is not a compatible TSW game: The number of text content entries differs by %d from expected' % diff) if diff < 0 or diff > 1
+      if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
       if diff.zero? # need to add a new entry
         len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
         newentry = $buf[0, len]
         numindex = newentry.index(STR_45FMERCHANT_ADDHP[0])
-        raise_r('This is not a compatible TSW game: The %d-th entry of the text contents should have been the dialog with 45F Merchant, but it is now: ' % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry) unless numindex
+        unless numindex then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
         newentry[numindex, 4] = STR_45FMERCHANT_ADDHP[1]
         SendMessage.call_r($hWndListBox, LB_ADDSTRING, 0, newentry)
       else # new entry already exists
         len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
         newentry = $buf[0, len]
-        raise_r('This is not a compatible TSW game: The %d-th entry of the text contents should have been the dialog with 45F Merchant in the back side tower, but it is now: ' % LISTBOX2_NEWENTRY_DIALOG_ID + newentry) unless newentry.include?(STR_45FMERCHANT_ADDHP[1])
+        unless newentry.include?(STR_45FMERCHANT_ADDHP[1]) then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_NEWENTRY_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
       end
     elsif i == 4 # make margin change immediately
       w = readMemoryDWORD($RichEdit1+OFFSET_CTL_WIDTH)

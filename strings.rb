@@ -105,6 +105,8 @@ BGM play', # 40
 
 'This TSW\'s binary data associated with this configuration
 does not seem right. Continue anyway?',
+'This is not a compatible TSW game: The number of text
+content entries differs by %d from expected.',
 
 'Inf', # -2
 '.' # -1
@@ -220,6 +222,7 @@ APP_NAME+' 设置（动态）- pID=%p',
 播放增强', # 40
 
 '当前魔塔中此设置相关二进制数据不正确。仍然继续？',
+'不兼容的魔塔程序：文本条目数与正常值相差 %d。',
 
 '∞', # -2
 '。' # -1
@@ -269,6 +272,7 @@ APP_NAME+' 设置（动态）- pID=%p',
         return ($isCHN = true)
       end
     end
-    raise_r('This is not a compatible TSW game: '+title.rstrip)
+    API.msgbox($str::APP_TARGET_ERROR_STR+title, MB_ICONERROR)
+    return nil
   end
 end

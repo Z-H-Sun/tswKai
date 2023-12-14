@@ -6,6 +6,8 @@ module Str
   APP_TARGET_VERSION = '1.2'
   module StrEN
     APP_TARGET_NAME = 'Tower of the Sorcerer'
+    APP_TARGET_ERROR_STR = "This is not a compatible TSW game: Wrong title:\n\n"
+    APP_TARGET_45F_ERROR_STR = "This is not a compatible TSW game: The %d-th entry of text\ncontents should have been 45F Merchant's dialog but is now:\n\n"
     DIALOG_FILTER_STR = "Game Data (*.dat)\0*.dat\0Temp Data (*.tmp)\0*.tmp\0All Files\0*.*\0\0"
     TITLE_LOAD_STR = 'Load Data'
     TITLE_SAVE_STR = 'Save Data'
@@ -16,6 +18,8 @@ module Str
   end
   module StrCN
     APP_TARGET_NAME = '魔塔'
+    APP_TARGET_ERROR_STR = "不兼容的魔塔程序：游戏标题不符：\n\n"
+    APP_TARGET_45F_ERROR_STR = "不兼容的魔塔程序：第 %d 条文本非 45 层商人台词：\n\n"
     DIALOG_FILTER_STR = "游戏存档 (*.dat)\0*.dat\0临时存档 (*.tmp)\0*.tmp\0所有文件\0*.*\0\0"
     TITLE_LOAD_STR = '读档自文件'
     TITLE_SAVE_STR = '存档至文件'
