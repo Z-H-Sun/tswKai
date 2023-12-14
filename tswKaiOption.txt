@@ -22,7 +22,7 @@
 # Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running (Default)
 #$isCHN = false
 
-# The following lines determine which patch to apply upon app startup (provided `$CONonTSWstartup` is true; see below)
+# The following lines determine which patch to apply upon app startup
 # For more information, such as why to do these patches, please see the comments in the config window and also the documentation
 # By default, tswKai3 will make TSW show only one-turn battle animation to save time. Uncomment the following line to cancel
 #$CONmodStatus[0] = false # Default: true
@@ -34,9 +34,12 @@
 #$CONmodStatus[3] = false # Default: true
 # By default, tswKai3 will increase the dialog window margins to make the text less busy. Uncomment the following line to cancel
 #$CONmodStatus[4] = false # Default: true
+# For any of them, if the value is set to be `nil`, then the corresponding item will not be patched
+# Or, uncomment the following line to indicate no patching at all upon app startup
+#$CONmodStatus = [nil, nil, nil, nil, nil]
 
-# By default, tswKai3 will apply several patches (defined as above) and show the config dialog upon app startup. Uncomment the following line to cancel
-$CONonTSWstartup = false # Default: true
+# By default, tswKai3 will show the config dialog upon app startup. Uncomment the following line to cancel
+#$CONonTSWstartup = false # Default: true
 # The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
 #$CONaskOnTSWquit = false
 # Uncomment the following line to hide the status tip window after TSW has quitted

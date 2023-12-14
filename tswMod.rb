@@ -155,8 +155,8 @@ module Mod
     $hWndListBox = readMemoryDWORD(readMemoryDWORD($TTSW+OFFSET_LISTBOX2)+OFFSET_HWND)
     $RichEdit1 = readMemoryDWORD($TTSW+OFFSET_RICHEDIT1)
     $hWndRichEdit = readMemoryDWORD($RichEdit1+OFFSET_HWND)
+    (0...MOD_PATCH_OPTION_COUNT).each {|i| patch(i, $CONmodStatus[i] ? 1 : 0) unless $CONmodStatus[i].nil?}
     return unless $CONonTSWstartup
-    (0...MOD_PATCH_OPTION_COUNT).each {|i| patch(i, $CONmodStatus[i] ? 1 : 0)}
     showDialog(true)
     $configDlg = 'init' # need to wrap up after the dialog window is gone
   end

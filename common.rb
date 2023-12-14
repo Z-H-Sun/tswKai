@@ -250,9 +250,9 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   CloseHandle.call($hPrc || 0)
   $appTitle = nil
   if $console === true # hide console on TSW exit
-    $console.show(false, $preExitProcessed) # TSW exited: false,false; this app exited: false,true
+    $console.show(false, false) # when this app exits, even if TSW is still running, no need to do any further treatments
   elsif $configDlg # hide dialog on TSW exit
-    Mod.showDialog(false, $preExitProcessed) # TSW exited: false,false; this app exited: false,true
+    Mod.showDialog(false, false) # like above
   end
   return unless $_TSWMP
   HookProcAPI.unhookK
