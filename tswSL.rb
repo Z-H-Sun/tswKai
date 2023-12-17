@@ -3,7 +3,6 @@
 # main repo: https://github.com/Z-H-Sun/tswSL.git
 # asm codes: https://github.com/Z-H-Sun/tswSL/blob/main/tswSL.asm
 
-MAX_PATH = 260
 GENERIC_READ = 0x80000000
 GENERIC_WRITE = 0x40000000
 OFN_LONGNAMES = 0x200000

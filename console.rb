@@ -86,7 +86,7 @@ class Console
     end
     @hConIn = GetStdHandle.call_r(STD_INPUT_HANDLE)
     @hConOut = GetStdHandle.call_r(STD_OUTPUT_HANDLE)
-    $bufHWait[POINTER_SIZE, POINTER_SIZE] = [@hConIn].pack(HANDLE_ARRAY_STRUCT) # $bufHWait: [0] is $hPrc; [1] is @hConIn
+    $bufHWait[POINTER_SIZE, POINTER_SIZE] = [@hConIn].pack(HANDLE_STRUCT) # $bufHWait: [0] is $hPrc; [1] is @hConIn
 
     @conWidth, @conHeight = conWidth, conHeight
     @conSize = @conWidth*@conHeight
@@ -127,8 +127,8 @@ class Console
     hConMenu = GetSystemMenu.call(@hConWin, 0)
     EnableMenuItem.call(hConMenu, SC_CLOSE, MF_GRAYED) # disable close
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
-    SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW).zero? # hide from taskbar for owned window (caveat: XP won't work for console win)
-    SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE).zero? # disable resize/maximize/minimize (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
+    SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)
   end
   def show(active, tswActive=true) # active=true/false : show/hide console window; tswActive: if TSW is still running, determining whether to do further operations
     return false if self === active

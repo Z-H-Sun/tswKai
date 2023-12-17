@@ -42,6 +42,7 @@ MsgWaitForMultipleObjects = API.new('MsgWaitForMultipleObjects', 'LSILL', 'I', '
 RegisterHotKey = API.new('RegisterHotKey', 'LILL', 'L', 'user32')
 UnregisterHotKey = API.new('UnregisterHotKey', 'LI', 'L', 'user32')
 
+MAX_PATH = 260
 MEM_COMMIT = 0x1000
 MEM_RESERVE = 0x2000
 MEM_RELEASE = 0x8000
@@ -110,12 +111,12 @@ POINTER_SIZE = [nil].pack('p').size
 case POINTER_SIZE # pointer directive "J" is introduced in Ruby 2.3, for backward compatibility, use fixed-length integer directives here
 when 4 # 32-bit ruby
   MSG_INFO_STRUCT = 'L5a8'
-  HANDLE_ARRAY_STRUCT = 'L*'
+  HANDLE_STRUCT = 'L'
   GetWindowLong = API.new('GetWindowLong', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLong', 'LIL', 'L', 'user32')
 when 8 # 64-bit
   MSG_INFO_STRUCT = 'Q4La8'
-  HANDLE_ARRAY_STRUCT = 'Q*'
+  HANDLE_STRUCT = 'Q'
   GetWindowLong = API.new('GetWindowLongPtr', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLongPtr', 'LIL', 'L', 'user32')
 else
@@ -350,7 +351,7 @@ def waitForTSW()
   #https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
   # Also, this is also critical to circumvent the ForegroundLockTimeout (flashing in taskbar but not activated) because now this app is attached to the input of TSW (see: https://devblogs.microsoft.com/oldnewthing/20080801-00/?p=21393)
   $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_SYNCHRONIZE, 0, $pID)
-  $bufHWait[0, POINTER_SIZE] = [$hPrc].pack(HANDLE_ARRAY_STRUCT)
+  $bufHWait[0, POINTER_SIZE] = [$hPrc].pack(HANDLE_STRUCT)
 
   tApp = readMemoryDWORD(TAPPLICATION_ADDR)
   $hWndTApp = readMemoryDWORD(tApp+OFFSET_OWNER_HWND)

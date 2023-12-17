@@ -2,7 +2,8 @@
 # encoding: ASCII-8Bit
 
 APP_NAME = 'tswKai3'
-APP_PATH = File.dirname($Exerb ? ExerbRuntime.filepath : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless
+APP_FNAME = $Exerb ? ExerbRuntime.filepath : ($0[/^[\/\\]{2}/] ? $0.dup : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless. There is a bug in Ruby's File#expand_path method, which fails to parse UNC paths, so ignore it if the path starts with \\
+APP_PATH = File.dirname(APP_FNAME)
 CUR_PATH = Dir.pwd
 $:.unshift(APP_PATH, CUR_PATH) unless $Exerb # add load path
 # For ExeRB-packed executables, the filenames of imported modules in the .exy file should be pre-processed such that they don't contain dirname

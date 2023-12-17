@@ -28,13 +28,16 @@ STR_45FMERCHANT_ADDHP = ['2000', '88000'] # 1000 gold for 2000 HP in the 1st fou
 
 MOD_PATCH_OPTION_COUNT = 5
 MOD_TOTAL_OPTION_COUNT = 8
+MOD_DIALOG_WIDTH = 256
+MOD_DIALOG_HEIGHT = 242
 DIALOG_FONT = [-11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Tahoma']
 $CONonTSWstartup = true # whether to show config window and apply default config on TSW startup
 $CONmodStatus = [true, true, true, true, true] # if `$CONonTSWstartup`, this specifies the default config
 $_TSWMOD = true
 
 $hGUIFont2 = CreateFontIndirect.call_r(DIALOG_FONT.pack(LOGFONT_STRUCT))
-$hWndDialog = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, 256, 242, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
+$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
+$hWndDialog = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
 SendMessagePtr.call($hWndDialog, WM_SETICON, ICON_BIG, $hIco)
 $hWndChkBoxes = Array.new(7)
 for i in 0...MOD_TOTAL_OPTION_COUNT
@@ -103,7 +106,7 @@ def ChkBox_CheckMsg(index, msg)
       SendMessagePtr.call(hWnd, BM_SETCHECK, BGM.bgm_path ? 1 : 2, 0)
     end
   end
-  SetFocus.call($hWndChkBoxes[(index+1) % 8]) # focus next checkbox
+  SetFocus.call($hWndChkBoxes[(index+1) % MOD_TOTAL_OPTION_COUNT]) # focus next checkbox
 end
 
 module Mod
@@ -150,7 +153,7 @@ module Mod
 
   module_function
   def init
-    MOD_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)}
+    MOD_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)} # must-do patches
     $hWndListBox = readMemoryDWORD(readMemoryDWORD($TTSW+OFFSET_LISTBOX2)+OFFSET_HWND)
     $RichEdit1 = readMemoryDWORD($TTSW+OFFSET_RICHEDIT1)
     $hWndRichEdit = readMemoryDWORD($RichEdit1+OFFSET_HWND)
@@ -172,7 +175,7 @@ module Mod
       return true unless tswActive
       IsWindow.call_r($hWnd)
       checkTSWsize()
-      xy = [$W-256 >> 1, $H-242 >> 1].pack('l2')
+      xy = [$W-MOD_DIALOG_WIDTH >> 1, $H-MOD_DIALOG_HEIGHT >> 1].pack('l2')
       ClientToScreen.call_r($hWnd, xy)
       x, y = xy.unpack('l2')
       SetWindowPos.call($hWndDialog, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)

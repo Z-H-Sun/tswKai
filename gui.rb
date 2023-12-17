@@ -60,20 +60,22 @@ $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be ju
 hWndStaticIco = CreateWindowEx.call_r(0, STATIC_CLASS_NAME, nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)
 
-unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero?
+unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found another instance; quit
   GetWindowThreadProcessId.call(hWnd, $bufDWORD)
   initSettings(); msgbox = $isCHN ? :msgboxTxtW : :msgboxTxtA
   send(msgbox, 29, MB_ICONERROR, $bufDWORD.unpack('L')[0])
   exit
 end
-$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
-
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
 
 def Static1_3D(sunken=false) # when mouse/key down, sunken; up, raised
-  SetWindowLong.call($hWndStatic1, GWL_EXSTYLE, sunken ? ($stlStatic1 & ~ WS_EX_DLGMODALFRAME) : $stlStatic1)
-  SetWindowPos.call($hWndStatic1, 0, 0, 0, 0, 0, SWP_UPDATELONGONLY)
+  prev_sunken = ($stlStatic1 & WS_EX_DLGMODALFRAME).zero?
+  return false if sunken == prev_sunken # no need to do the following if the state doesn't change
+  if sunken then $stlStatic1 &= ~ WS_EX_DLGMODALFRAME else $stlStatic1 |= WS_EX_DLGMODALFRAME end
+  SetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE, sunken ? ($stlStatic1 & ~ WS_EX_DLGMODALFRAME) : $stlStatic1)
+  SetWindowPos.call_r($hWndStatic1, 0, 0, 0, 0, 0, SWP_UPDATELONGONLY)
+  return true
 end
 
 def Static1_CheckMsg(msg)
@@ -95,7 +97,7 @@ def Static1_CheckMsg(msg)
     if $movingStatic1
       SetWindowPos.call($hWndStatic1, 0, x-$movingStatic1[0], y-$movingStatic1[1], 0, 0, SWP_NOSIZE)
     elsif (x_o, y_o = $lastMousePos.unpack('l2'); (x-x_o).abs+(y-y_o).abs > WINDOW_MOVE_THRESHOLD_PIXEL) # make sure the moving range is large enough
-      Static1_3D()
+      Static1_3D(false)
       $movingStatic1 = [msg[3]].pack('L').unpack('s2') # lparam is the mouse position with respect to the top left corner of the client area; loword=x; hiword=y
     else return # do not assign $lastMousePos if the moving range is not large enough
     end
@@ -106,14 +108,12 @@ def Static1_CheckMsg(msg)
       ReleaseCapture.call() # counteract `SetCapture` above
       $movingStatic1 = false
     else
-      Static1_3D()
+      return unless Static1_3D(false) # if you press ESC or RETN, the $hWndStatic1 window will be focused, and another WM_KEYUP message will be generated, and you will get in a loop, so need to make sure WM_*DOWN has happened before WM_*UP
       case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION, *$regKeyName.compact)
       when IDYES
         quit()
       when IDNO
         ShowWindow.call($hWndStatic1, SW_HIDE)
-      when IDCANCEL # if you press ESC or RETN, the $hWndStatic1 window will be focused, and another WM_KEYUP message will be generated, and you will get in a loop
-        SetForegroundWindow.call($hWndDialogParent) # so just set focus to a different window to prevent another WM_KEYUP from $hWndStatic1
       end
     end
   end

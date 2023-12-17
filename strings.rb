@@ -256,18 +256,21 @@ APP_NAME+' 设置（动态）- pID=%p',
     @strlen
   end
   def isCHN()
+    isCHN = nil
     if $isCHN == 1 # always use Chinese
-      $str = Str::StrCN; return true
+      $str = Str::StrCN; isCHN = true
     elsif $isCHN == nil # always use English
-      $str = Str::StrEN; return false
+      $str = Str::StrEN; isCHN = false
     end
     ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)
     title = $buf[0, 32]
     if title.include?(APP_TARGET_VERSION)
       if title.include?(StrEN::APP_TARGET_NAME)
+        return isCHN unless isCHN.nil?
         $str = Str::StrEN
         return ($isCHN = false)
       elsif title.include?(StrCN::APP_TARGET_NAME)
+        return isCHN unless isCHN.nil?
         $str = Str::StrCN
         return ($isCHN = true)
       end
