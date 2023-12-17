@@ -175,6 +175,9 @@ module Win32
       when 'RegisterHotKey'
         prefix = ['MP', 'CON'][argv[1]]
         reason = "Cannot register hotkey #{$regKeyName[argv[1]]}. It might be currently occupied by other processes or another instance of #{APP_NAME}. Please close them to avoid confliction. As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
+      when 'ShellExecuteEx'
+        buf = argv[0].unpack(SHELLEXECUTEINFO_STRUCT[0..-3]) # discard the last 6 pointers
+        reason = "Error executing file '#{buf[4]}' with the '#{buf[3]}' action and the parameters being '#{buf[5]}', returning code #{buf[8]}.\nIt might be because the user cancelled this action, or the system fails to find the specified file or execute the action."
       when /Console/
         reason = 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.'
       else

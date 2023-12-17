@@ -107,6 +107,33 @@ BGM play', # 40
 does not seem right. Continue anyway?',
 'This is not a compatible TSW game: The number of text
 content entries differs by %d from expected.',
+'This is not a compatible TSW game: Not a "rev" version.
+It is recommended to visit the author\'s GitHub page to
+download and update to the rev version TSW.
+
+If you choose to continue, though the backside tower 45F
+Merchant bug could be somewhat fixed so that you can get
+88000 HP from him, the displayed value in the dialog will
+still be 2000 HP. Continue anyway?',
+
+'The TSW executable to patch can\'t be found or accessed.',
+'The TSW executable to patch can\'t be accessed.
+
+Possibilities include: The file is in-use, read-only, or
+in a privileged folder. If it is the last case, do you
+want to try again as Administrator?', # 45
+'Do you want to statically patch this TSW executable?
+
+Unlike the dynamic config of this app, which takes effect
+only during runtime, this action makes permanent changes.
+Please backup this executable before continuing.',
+'The TSW executable has been successfully static-patched.
+
+Do you want to run it now? If you choose "No," this app
+will hibernate until another TSW game is run; choosing
+"Cancel" will end this app.',
+'Can\'t run the specified TSW executable, as another TSW
+process has already been running (pID = %d).',
 
 'Inf', # -2
 '.' # -1
@@ -223,6 +250,29 @@ APP_NAME+' 设置（动态）- pID=%p',
 
 '当前魔塔中此设置相关二进制数据不正确。仍然继续？',
 '不兼容的魔塔程序：文本条目数与正常值相差 %d。',
+'不兼容的魔塔程序：不是 rev（修正）版魔塔。
+推荐前往作者 GitHub 页面下载更新 rev 版魔塔。
+
+若选择继续，虽然还是可以让里侧塔的 45 层商人卖
+88000 HP，但对话中将依旧显示加 2000 HP。仍然继续？',
+
+'欲修正的魔塔程序文件不存在或无法访问。',
+'欲修正的魔塔程序文件无法访问。这有可能是因为其
+正在使用中，或因其为只读文件，或因其在需管理员
+权限的系统目录下，等等。
+
+若原因为后者，是否尝试以管理员权限打开重试？', # 45
+'是否确认以“静态模式”修正该魔塔程序文件？
+
+与本程序“动态模式”的设置不同的是，后者只在运行时
+生效，而本操作的更改是永久性的。因此，请在点“是”
+确认前做好文件的备份。',
+'当前魔塔程序文件已成功静态修正。是否立即运行它？
+
+按“否”后，本程序将休眠并等待其他魔塔游戏启动；而
+按“取消”则将退出本程序。',
+'无法启动当前魔塔程序，因为另一个魔塔进程已正在
+运行中 (pID = %d)。',
 
 '∞', # -2
 '。' # -1
@@ -255,15 +305,21 @@ APP_NAME+' 设置（动态）- pID=%p',
   def strlen() # last length
     @strlen
   end
-  def isCHN()
+  def isCHN(static=nil) # `static`, if any, should be an IO object
     isCHN = nil
     if $isCHN == 1 # always use Chinese
       $str = Str::StrCN; isCHN = true
     elsif $isCHN == nil # always use English
       $str = Str::StrEN; isCHN = false
     end
-    ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)
-    title = $buf[0, 32]
+    if static
+      static.seek(OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS_STATIC)
+      title = static.read(32)
+      $isRev = title.include?(REV_VER_WATERMARK)
+    else
+      ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)
+      title = $buf[0, 32]
+    end
     if title.include?(APP_TARGET_VERSION)
       if title.include?(StrEN::APP_TARGET_NAME)
         return isCHN unless isCHN.nil?

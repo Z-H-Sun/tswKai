@@ -249,3 +249,5 @@ module Mod
     SendMessagePtr.call($hWndChkBoxes[i], BM_SETCHECK, s, 0)
   end
 end
+
+require 'tswModStatic' unless $*.empty? # static patch if there is a filename in the argument
