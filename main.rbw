@@ -37,9 +37,9 @@ def init()
   SelectObject.call_r($hDC, $hPen)
   SelectObject.call_r($hMemDC, $hBMP)
   SetROP2.call_r($hDC, R2_XORPEN)
-  SetBkColor.call($hDC, HIGHLIGHT_COLOR[-2])
-  SetBkMode.call($hDC, 1) # transparent
-  SetTextColor.call($hDC, HIGHLIGHT_COLOR.last)
+  SetBkColor.call_r($hDC, HIGHLIGHT_COLOR[-2])
+  SetBkMode.call_r($hDC, 1) # transparent
+  SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
   SL.init

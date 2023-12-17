@@ -69,7 +69,7 @@ end
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
 
-def Static1_3D(sunken=false) # when mouse/key down, sunken; up, raised
+def Static1_3D(sunken) # when mouse/key down, sunken; up, raised
   prev_sunken = ($stlStatic1 & WS_EX_DLGMODALFRAME).zero?
   return false if sunken == prev_sunken # no need to do the following if the state doesn't change
   if sunken then $stlStatic1 &= ~ WS_EX_DLGMODALFRAME else $stlStatic1 |= WS_EX_DLGMODALFRAME end
@@ -95,7 +95,7 @@ def Static1_CheckMsg(msg)
     x, y = curMousePos.unpack('l2')
     SetCapture.call($hWndStatic1) # send WM_MOUSEMOVE msg even when the mouse moves outside of the client area
     if $movingStatic1
-      SetWindowPos.call($hWndStatic1, 0, x-$movingStatic1[0], y-$movingStatic1[1], 0, 0, SWP_NOSIZE)
+      SetWindowPos.call_r($hWndStatic1, 0, x-$movingStatic1[0], y-$movingStatic1[1], 0, 0, SWP_NOSIZE)
     elsif (x_o, y_o = $lastMousePos.unpack('l2'); (x-x_o).abs+(y-y_o).abs > WINDOW_MOVE_THRESHOLD_PIXEL) # make sure the moving range is large enough
       Static1_3D(false)
       $movingStatic1 = [msg[3]].pack('L').unpack('s2') # lparam is the mouse position with respect to the top left corner of the client area; loword=x; hiword=y

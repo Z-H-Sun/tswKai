@@ -161,8 +161,8 @@ module Win32
     def call_r(*argv) # provide more info if a win32api returns null
       r = call(*argv)
       return r if $preExitProcessed # do not throw error if ready to exit
-      if function_name == 'MsgWaitForMultipleObjects'
-        return r if r != -1 # WAIT_FAILED = (DWORD)0xFFFFFFFF
+      if function_name == 'MsgWaitForMultipleObjects' or function_name == 'SetBkColor' or function_name == 'SetTextColor' or function_name == 'SetDCBrushColor'
+        return r if r != -1 # WAIT_FAILED = CLR_INVALID = (DWORD)0xFFFFFFFF
       elsif function_name == 'SendMessageA'
         return r if r != -1 and r != -2 # LB_ERR = -1; LB_ERRSPACE = -2
       else

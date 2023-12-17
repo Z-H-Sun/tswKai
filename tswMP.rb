@@ -24,11 +24,11 @@ CreatePen = API.new('CreatePen', 'IIL', 'L', 'gdi32')
 GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 DeleteObject = API.new('DeleteObject', 'L', 'L', 'gdi32')
 SelectObject = API.new('SelectObject', 'LL', 'L', 'gdi32')
-SetDCBrushColor = API.new('SetDCBrushColor', 'LL', 'L', 'gdi32')
-SetTextColor = API.new('SetTextColor', 'LL', 'L', 'gdi32')
-SetBkColor = API.new('SetBkColor', 'LL', 'L', 'gdi32')
-SetBkMode = API.new('SetBkMode', 'LI', 'L', 'gdi32')
-SetROP2 = API.new('SetROP2', 'LI', 'L', 'gdi32')
+SetDCBrushColor = API.new('SetDCBrushColor', 'LL', 'I', 'gdi32')
+SetTextColor = API.new('SetTextColor', 'LL', 'I', 'gdi32')
+SetBkColor = API.new('SetBkColor', 'LL', 'I', 'gdi32')
+SetBkMode = API.new('SetBkMode', 'LI', 'I', 'gdi32')
+SetROP2 = API.new('SetROP2', 'LI', 'I', 'gdi32')
 
 DC_BRUSH = 18
 DT_CENTER = 1
@@ -197,13 +197,13 @@ module HookProcAPI
     callFunc(TIMER1_ADDR) # twice is necessary for battle events
     callFunc(TIMER1_ADDR) # thrice is necessary for dialog events (removal of richedit control) and refreshing hero xp position (disappear; ??; reappear)
     WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\xc3", 1, 0) # TIMER1TIMER ret (disable; freeze)
-    SelectObject.call($hDC, $hGUIFont)
-    SelectObject.call($hDC, $hPen2)
-    SetROP2.call($hDC, R2_COPYPEN)
+    SelectObject.call_r($hDC, $hGUIFont)
+    SelectObject.call_r($hDC, $hPen2)
+    SetROP2.call_r($hDC, R2_COPYPEN)
     Monsters.checkMap(init)
-    SetROP2.call($hDC, R2_XORPEN)
-    SelectObject.call($hDC, $hPen)
-    SelectObject.call($hDC, $hSysFont)
+    SetROP2.call_r($hDC, R2_XORPEN)
+    SelectObject.call_r($hDC, $hPen)
+    SelectObject.call_r($hDC, $hSysFont)
   end
   def drawDmg(x, y, dmg, cri, danger)
     x = $MAP_LEFT+$TILE_SIZE*x + 1
@@ -211,29 +211,29 @@ module HookProcAPI
     dmg_u = Str.utf8toWChar(dmg)
     dmg_s = Str.strlen()
     if danger
-      SetTextColor.call($hDC, HIGHLIGHT_COLOR[2])
-      SetROP2.call($hDC, R2_WHITE)
+      SetTextColor.call_r($hDC, HIGHLIGHT_COLOR[2])
+      SetROP2.call_r($hDC, R2_WHITE)
     end
-    BeginPath.call($hDC)
-    TextOut.call($hDC, x, y-12, cri, cri.size) if cri
-    TextOutW.call($hDC, x, y, dmg_u, dmg_s)
-    EndPath.call($hDC)
-    StrokePath.call($hDC)
+    BeginPath.call_r($hDC)
+    TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
+    TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
+    EndPath.call_r($hDC)
+    StrokePath.call_r($hDC)
 # StrokeAndFillPath won't work well here because the inside of the path will also be framed (The pen will draw along the center of the frame. Why is there PS_INSIDEFRAME but no PS_OUTSIDE_FRAME? GDI+ can solve this very easily by pen.SetAlignment), making the texts difficult to read.
 # So FillPath or another TextOut must be called afterwards to overlay on top of the inside stroke
 # SaveDC and RestoreDC can be used to solve the issue that StrokePath or FillPath will discard the active path afterwards (not used here)
 # refer to: https://github.com/tpn/windows-graphics-programming-src/blob/master/Chapt_15/Text/TextDemo.cpp#L1858
-    TextOut.call($hDC, x, y-12, cri, cri.size) if cri
-    TextOutW.call($hDC, x, y, dmg_u, dmg_s)
+    TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
+    TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
     if danger
-      SetTextColor.call($hDC, HIGHLIGHT_COLOR.last)
-      SetROP2.call($hDC, R2_COPYPEN)
+      SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
+      SetROP2.call_r($hDC, R2_COPYPEN)
     end
   end
   def drawItemsBar()
     @lastDraw = nil
     @itemAvail = []
-    SetBkMode.call($hDC, 2) # opaque
+    SetBkMode.call_r($hDC, 2) # opaque
     for i in 0..11 # check what items you have
       j = CONSUMABLES['position'][i]
       count = $heroItems[ITEM_INDEX[2+j]] # note the first 2 are sword and shield
@@ -247,15 +247,15 @@ module HookProcAPI
       x = x * $TILE_SIZE + $ITEMSBAR_LEFT
       y = y * $TILE_SIZE + $ITEMSBAR_TOP
       if i == 2
-        DrawTextW.call($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
+        DrawTextW.call_r($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
       else
         kName = Str.utf8toWChar(getKeyName(0, CONSUMABLES['key'][i]))
-        TextOutW.call($hDC, x, y, kName, Str.strlen())
+        TextOutW.call_r($hDC, x, y, kName, Str.strlen())
       end
-      SetDCBrushColor.call($hDC, HIGHLIGHT_COLOR[3])
-      PatBlt.call($hDC, x, y, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
+      SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
+      PatBlt.call_r($hDC, x, y, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
     end
-    SetBkMode.call($hDC, 1) # transparent
+    SetBkMode.call_r($hDC, 1) # transparent
   end
   def _msHook(nCode, wParam, lParam)
     block = false # block input?
@@ -336,8 +336,8 @@ module HookProcAPI
       if nCode != 'init' then break if isInEvent end # don't check this on init
 
       if @lastDraw # undo the last drawing
-        if (r = Connectivity.route) then Polyline.call($hDC, r.pack('l*'), r.size >> 1) end # the trick is to XOR twice to restore the previous pixels
-        BitBlt.call($hDC, @lastDraw[0], @lastDraw[1], $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) # read bitmap from memory DC
+        if (r = Connectivity.route) then Polyline.call_r($hDC, r.pack('l*'), r.size >> 1) end # the trick is to XOR twice to restore the previous pixels
+        BitBlt.call_r($hDC, @lastDraw[0], @lastDraw[1], $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) # read bitmap from memory DC
         @lastDraw = nil
       end
 
@@ -368,10 +368,10 @@ module HookProcAPI
       end
 
       break unless @hmhook
-      BitBlt.call($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
-      if (r = Connectivity.route) then Polyline.call($hDC, r.pack('l*'), r.size >> 1) end
-      SetDCBrushColor.call($hDC, color)
-      PatBlt.call($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
+      BitBlt.call_r($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
+      if (r = Connectivity.route) then Polyline.call_r($hDC, r.pack('l*'), r.size >> 1) end
+      SetDCBrushColor.call_r($hDC, color)
+      PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
       @lastDraw = [x_left, y_top]
 
       id = Connectivity.destTile
@@ -437,8 +437,8 @@ module HookProcAPI
             if @lastArrow != arrow
               InvalidateRect.call($hWnd, $OrbFlyRect[@lastArrow], 0)
               UpdateWindow.call($hWnd) if @lastArrow < 0 # update immediately to clear the invalidated rect
-              DrawTextW.call($hDC, ["\xBC\x25", "\xB2\x25"][arrow], 1, $OrbFlyRect[arrow], arrow << 1) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
-              PatBlt.call($hDC, (4+arrow)*$TILE_SIZE/2+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE/2, $TILE_SIZE, RASTER_DPo)
+              DrawTextW.call_r($hDC, ["\xBC\x25", "\xB2\x25"][arrow], 1, $OrbFlyRect[arrow], arrow << 1) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
+              PatBlt.call_r($hDC, (4+arrow)*$TILE_SIZE/2+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE/2, $TILE_SIZE, RASTER_DPo)
               @lastArrow = arrow
             end
           else
@@ -455,9 +455,9 @@ module HookProcAPI
               @lastArrow = -1
               UpdateWindow.call($hWnd) # update immediately to clear the invalidated rect
               showMsg(@flying, 7, $MPhookKeyName)
-              SetBkMode.call($hDC, 2) # opaque
-              DrawTextW.call($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
-              PatBlt.call($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
+              SetBkMode.call_r($hDC, 2) # opaque
+              DrawTextW.call_r($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
+              PatBlt.call_r($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
             else
               @winDown = false
               showMsgTxtbox(10, $str::LONGNAMES[16].gsub(' ', '')) if readMemoryDWORD(TEDIT8_MSGID_ADDR) != ORB_FLIGHT_RULE_MSG_ID # otherwise, it's because "you must be near the stairs to fly!"
@@ -474,7 +474,7 @@ module HookProcAPI
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
         if @flying
-          SetBkMode.call($hDC, 1) # transparent
+          SetBkMode.call_r($hDC, 1) # transparent
           callFunc(CONSUMABLES['event_addr'][2][4]) if @flying # click OK
         end
         abandon
@@ -546,14 +546,14 @@ def checkTSWrects()
 end
 
 def showMsgA(colorIndex, textIndex, *argv)
-  SetDCBrushColor.call($hDC, HIGHLIGHT_COLOR[colorIndex])
-  FillRect.call($hDC, $msgRect, $hBr)
-  DrawText.call($hDC, Str::StrEN::STRINGS[textIndex] % argv, -1, $msgRect, DT_CENTERBOTH)
+  SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
+  FillRect.call_r($hDC, $msgRect, $hBr)
+  DrawText.call_r($hDC, Str::StrEN::STRINGS[textIndex] % argv, -1, $msgRect, DT_CENTERBOTH)
 end
 def showMsgW(colorIndex, textIndex, *argv)
-  SetDCBrushColor.call($hDC, HIGHLIGHT_COLOR[colorIndex])
-  FillRect.call($hDC, $msgRect, $hBr)
-  DrawTextW.call($hDC, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv), -1, $msgRect, DT_CENTERBOTH)
+  SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
+  FillRect.call_r($hDC, $msgRect, $hBr)
+  DrawTextW.call_r($hDC, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv), -1, $msgRect, DT_CENTERBOTH)
 end
 def showMsgTxtboxA(textIndex, *argv)
   SendMessage.call($hWndText, WM_SETTEXT, 0, textIndex < 0 ? '' : Str::StrEN::STRINGS[textIndex] % argv)

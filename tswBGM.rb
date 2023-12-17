@@ -275,7 +275,7 @@ BGM_CHECK_EXT.map {|i| [0xf883, i[0], 0x75, i[7], 0xb8, 0, i[5], i[6], 0xa0,
       else
         d = i[2]
       end
-      WriteProcessMemory.call($hPrc, i[0], d, i[1], 0)
+      WriteProcessMemory.call_r($hPrc, i[0], d, i[1], 0)
     end
     if bEnable
       callFunc(@_sub_initBGM)

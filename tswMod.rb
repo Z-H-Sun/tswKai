@@ -42,9 +42,9 @@ SendMessagePtr.call($hWndDialog, WM_SETICON, ICON_BIG, $hIco)
 $hWndChkBoxes = Array.new(7)
 for i in 0...MOD_TOTAL_OPTION_COUNT
   if i < MOD_PATCH_OPTION_COUNT
-    $hWndChkBoxes[i] = CreateWindowEx.call(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 5, i*36+8, 245, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 5, i*36+8, 245, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
   else
-    $hWndChkBoxes[i] = CreateWindowEx.call(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*80-395, 178, 80, 28, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*80-395, 178, 80, 28, $hWndDialog, 0, 0, 0)
   end
   SendMessagePtr.call($hWndChkBoxes[i], WM_SETFONT, $hGUIFont2, 0)
 end
@@ -178,7 +178,7 @@ module Mod
       xy = [$W-MOD_DIALOG_WIDTH >> 1, $H-MOD_DIALOG_HEIGHT >> 1].pack('l2')
       ClientToScreen.call_r($hWnd, xy)
       x, y = xy.unpack('l2')
-      SetWindowPos.call($hWndDialog, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
+      SetWindowPos.call_r($hWndDialog, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
       EnableWindow.call($hWnd, 0) # disable TSW
     else
       workup = ($configDlg == 'init')

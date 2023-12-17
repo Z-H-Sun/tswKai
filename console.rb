@@ -145,7 +145,7 @@ class Console
       xy = [$MAP_LEFT, $MAP_TOP].pack('l2')
       ClientToScreen.call_r($hWnd, xy)
       x, y = xy.unpack('l2')
-      SetWindowPos.call(@hConWin, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
+      SetWindowPos.call_r(@hConWin, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
       EnableWindow.call($hWnd, 0) # disable TSW
     else
       @active = false
@@ -162,10 +162,10 @@ class Console
     return true
   end
   def titleA(title, *argv)
-    SetConsoleTitle.call(title % argv)
+    SetConsoleTitle.call_r(title % argv)
   end
   def titleW(title, *argv)
-    SetConsoleTitleW.call(Str.utf8toWChar(title % argv))
+    SetConsoleTitleW.call_r(Str.utf8toWChar(title % argv))
   end
   def gets(strip=true)
     ReadConsole.call_r(@hConIn, $buf, BUFFER_SIZE, $bufDWORD, 0)
@@ -228,7 +228,7 @@ class Console
     WriteConsoleOutputCharacterW.call_r(@hConOut, s, s.size >> 1, packS2(x, y), $bufDWORD)
   end
   def attr_pos(x, y, attribute, len)
-    FillConsoleOutputAttribute.call(@hConOut, attribute, len, packS2(x, y), $bufDWORD)
+    FillConsoleOutputAttribute.call_r(@hConOut, attribute, len, packS2(x, y), $bufDWORD)
   end
   def pause(prompt=nil)
     self.print(prompt) if prompt
