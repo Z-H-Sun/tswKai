@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 # main repo: https://github.com/Z-H-Sun/tswBGM.git
 # asm codes: https://github.com/Z-H-Sun/tswBGM/blob/main/tswBGM.asm
 

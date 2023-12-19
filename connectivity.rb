@@ -1,3 +1,6 @@
+#!/usr/bin/env ruby
+# Author: Z.Sun
+
 module Connectivity
   @queue = []
   @ancestor = Array.new(121) # for each position, record its parent position (where it is moved from)

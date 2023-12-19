@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 # Note: If the TSW executable is in an admin-privileged folder (e.g., Program Files (x86)) on an OS later than Vista, in order for this app to successfully static-patch that file, this app's startup executable must contain an UAC manifest (e.g., 'asInvoker'); otherwise, the system will create a copy of it under the 'VirtualStore' folder while keeping the original file unchanged. Therefore, please use either the 'tswKai3.exe' executable I provide or a high-version Ruby Interpreter (e.g., Ruby 2.7; as far as I know, Ruby 2.2 exe does not have a manifest)
 
 BASE_ADDRESS_STATIC = -0xC00
@@ -61,9 +62,9 @@ module Mod
     end
   end
 end
-def earlyQuit(quit=true)
+def earlyQuit(staticIO=nil, quit=true)
   DeleteObject.call($hGUIFont2)
-  StaticIO.close rescue nil
+  staticIO.close if staticIO
   exit() if quit
 end
 
@@ -125,9 +126,9 @@ end
 
 # if `delegateAdminSubproc`, then everything patch-related has been taken care of by the admin subprocess
 unless delegateAdminSubproc # or else, can manage all patch-related actions within the current process
-  earlyQuit() if Str.isCHN(staticIO).nil?
+  earlyQuit(staticIO) if Str.isCHN(staticIO).nil?
   initLang()
-  earlyQuit() if msgboxTxt(46, MB_ICONASTERISK|MB_YESNO) == IDNO
+  earlyQuit(staticIO) if msgboxTxt(46, MB_ICONASTERISK|MB_YESNO) == IDNO
   (MOD_PATCH_OPTION_COUNT...MOD_TOTAL_OPTION_COUNT).each {|i| ShowWindow.call($hWndChkBoxes[i], SW_HIDE)} # change dialog layout because the last 3 options are not meaningful in static mode
   Mod::Static.checkChkStates(staticIO)
   Mod::MOD_PATCH_BYTES_1.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[3])} # must-do patches
@@ -155,12 +156,12 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
 
   if MOD_ADMIN_PATCH_ONLY # once the patches are done, the admin-privileged subprocess should exit and hand over to the normal-level parent process; otherwise, there will be potential problems with communications across privileged and non-privileged processes
     MOD_ADMIN_PATCH_MSG = RegisterWindowMessage.call_r(MOD_ADMIN_PATCH_SIGNATURE)
-    earlyQuit(false)
+    earlyQuit(staticIO, false)
     DestroyWindow.call_r($hWndDialogParent)
     PostMessage.call_r(MOD_ADMIN_PATCH_PARENT_HWND, MOD_ADMIN_PATCH_MSG, $isCHN ? 1 : 0, 0) # "success" message
     while GetMessage.call($buf, 0, 0, 0) > 0 # if quit immediatly, the "success" message will be racing with the exit of this subprocess; so let's wait for the parent process to respond first before exiting
     end
-    earlyQuit()
+    exit
   end
 
   (MOD_PATCH_OPTION_COUNT...MOD_TOTAL_OPTION_COUNT).each {|i| ShowWindow.call($hWndChkBoxes[i], SW_SHOW)} # restore normal dialog layout
@@ -170,8 +171,8 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
 end
 
 res = msgboxTxt(47, MB_ICONASTERISK|MB_YESNOCANCEL)
-earlyQuit() if res == IDCANCEL
-staticIO.close rescue nil
+earlyQuit(staticIO) if res == IDCANCEL
+staticIO.close if staticIO
 if res == IDYES
   $hWnd = FindWindow.call(TSW_CLS_NAME, nil)
   if $hWnd.zero?

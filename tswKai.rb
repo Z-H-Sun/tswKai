@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# Author: Z.Sun
 # encoding: ASCII-8Bit
 
 require 'console'

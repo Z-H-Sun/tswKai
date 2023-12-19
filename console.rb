@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 # ref: https://github.com/luislavena/win32console
 
 MF_GRAYED = 1

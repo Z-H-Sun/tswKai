@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 
 ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
 CreateWindowEx = API.new('CreateWindowEx', 'LSSLIIIILLLL', 'L', 'user32')

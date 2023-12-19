@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 
 APP_NAME = 'tswKai3'
 APP_FNAME = $Exerb ? ExerbRuntime.filepath : ($0[/^[\/\\]{2}/] ? $0.dup : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless. There is a bug in Ruby's File#expand_path method, which fails to parse UNC paths, so ignore it if the path starts with \\
@@ -54,7 +55,7 @@ def showWelcomingMsg()
   keySL = Array.new(4)
   (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
   showMsgTxtbox(9, $pID, $hWnd)
-  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0])
+  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0], $regKeyName[0])
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2=console
   while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
@@ -82,7 +83,9 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
           showMsgTxtbox(-1)
           HookProcAPI.rehookK
           msgboxTxt(12, MB_ICONASTERISK, $MPhookKeyName)
-        elsif !state and !$CONshowStatusTip.nil? # show status tip window
+        elsif state
+          API.focusTSW()
+        elsif !$CONshowStatusTip.nil? # show status tip window
           ShowWindow.call($hWndStatic1, SW_SHOW)
           SetForegroundWindow.call($hWndStatic1)
         end

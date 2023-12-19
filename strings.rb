@@ -1,4 +1,5 @@
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 # CHN strings encoding is UTF-8
 
 require 'stringsGBK'
@@ -45,6 +46,7 @@ Use hotkeys to enhance the Load/Save function:
 In addition, you can:
 Press %s once	= Open config dialog;
 Press %s twice	= Open cheat console;
+Press %-9s	= Switch to TSW or config / cheat window;
 Double press %s	= Re-register hotkeys if they stop working;
 Hold %-10s	= Quit tswKai3.',
 'Re-registered %s hotkeys.',
@@ -192,6 +194,7 @@ APP_NAME+' 已开启，以下为使用方法摘要。
 此外，还可以:
 按一次 %-8s	＝打开设置对话框；
 按两次 %-8s	＝打开作弊控制台；
+按下 %-10s	＝切换到魔塔游戏或上述窗口；
 双击 %-10s	＝当快捷键失效时重置快捷键；
 长按 %-10s	＝退出本程序。',
 '已重置 %s 快捷键。',

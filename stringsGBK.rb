@@ -1,4 +1,5 @@
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 # CHN strings encoding is GBK
 
 module Str

@@ -1,8 +1,10 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
+# Author: Z.Sun
 
 # Known issue: not compatible with Ruby >= 3.0
-# GetLastError and SetWindowsHookEx won't work with Win32API for Ruby >= 3.0
+# GetLastError and SetWindowsHookEx won't work with Win32API or win32/api for Ruby >= 3.0
+# Likely thread-related
 
 require 'win32/api'
 include Win32
@@ -213,7 +215,7 @@ unless $Exerb # EXERB GUI has its own error handler window
   end
 end
 
-APP_SETTINGS_FNAME = 'tswKaiOption.txt'
+APP_SETTINGS_FNAME = APP_NAME + 'Option.txt'
 APP_ICON_ID = 1 # Icons will be shown in the GUI of this app; this defines the integer identifier of the icon resource in the executable
 TSW_CLS_NAME = 'TTSW10'
 BASE_ADDRESS = 0x400000
