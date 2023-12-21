@@ -55,7 +55,6 @@ module Mod
         l = d[0]; s = 2 # only patch to change the HP amount; don't try patching the dialog content
       end
       (0...l).each {|j| staticIO.seek(d[2][j]+BASE_ADDRESS_STATIC); staticIO.write(d[3+j][s.zero? ? 0 : 1])}
-      staticIO.flush() # this seems necessary especially when running as admin or another user; otherwise the changed bytes won't be reflected on the hard disk even after `IO#close`
       @CONmodStatus[i] = s
       SendMessagePtr.call($hWndChkBoxes[i], BM_SETCHECK, s, 0)
       SetFocus.call($hWndChkBoxes[(i+1) % MOD_PATCH_OPTION_COUNT]) # focus next checkbox
@@ -132,7 +131,6 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
   (MOD_PATCH_OPTION_COUNT...MOD_TOTAL_OPTION_COUNT).each {|i| ShowWindow.call($hWndChkBoxes[i], SW_HIDE)} # change dialog layout because the last 3 options are not meaningful in static mode
   Mod::Static.checkChkStates(staticIO)
   Mod::MOD_PATCH_BYTES_1.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[3])} # must-do patches
-  staticIO.flush() # this seems necessary especially when running as admin or another user; otherwise the changed bytes won't be reflected on the hard disk even after `IO#close`
 
   GetClientRect.call_r(GetDesktopWindow.call(), $buf).zero? # center dialog on screen
   w, h = $buf[8, 8].unpack('ll')
@@ -159,7 +157,7 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
     earlyQuit(staticIO, false)
     DestroyWindow.call_r($hWndDialogParent)
     PostMessage.call_r(MOD_ADMIN_PATCH_PARENT_HWND, MOD_ADMIN_PATCH_MSG, $isCHN ? 1 : 0, 0) # "success" message
-    while GetMessage.call($buf, 0, 0, 0) > 0 # if quit immediatly, the "success" message will be racing with the exit of this subprocess; so let's wait for the parent process to respond first before exiting
+    while GetMessage.call($buf, 0, 0, 0) > 0 # if quit immediately, the "success" message will be racing with the exit of this subprocess; so let's wait for the parent process to respond first before exiting
     end
     exit
   end
