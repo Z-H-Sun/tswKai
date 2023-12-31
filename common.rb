@@ -55,6 +55,7 @@ PROCESS_VM_WRITE = 0x20
 PROCESS_VM_READ = 0x10
 PROCESS_VM_OPERATION = 0x8
 PROCESS_SYNCHRONIZE = 0x100000
+QS_POSTMESSAGE = 0x8
 QS_TIMER = 0x10
 QS_HOTKEY = 0x80
 QS_ALLINPUT = 0x4FF
@@ -162,7 +163,7 @@ module Win32
       return api.call(hWnd, text, title, flag | MB_SETFOREGROUND)
     end
     unless defined?(self.last_error) # low version win32/api support
-      define_singleton_method(:last_error) { new('GetLastError', 'V', 'I', 'kernel32').call() }
+      define_singleton_method(:last_error) { API.new('GetLastError', 'V', 'I', 'kernel32').call() }
     end
     def call_r(*argv) # provide more info if a win32api returns null
       r = call(*argv)

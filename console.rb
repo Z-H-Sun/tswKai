@@ -94,7 +94,7 @@ class Console
     @active = false
     @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
-    SetConsoleCtrlHandler.call(nil, 1) # depress Ctrl-C
+    SetConsoleCtrlHandler.call_r(nil, 1) # depress Ctrl-C [Ideally, Ctrl-Break and Close signals should also be handled by passing a callback function address here rather than NULL; however, there is a bug with win32/api that will lead to stack overflow (cause not yet clear). As a result, I will leave NULL here, but do some monkey patching in the C code of win32/api extension so as to implement the callback function there; see vendor/win32/api.c]
 
     SetConsoleScreenBufferSize.call(@hConOut, packS2(1024, 1024)) # win size must be <= buffer size, so first set a very large buf size to make sure set_win_size works
     SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, conWidth-1, conHeight-1].pack('S4')) # -1 is necessary because the last row/col is included
@@ -305,7 +305,7 @@ class Console
     return s % argv
   end
   def get_input(timeout=-1) # -1 means no timeout
-    case MsgWaitForMultipleObjects.call_r(2, $bufHWait, 0, timeout, QS_HOTKEY)
+    case MsgWaitForMultipleObjects.call_r(2, $bufHWait, 0, timeout, QS_HOTKEY | QS_POSTMESSAGE)
     when 0 # TSW has quitted
       raise TSWQuitedError
     when 1 # console input

@@ -109,7 +109,8 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       end
       next
     elsif msgType == WM_APP
-      HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
+      if msg[2].zero? then HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
+      else $_TSWKAI = false; quit() end # or signal from console by `SetConsoleCtrlHandler` (especially, don't call `FreeConsole` (by unsetting $_TSWKAI), or it will freeze!)
     end
 
     TranslateMessage.call($buf)
