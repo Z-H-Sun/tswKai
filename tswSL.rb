@@ -136,7 +136,7 @@ module SL
       end
 
       savedat_path_enc = @savedat_path.dup
-      savedat_path_enc.force_encoding('filesystem') if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
+      savedat_path_enc.force_encoding('filesystem') if RUBY_HAVE_ENCODING # this is necessary for Ruby > 1.9
       unless File.directory?(savedat_path_enc) then raiseInvalDir(27); next end
       if @savedat_path.size < 2 then raiseInvalDir(25); next end # this is unlikely
       @savedat_path = @savedat_path[0, 2].gsub('/', "\\") + @savedat_path[2..-1].gsub(/[\/\\]+/, "\\").sub(/\\$/, '') # normalize file path (changing / into \; reducing multiple consecutive slashes into 1; removing tailing \); the first 2 chars might be \\ which should not be reduced

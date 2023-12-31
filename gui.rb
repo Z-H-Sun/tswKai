@@ -8,6 +8,8 @@ SendMessagePtr = API.new('SendMessageA', 'LLLL', 'L', 'user32')
 SetCapture = API.new('SetCapture', 'L', 'L', 'user32')
 ReleaseCapture = API.new('ReleaseCapture', 'V', 'L', 'user32')
 LoadImage = API.new('LoadImage', 'LLIIII', 'L', 'user32')
+GetDC = API.new('GetDC', 'L', 'L', 'user32')
+ReleaseDC = API.new('ReleaseDC', 'LL', 'L', 'user32')
 CreateFontIndirect = API.new('CreateFontIndirect', 'S', 'L','gdi32')
 
 LR_SHARED = 0x8000
@@ -67,6 +69,8 @@ unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found 
   send(msgbox, 29, MB_ICONERROR, $bufDWORD.unpack('L')[0])
   exit
 end
+$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # this will be used as a 'mutex' preventing creation of multiple instances; this window has another use: see tswMod.rb
+
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
 

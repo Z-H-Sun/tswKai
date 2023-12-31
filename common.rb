@@ -195,7 +195,8 @@ end
 class Win32APIError < RuntimeError
 end
 
-unless String.instance_methods.include?(:ord) # backward compatibility w/ Ruby < 1.9
+RUBY_HAVE_ENCODING = String.method_defined?(:encoding)
+unless RUBY_HAVE_ENCODING # backward compatibility w/ Ruby < 1.9
   class String
     def ord
       self[0]

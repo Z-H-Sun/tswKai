@@ -20,8 +20,8 @@ MOD_ADMIN_PATCH_SIGNATURE = 'AdminStaticPatchOnly'
 MOD_ADMIN_PATCH_PARENT_HWND = $*[2].to_i
 MOD_ADMIN_PATCH_ONLY = ($*[1] == MOD_ADMIN_PATCH_SIGNATURE) and !IsWindow.call(MOD_ADMIN_PATCH_PARENT_HWND).zero?
 MOD_TARGET_TSW_EXE = $*[0].dup
-MOD_DIALOG_HEIGHT_NEW = 204
-if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
+MOD_DIALOG_HEIGHT_NEW = 212
+if RUBY_HAVE_ENCODING # this is necessary for Ruby > 1.9
   MOD_TARGET_TSW_EXE.encode!('filesystem')
   APP_FNAME.encode!('filesystem')
 end

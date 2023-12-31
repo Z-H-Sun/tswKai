@@ -146,12 +146,12 @@ module BGM
         @bgm_path = APP_PATH
       end
       @bgm_path += '/'+BGM_DIRNAME
-      @bgm_path.encode!('filesystem').force_encoding('ASCII-8Bit') if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
+      @bgm_path.encode!('filesystem').force_encoding('ASCII-8Bit') if RUBY_HAVE_ENCODING # this is necessary for Ruby > 1.9
     end
     @bgm_path = @bgm_path[0, 2].gsub('/', "\\") + @bgm_path[2..-1].gsub(/[\/\\]+/, "\\").sub(/\\?$/, "\\") # normalize file path (changing / into \; reducing multiple consecutive slashes into 1; always add a tailing \); the first 2 chars might be \\ which should not be reduced
     bgm_filename = @bgm_path + bgm_basename
     bgm_filename_enc = bgm_filename.dup
-    bgm_filename_enc.force_encoding('filesystem') if String.instance_methods.include?(:encoding) # this is necessary for Ruby > 1.9
+    bgm_filename_enc.force_encoding('filesystem') if RUBY_HAVE_ENCODING # this is necessary for Ruby > 1.9
     bgmsize = bgm_filename.size
     return raiseInvalDir(26) if bgmsize > MAX_PATH-2 # MAX_PATH includes the tailing \0
     return raiseInvalDir(27) unless File.exist?(bgm_filename_enc)

@@ -3,8 +3,11 @@
 # CHN strings encoding is UTF-8
 
 require 'stringsGBK'
+GetUserDefaultUILanguage = API.new('GetUserDefaultUILanguage', 'V', 'L', 'kernel32')
 
-$isCHN = false
+# initialize according to user or system language
+# will be later changed according to TSW language
+$isCHN = ((GetUserDefaultUILanguage.call() & 0xFF) == 4) # low-byte-4 = zh-hans; e.g., 0x404 = zh-CN, 0x804 = zh-TW
 $str = Str::StrEN
 
 module Str
@@ -28,9 +31,9 @@ APP_NAME+' is running. Here is a summary of the usage:
 
 When the %s hotkey is down:
 1) Move the mouse and then click to teleport in the map
-   (Right click = cheat);
+   (Right click = cheat);
 2) Press a specified alphabet key to use an item or any
-   arrow keys to use Orb of Flight (Up arrow = cheat).
+   arrow keys to use Orb of Flight (Up arrow = cheat).
 
 When holding the hotkey, you can also see:
 * the next critical value and damage of each monster and
@@ -178,12 +181,12 @@ APP_NAME+' 已开启，以下为使用方法摘要。
 当按下 %s 快捷键时：
 1) 单击鼠标可传送到地图上的新位置（右键＝作弊）；
 2) 按下特定字母键可使用对应的宝物；或按下任一
-   方向键，可以使用飞翔灵球（▲ 上方向键＝作弊）。
+   方向键，可以使用飞翔灵球（▲ 上方向键＝作弊）。
 
 若拥有勇者灵球，在快捷键按下时还可在地图上显示：
 * 当前地图中所有怪物的下一临界及总伤害；以及
 * 将鼠标移到某个怪物上时，在右下状态栏显示怪物的
-  基本属性，并在底部状态栏显示其他重要数据。
+  基本属性，并在底部状态栏显示其他重要数据。
 
 使用以下快捷键增强存档和读档的游戏体验：
 * %-15s	＝读档自任意文件；
@@ -317,7 +320,7 @@ APP_NAME+' 设置（动态）- pID=%p',
     end
     if static
       static.seek(OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS_STATIC)
-      title = static.read(32)
+      title = static.read(32) || 'NULL'
       $isRev = title.include?(REV_VER_WATERMARK)
     else
       ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)

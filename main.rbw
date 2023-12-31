@@ -48,7 +48,7 @@ def init()
   Mod.init
   HookProcAPI.hookK
 
-  showWelcomingMsg() unless $CONonTSWstartup # if `$CONonTSWstartup`, will be handled elsewhere after the dialog window is gone
+  showWelcomingMsg() if $configDlg != 'init' # if `$CONonTSWstartup` and `$configDlg == 'init'`, will be handled elsewhere after the dialog window is gone
   return true
 end
 def showWelcomingMsg()

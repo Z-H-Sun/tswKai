@@ -32,7 +32,7 @@ KEY_EVENT = 1
 
 GetConsoleWindow = API.new('GetConsoleWindow', 'V', 'L', 'kernel32')
 GetSystemMenu = API.new('GetSystemMenu', 'LL', 'L', 'user32')
-EnableMenuItem = API.new('EnableMenuItem', 'LLL', 'L', 'user32')
+DeleteMenu = API.new('DeleteMenu', 'LLL', 'L', 'user32')
 
 GetStdHandle = API.new('GetStdHandle', 'I', 'L', 'kernel32')
 AllocConsole = API.new('AllocConsole', 'V', 'L', 'kernel32')
@@ -126,7 +126,7 @@ class Console
     stl = GetWindowLong.call(@hConWin, GWL_STYLE)
     exstl = GetWindowLong.call(@hConWin, GWL_EXSTYLE)
     hConMenu = GetSystemMenu.call(@hConWin, 0)
-    EnableMenuItem.call(hConMenu, SC_CLOSE, MF_GRAYED) # disable close
+    DeleteMenu.call(hConMenu, SC_CLOSE, 0) # disable close (For Windows XP and 7, graying out the close sysmenu of a console window by using EnableMenuItem can be counteracted by the system! DeleteMenu is safer)
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)
@@ -251,7 +251,7 @@ class Console
     end
     beep(); return i
   end
-  def get_num(digits) #TODO: support of arrow key
+  def get_num(digits) # TODO: support of arrow key
     digitCount = 0
     str = ''
     x, y = get_cursor()

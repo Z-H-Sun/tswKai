@@ -19,8 +19,10 @@ LB_DELETESTRING = 0x182
 LB_GETTEXT = 0x189
 LB_GETTEXTLEN = 0x18a
 LB_GETCOUNT = 0x18b
+DEFAULT_CHARSET = 1
 SetFocus = API.new('SetFocus', 'L', 'L', 'user32')
 IsDialogMessage = API.new('IsDialogMessage', 'LP', 'I', 'user32')
+EnumFontFamilies = API.new('EnumFontFamilies', 'LSKL', 'I', 'gdi32')
 
 LISTBOX2_45FMERCHANT_DIALOG_ID = 256
 LISTBOX2_NEWENTRY_DIALOG_ID = 268
@@ -31,23 +33,30 @@ STR_45FMERCHANT_ADDHP = ['2000', '88000'] # 1000 gold for 2000 HP in the 1st fou
 
 MOD_PATCH_OPTION_COUNT = 5
 MOD_TOTAL_OPTION_COUNT = 8
-MOD_DIALOG_WIDTH = 256
-MOD_DIALOG_HEIGHT = 242
-DIALOG_FONT = [-11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 'Tahoma']
+MOD_DIALOG_WIDTH = 278
+MOD_DIALOG_HEIGHT = 250
+DIALOG_FONT_NAME_PREFERRED = 'Segoe UI' # will try using this font if the system is shipped with it (Segoe UI -> Tahoma -> MSYH (微软雅黑) -> Microsoft YaHei UI -> ...)
+DIALOG_FONT_NAME_FALLBACK = 'MS Shell Dlg' # otherwise use this old one instead (Microsoft Sans Serif -> SimSum (宋体) -> ...)
+DIALOG_FONT = [-12, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, DIALOG_FONT_NAME_FALLBACK]
 $CONonTSWstartup = true # whether to show config window and apply default config on TSW startup
 $CONmodStatus = [true, true, true, true, true] # if `$CONonTSWstartup`, this specifies the default config
 $_TSWMOD = true
 
+hDC_tmp = GetDC.call(0)
+enumFontCallBack = API::Callback.new('LLIL', 'I') {|lpelf, lpntm, font_type, lParam| DIALOG_FONT[-1] = DIALOG_FONT_NAME_PREFERRED; 0} # once find this font, set it as the dialog font, and then return immediately
+EnumFontFamilies.call(hDC_tmp, DIALOG_FONT_NAME_PREFERRED, enumFontCallBack, 0)
+ReleaseDC.call(0, hDC_tmp)
+
 $hGUIFont2 = CreateFontIndirect.call_r(DIALOG_FONT.pack(LOGFONT_STRUCT))
-$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # the reason to create this hierarchy is to hide the following dialog window from the task bar
+# the reason to create this hierarchy is to hide the following dialog window from the task bar
 $hWndDialog = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
 SendMessagePtr.call($hWndDialog, WM_SETICON, ICON_BIG, $hIco)
 $hWndChkBoxes = Array.new(7)
 for i in 0...MOD_TOTAL_OPTION_COUNT
   if i < MOD_PATCH_OPTION_COUNT
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 5, i*36+8, 245, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 10, i*36+12, MOD_DIALOG_WIDTH-12, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
   else
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*80-395, 178, 80, 28, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*87-425, 180, 87, 36, $hWndDialog, 0, 0, 0)
   end
   SendMessagePtr.call($hWndChkBoxes[i], WM_SETFONT, $hGUIFont2, 0)
 end
@@ -162,7 +171,7 @@ module Mod
     $hWndRichEdit = readMemoryDWORD($RichEdit1+OFFSET_HWND)
     (0...MOD_PATCH_OPTION_COUNT).each {|i| patch(i, $CONmodStatus[i] ? 1 : 0) unless $CONmodStatus[i].nil?}
     return unless $CONonTSWstartup
-    showDialog(true)
+    return if showDialog(true).nil? # fail due to existence of child window
     $configDlg = 'init' # need to wrap up after the dialog window is gone
   end
   def showDialog(active, tswActive=true) # active=true/false : show/hide config window; tswActive: if TSW is still running, determining whether to do further operations
