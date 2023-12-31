@@ -8,6 +8,7 @@
 
 require 'win32/api'
 include Win32
+require 'strings'
 
 GetModuleHandle = API.new('GetModuleHandle', 'I', 'L', 'kernel32')
 OpenProcess = API.new('OpenProcess', 'LLL', 'L', 'kernel32')
@@ -122,7 +123,7 @@ when 8 # 64-bit
   GetWindowLong = API.new('GetWindowLongPtr', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLongPtr', 'LIL', 'L', 'user32')
 else
-  raise Win32APIError, 'Unsupported system or ruby version (neither 32-bit or 64-bit).'
+  raise Win32APIError, $str::ERR_MSG[0]
 end
 
 $bufHWait = "\0" * (POINTER_SIZE << 1)
@@ -160,6 +161,9 @@ module Win32
       title = Str.utf8toWChar(title) unless ansi
       return api.call(hWnd, text, title, flag | MB_SETFOREGROUND)
     end
+    unless defined?(self.last_error) # low version win32/api support
+      define_singleton_method(:last_error) { new('GetLastError', 'V', 'I', 'kernel32').call() }
+    end
     def call_r(*argv) # provide more info if a win32api returns null
       r = call(*argv)
       return r if $preExitProcessed # do not throw error if ready to exit
@@ -170,22 +174,23 @@ module Win32
       else
         return r unless r.zero?
       end
-      err = '0x%04X' % API.last_error
+      err = API.last_error
       case function_name
       when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx', 'MsgWaitForMultipleObjects'
-        reason = "Cannot open / read from / write to / alloc memory for / synchronize with the TSW process. Please check if TSW V1.2 is running with pID=#{$pID} and if you have proper permissions."
+        reason = $str::ERR_MSG[2] % $pID
       when 'RegisterHotKey'
         prefix = ['MP', 'CON'][argv[1]]
-        reason = "Cannot register hotkey #{$regKeyName[argv[1]]}. It might be currently occupied by other processes or another instance of #{APP_NAME}. Please close them to avoid confliction. As an advanced option, you can manually assign `#{prefix}_MODIFIER` and `#{prefix}_HOTKEY` in `#{APP_SETTINGS_FNAME}'"
+        reason = $str::ERR_MSG[3] % [$regKeyName[argv[1]], APP_NAME, prefix, prefix, APP_SETTINGS_FNAME]
       when 'ShellExecuteEx'
         buf = argv[0].unpack(SHELLEXECUTEINFO_STRUCT[0..-3]) # discard the last 6 pointers
-        reason = "Error executing file '#{buf[4]}' with the '#{buf[3]}' action and the parameters being '#{buf[5]}', returning code #{buf[8]}.\nIt might be because the user cancelled this action, or the system fails to find the specified file or execute the action."
+        reason = $str::ERR_MSG[4] % [buf[4], buf[3], buf[5], buf[8]]
       when /Console/
-        reason = 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.'
+        reason = $str::ERR_MSG[5]
       else
-        reason = 'This is a fatal error. That is all we know.'
+        reason = $str::ERR_MSG[6]
       end
-      raise_r(Win32APIError, "Err #{err} when calling `#{effective_function_name}'@#{dll_name}, which returns #{r}.\n#{reason} #{APP_NAME} has stopped. Details are as follows:\n\nPrototype='#{prototype.join('')}', ReturnType='#{return_type}', ARGV=#{argv.inspect}")
+      argv.collect! {|i| s = i.inspect; s.size > 64 ? (s[0, 60]+' ...$') : s} # trancate too long args
+      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, reason, APP_NAME, prototype.join(''), return_type, argv.join(', ')])
     end
   end
 end
@@ -196,12 +201,8 @@ class Win32APIError < RuntimeError
 end
 
 RUBY_HAVE_ENCODING = String.method_defined?(:encoding)
-unless RUBY_HAVE_ENCODING # backward compatibility w/ Ruby < 1.9
-  class String
-    def ord
-      self[0]
-    end
-  end
+class String  # backward compatibility w/ Ruby < 1.9
+  define_method(:ord) { self[0] } unless RUBY_HAVE_ENCODING
 end
 
 unless $Exerb # EXERB GUI has its own error handler window
@@ -251,7 +252,6 @@ ITEM_TYPE = 'l17'
 MAP_ADDR = 0xb8934 + BASE_ADDRESS
 MAP_TYPE = 'C121'
 
-require 'strings'
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
   VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE) if $_TSWSL or $_TSWBGM
   CloseHandle.call($hPrc || 0)

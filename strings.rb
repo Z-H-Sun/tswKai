@@ -8,7 +8,7 @@ GetUserDefaultUILanguage = API.new('GetUserDefaultUILanguage', 'V', 'L', 'kernel
 # initialize according to user or system language
 # will be later changed according to TSW language
 $isCHN = ((GetUserDefaultUILanguage.call() & 0xFF) == 4) # low-byte-4 = zh-hans; e.g., 0x404 = zh-CN, 0x804 = zh-TW
-$str = Str::StrEN
+$str = $isCHN ? Str::StrCN : Str::StrEN
 
 module Str
   @strlen = 0
