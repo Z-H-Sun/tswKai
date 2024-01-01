@@ -9,7 +9,7 @@ general:
 file:
   main.rbw:
   win32/api.so:
-    file: D:/ruby187/lib/ruby/1.8/i386-mingw32/win32/api.so
+    file: win32/api.so
     type: extension-library
   common.rb:
   console.rb:

@@ -4,6 +4,9 @@
 require 'devkit'
 require 'rake'
 
+mkdir_p '../../win32'
+cd '../../win32'
+
 module FuncTest # to avoid namespace polution for Ruby < 2
   require 'mkmf'
   $strncpy_s = '-DHAVE_STRNCPY_S' if have_func('strncpy_s')
@@ -22,5 +25,7 @@ cppflags = CFG['CPPFLAGS']
 librubyarg = CFG['LIBRUBYARG_SHARED']
 libs = CFG['LIBS']
 
-sh "#{cc} #{cflags} #{incflags} #{ldflags} #{$strncpy_s} #{cppflags} -fno-omit-frame-pointer -shared -s -o api.so api.c -Wl,--enable-auto-image-base,--enable-auto-import api.def #{librubyarg} #{libs}"
+sh "#{cc} #{cflags} #{incflags} #{ldflags} #{$strncpy_s} #{cppflags} -fno-omit-frame-pointer -shared -s -o api.so ../vendor/win32/api.c -Wl,--enable-auto-image-base,--enable-auto-import api.def #{librubyarg} #{libs}"
+puts
+puts 'Compiled ../../win32/api.so successfully!'
 system "pause"
