@@ -14,8 +14,8 @@ FILELIST = Dir.chdir('../') {|i| Dir['main.rbw'] + Dir['*.rb'] } # main.rbw must
 # %w(main.rbw common.rb connectivity.rb console.rb gui.rb monsters.rb strings.rb stringsGBK.rb tswBGM.rb tswKai.rb tswMP.rb tswMod.rb tswModStatic.rb tswSL.rb)
 
 PATCH_FILE_IGNORE = [] # no need to patch these files file
-PATCH_PATTERN = {/require.+win32.api.*\r*\n/ => '', # need to remove this `require` as win32/api has been hard-compiled in our executable
-  /^ *?#+?.*\r*\n/ => '', / *# +?.*$/ => '', /^ +/ => ''} # no need to include annoations / indentations
+PATCH_PATTERN = {/require.+win32.api.*$/ => '', # need to remove this `require` as win32/api has been hard-compiled in our executable
+  /^ *#+.*$/ => '', / *# +.*$/ => '', /^ +/ => ''} # no need to include annoations / indentations
 
 @alignedLen = 0
 def alignment16(bin)
@@ -57,25 +57,23 @@ file_table_offset = 0x20+name_table_entry_offset+@alignedLen
 archive_header = ["EXERB\0\0\4", 0, 0x20, file_table_offset, # signature(a8), kcode(L), offset_name_table(L), offset_file_table(L)
   0, 0].pack('a8LLLLQ')
 
-f_out = open(FILEOUTPUT, 'wb')
-f_out.write(archive_header + name_table_header + name_table_entry_header + name_table_entry)
-
-file_table_totoal_size = 0x10 + # sizeof file_table_entry_header
-  FILELIST.size * 12 + alignment16_remainder_len(FILELIST.size * 12) # sizeof file_table_entry_header
-f_out.write("\0" * file_table_totoal_size) # will attend to this later once all file data has been taken care of
-
+file_table_entry = ''
 file_table_entry_header = ''
 file_table_file_index = 0
 file_table_file_offset = 0
 FILELIST.each {|fn| open(FILEINPUTPATH+fn, 'rb') {|f| d = get_file_data(fn, f)
   file_table_entry_header << [(file_table_file_index+=1), file_table_file_offset, d.size, 1, 1].pack('SLLCC') # index(S), offset_file_table_entry(L), size_file(L), flag_file(C), flag_zipd(C) [FLAG_TYPE_RUBY_SCRIPT=1; FLAS_ZLIB_COMPRESSED=1]
-  f_out.write(alignment16(d))
+  file_table_entry << alignment16(d)
   file_table_file_offset += @alignedLen}}
 alignment16(file_table_entry_header)
 file_table_entry_offset = 0x10+@alignedLen
 file_table_header = ["FT\0\4", FILELIST.size, 0x10, file_table_entry_offset, # signature(a4), num_header(S), offset_header(L), offset_file(L)
   0].pack('a4SLLS')
 
-f_out.seek(file_table_offset)
-f_out.write(file_table_header + file_table_entry_header)
-f_out.close
+$EXA_DATA = archive_header + name_table_header + name_table_entry_header + name_table_entry + file_table_header + file_table_entry_header + file_table_entry
+
+if __FILE__ == $0
+  f_out = open(FILEOUTPUT, 'wb')
+  f_out.write($EXA_DATA)
+  f_out.close
+end
