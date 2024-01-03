@@ -163,7 +163,7 @@ module Win32
       return api.call(hWnd, text, title, flag | MB_SETFOREGROUND)
     end
     unless defined?(self.last_error) # low version win32/api support
-      define_singleton_method(:last_error) { API.new('GetLastError', 'V', 'I', 'kernel32').call() }
+      def self.last_error; API.new('GetLastError', 'V', 'I', 'kernel32').call(); end
     end
     def call_r(*argv) # provide more info if a win32api returns null
       r = call(*argv)

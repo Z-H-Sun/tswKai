@@ -72,7 +72,7 @@ file_table_header = ["FT\0\4", FILELIST.size, 0x10, file_table_entry_offset, # s
 
 $EXA_DATA = archive_header + name_table_header + name_table_entry_header + name_table_entry + file_table_header + file_table_entry_header + file_table_entry
 
-if __FILE__ == $0
+if __FILE__ == $0 or $WRITE_EXA
   f_out = open(FILEOUTPUT, 'wb')
   f_out.write($EXA_DATA)
   f_out.close

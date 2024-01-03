@@ -9,7 +9,7 @@ CC = ENV['CC'] || RbConfig::CONFIG['CC'] || 'gcc' # this must be a 32bit GCC!
 EXERB_CFLAGS = '-std=gnu99 -Os -g0 -s -mwindows -DNDEBUG -DRUBY_EXPORT -DHAVE_STATIC_ZLIB  -Wl,--stack=0x02000000,--wrap=rb_require_safe,--wrap=rb_require'
 
 # ================ Ruby
-RUBY_CFLAGS = '-std=gnu99 -Os -g0 -DNDEBUG -DRUBY_EXPORT -DFD_SETSIZE=256'
+RUBY_CFLAGS = '-std=gnu99 -Os -g0 -DNDEBUG -DIN_WINPTHREAD -DRUBY_EXPORT -DFD_SETSIZE=256' # defining `IN_WINPTHREAD` is because `clock_gettime` is not yet supported in this version of mingw-w64, so do not include 'pthread_time.h' (see https://bugs.launchpad.net/epics-base/+bug/1492884)
 RUBY_C_IGNORE = %w(./main.c win32/winmain.c ./parse.c ./lex.c ./dmydln.c)
 RUBY_C_NEEDED = %w(missing/crypt.c)
 RUBY_O_LIST = ['../../tmp/parse.o'] # this will be prepended later
@@ -63,10 +63,9 @@ file '../vendor/zlib' do # 1.3; latest version
 end
 file 'libz.a' => ['../vendor/zlib', '../tmp'] do
   cd('../vendor/zlib') do
-    sh 'sh ./configure' unless File.exists?('Makefile')
+    if File.exists?('configure.log') then puts 'For Zlib compilation: configured before; skipped.' else sh 'sh ./configure' end
     sh 'make'
     mv 'libz.a', '../../compile'
-    cp 'zconf.h', '../../compile'
     sh 'make clean'
   end
 end
@@ -85,7 +84,7 @@ task :default => '../vendor/exerb-mingw' do
     puts 'Start compiling Ruby...'
     Rake::Task['libruby187.a'].invoke
   end
-  if File.exist?('libz.a') and File.exist?('zconf.h')
+  if File.exist?('libz.a')
     puts 'Zlib static library already exists; skipped.'
   else
     puts 'Start compiling Zlib...'
@@ -94,6 +93,7 @@ task :default => '../vendor/exerb-mingw' do
   e_path = '../vendor/exerb-mingw/src/exerb'
   cp 'config.h', e_path
   sh 'sed -i \'s/^\s*Init_Exe/void Init_api();\nInit_api();\nInit_Exe/g\' '+e_path+'/exerb.c' # patch exerb.c to initialize win32/api extension
+  $WRITE_EXA = true # see `mkexa.rb`; explicitly ask to output .exa file
   load('mkexa.rb' ,wrap=true)
   sh "windres resource.rc res.o"
   sh "#{CC} -Wall #{EXERB_CFLAGS} -I../vendor/ruby -I../vendor/ruby/missing -I../vendor/ruby/win32 -I../vendor/zlib -I. -L. -o ../tswKai3.exe #{e_path}/gui.c res.o #{e_path}/exerb.c #{e_path}/module.c #{e_path}/utility.c #{e_path}/patch.c ../vendor/exerb-mingw/vendor/zlib.c  ../vendor/win32/api.c -lruby187 -lz #{RUBY_LIBS}"
@@ -109,7 +109,6 @@ end
 require 'rake/clean'
 CLEAN.include('*.a')
 CLEAN.include('*.exa')
-CLEAN.include('zconf.h')
 CLEAN.include('res.*')
 CLEAN.include('../tmp')
 CLOBBER.include('../*.exe')

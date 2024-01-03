@@ -6,7 +6,7 @@ APP_NAME = 'tswKai3'
 APP_FNAME = $Exerb ? ExerbRuntime.filepath : ($0[/^[\/\\]{2}/] ? $0.dup : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless. There is a bug in Ruby's File#expand_path method, which fails to parse UNC paths, so ignore it if the path starts with \\
 APP_PATH = File.dirname(APP_FNAME)
 CUR_PATH = Dir.pwd
-$:.unshift(APP_PATH, CUR_PATH) unless $Exerb # add load path
+unless $Exerb then require 'rubygems'; $:.unshift(APP_PATH, CUR_PATH) end # add load path (requiring `rubygems` is because for Ruby 1.8, the gem installation path is not automatically included; and this has to happen before adding our path because the user-generated win32/api.so is preferred)
 # For ExeRB-packed executables, the filenames of imported modules in the .exy file should be pre-processed such that they don't contain dirname
 
 require 'common'

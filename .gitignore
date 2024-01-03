@@ -6,7 +6,6 @@
 
 # compiled static library
 /compile/*.a
-/compile/zconf.h
 
 # packages downloaded from github repos
 /vendor/ruby
