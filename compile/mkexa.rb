@@ -14,7 +14,7 @@ FILELIST = Dir.chdir('../') {|i| Dir['main.rbw'] + Dir['*.rb'] } # main.rbw must
 # %w(main.rbw common.rb connectivity.rb console.rb gui.rb monsters.rb strings.rb stringsGBK.rb tswBGM.rb tswKai.rb tswMP.rb tswMod.rb tswModStatic.rb tswSL.rb)
 
 PATCH_FILE_IGNORE = [] # no need to patch these files file
-PATCH_PATTERN = {/require.+win32.api.*$/ => '', # need to remove this `require` as win32/api has been hard-compiled in our executable
+PATCH_PATTERN = {/^\s*require.+win32.api.*$/ => '', # need to remove this `require` as win32/api has been hard-compiled in our executable
   /^ *#+.*$/ => '', / *# +.*$/ => '', /^ +/ => ''} # no need to include annoations / indentations
 
 @alignedLen = 0
