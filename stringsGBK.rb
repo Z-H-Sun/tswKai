@@ -25,8 +25,7 @@ module Str
 It might be because the user cancelled this action, or the system fails to find the specified file or execute the action.',
 'Cannot read or write in a console. If you are running the app using a CLI Ruby, please check if you have redirected STDIN / STDOUT to a file.',
 'This is a fatal error. That is all we know. Please open an issue on GitHub.',
-'Err 0x%04x when calling `%s`@%s, which returns %d:
-%s %s has stopped. Details are as follows:
+'Err 0x%04x when calling `%s`@%s, which returns %d: %s%s %s has stopped. Details are as follows:
 
 Prototype="%s", ReturnType="%s", ARGV=[%s]']
   end
@@ -50,8 +49,7 @@ Prototype="%s", ReturnType="%s", ARGV=[%s]']
 这可能是由于用户取消了这一操作，或者是因为系统无法找到相应文件或执行相关操作。',
 '无法对控制台进行读／写操作。如果当前程序运行在控制台子系统的 Ruby 中，请检查是否误将标准输入／标准输出重定向到了磁盘文件。',
 '致命错误，抱歉无法提供更多信息。如果可以的话，请到 GitHub 上向作者反馈。',
-'错误代码：0x%04x。`%s`@%s 返回值为 %d：
-%s %s 已停止工作。详情如下：
+'错误代码：0x%04x。`%s`@%s 返回值为 %d：%s%s %s 已停止工作。详情如下：
 
 函数原型="%s"；返回类型="%s"；传入参数=[%s]']
   end

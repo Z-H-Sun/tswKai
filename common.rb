@@ -133,6 +133,9 @@ $buf = "\0" * 640
 $hMod = GetModuleHandle.call(0)
 
 module Win32
+  FormatMessage = API.new('FormatMessage', 'ILIIPIP', 'I', 'kernel32')
+  FORMAT_MESSAGE_FROM_SYSTEM = 0x1000
+  FORMAT_MESSAGE_IGNORE_INSERTS = 0x200
   class API
     def self.focusTSW()
       if $console === true
@@ -165,6 +168,15 @@ module Win32
     unless defined?(self.last_error) # low version win32/api support
       def self.last_error; API.new('GetLastError', 'V', 'I', 'kernel32').call(); end
     end
+    def errMsg(errID)
+      return "\r\n" if errID.zero?
+      langid = $isCHN ? LANG_CHINESE : LANG_ENGLISH
+      sublangid = $isCHN ? SUBLANG_CHINESE_SIMPLIFIED : SUBLANG_DEFAULT
+      len = FormatMessage.call(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, errID, (sublangid << 10) | langid, $buf, 640, nil) # try chinese or english system error message first according to TSW lang, but Windows doesn't necessarily ship with the DLL required to get error messages in this lang
+      len = FormatMessage.call(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, errID, LANG_NEUTRAL, $buf, 640, nil) if len.zero? # then try default language
+      return "\r\n" if len.zero?
+      return $buf[0, len]
+    end
     def call_r(*argv) # provide more info if a win32api returns null
       r = call(*argv)
       return r if $preExitProcessed # do not throw error if ready to exit
@@ -175,6 +187,7 @@ module Win32
       else
         return r unless r.zero?
       end
+      $str = $isCHN ? Str::StrCN : Str::StrEN
       err = API.last_error
       case function_name
       when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx', 'MsgWaitForMultipleObjects'
@@ -191,7 +204,7 @@ module Win32
         reason = $str::ERR_MSG[6]
       end
       argv.collect! {|i| s = i.inspect; s.size > 64 ? (s[0, 60]+' ...$') : s} # trancate too long args
-      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, reason, APP_NAME, prototype.join(''), return_type, argv.join(', ')])
+      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, errMsg(err), reason, APP_NAME, prototype.join(''), return_type, argv.join(', ')])
     end
   end
 end

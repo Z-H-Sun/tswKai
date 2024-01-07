@@ -4,10 +4,15 @@
 
 require 'stringsGBK'
 GetUserDefaultUILanguage = API.new('GetUserDefaultUILanguage', 'V', 'L', 'kernel32')
+LANG_NEUTRAL = 0
+LANG_ENGLISH = 9
+LANG_CHINESE = 4
+SUBLANG_DEFAULT = 1
+SUBLANG_CHINESE_SIMPLIFIED = 2
 
 # initialize according to user or system language
 # will be later changed according to TSW language
-$isCHN = ((GetUserDefaultUILanguage.call() & 0xFF) == 4) # low-byte-4 = zh-hans; e.g., 0x404 = zh-CN, 0x804 = zh-TW
+$isCHN = ((GetUserDefaultUILanguage.call() & 0x3FF) == LANG_CHINESE) # id = (lang_id << 10) | sublang_id
 $str = $isCHN ? Str::StrCN : Str::StrEN
 
 module Str
