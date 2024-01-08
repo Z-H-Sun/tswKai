@@ -562,7 +562,7 @@ def showMsgTxtboxW(textIndex, *argv)
 end
 
 def getHookKeyName()
-  raise_r($str::ERR_MSG[1]) unless MP_KEY1
+  raise_r($str::ERR_MSG[1]) if MP_KEY1.zero?
   $MPhookKeyName = '[' + getKeyName(0, MP_KEY1) + ']'
-  $MPhookKeyName += ' / [' + getKeyName(0, MP_KEY2) + ']' if MP_KEY2
+  $MPhookKeyName << ' / [' + getKeyName(0, MP_KEY2) + ']' unless MP_KEY2.zero?
 end

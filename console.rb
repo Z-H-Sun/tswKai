@@ -268,8 +268,9 @@ class Console
           return -1
         when 0x30..0x39 # num
           count = digits - digitCount if count > digits - digitCount
-          str += char*count
-          self.printA char*count
+          char *= count if count > 1
+          str << char
+          self.printA char
           x += count
           digitCount += count
         when VK_BACK # backspace

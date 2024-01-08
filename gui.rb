@@ -74,6 +74,12 @@ $hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE,
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
 
+def Static1_Show(show=$CONshowStatusTip)
+  return unless show
+  ShowWindow.call($hWndStatic1, SW_SHOW)
+  SetForegroundWindow.call($hWndStatic1)
+end
+
 def Static1_3D(sunken) # when mouse/key down, sunken; up, raised
   prev_sunken = ($stlStatic1 & WS_EX_DLGMODALFRAME).zero?
   return false if sunken == prev_sunken # no need to do the following if the state doesn't change

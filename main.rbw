@@ -71,6 +71,10 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       ChkBox_CheckMsg(i, msg)
       next unless IsDialogMessage.call($hWndDialog, $buf).zero?
     elsif msgType == WM_HOTKEY
+      if (dummy = ($keybdinput_num > 0xFF)) # this hotkey event only serves to "steal" the focus from another foreground process
+        $keybdinput_num &= 0xFF
+        next # don't do extra stuff
+      end
       case msg[2]
       when 0
         time = msg[4]
@@ -86,8 +90,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
         elsif state
           API.focusTSW()
         elsif !$CONshowStatusTip.nil? # show status tip window
-          ShowWindow.call($hWndStatic1, SW_SHOW)
-          SetForegroundWindow.call($hWndStatic1)
+          Static1_Show(true)
         end
       when 1
         if state == 1
@@ -103,8 +106,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             Mod.showDialog(true)
           end
         elsif !state and !$CONshowStatusTip.nil? # show status tip window
-          ShowWindow.call($hWndStatic1, SW_SHOW)
-          SetForegroundWindow.call($hWndStatic1)
+          Static1_Show(true)
         end
       end
       next
@@ -134,6 +136,10 @@ loop do
   case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, $configDlg ? QS_ALLINPUT : QS_ALLBUTTIMER) # For XP-style checkboxes, there is an animation with changed checked state, so WM_TIMER should still be processed for redrawing the checkboxes
   when 0 # TSW has quitted
     disposeRes()
+    if $keybdinput_struct.ord == INPUT_KEYBOARD # there is at least one registered hotkeys
+      SendInput.call_r($keybdinput_num, $keybdinput_struct, INPUT_STRUCT_LEN) # we can "steal" the focus from the current foreground process by sending a systemwide hotkey event
+      $keybdinput_num |= 0x100 # to tell the msg loop no need to do extra stuff for this dummy hotkey event
+    end
     if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end
     waitInit()
     next

@@ -20,6 +20,7 @@ CloseHandle = API.new('CloseHandle', 'L', 'L', 'kernel32')
 GetCurrentThreadId = API.new('GetCurrentThreadId', 'V', 'L', 'kernel32')
 GetWindowThreadProcessId = API.new('GetWindowThreadProcessId', 'LP', 'L', 'user32')
 AttachThreadInput = API.new('AttachThreadInput', 'III', 'I', 'user32')
+SendInput = API.new('SendInput', 'IPI', 'I', 'user32')
 GetClientRect = API.new('GetClientRect', 'LP', 'L', 'user32')
 FindWindow = API.new('FindWindow', 'SS', 'L', 'user32')
 ShowWindow = API.new('ShowWindow', 'LL', 'L', 'user32')
@@ -102,6 +103,9 @@ SW_RESTORE = 9
 VK_BACK = 0x8
 VK_TAB = 0x9
 VK_RETURN = 0xd
+VK_SHIFT = 0x10
+VK_CONTROL = 0x11
+VK_MENU = 0x12
 VK_ESCAPE = 0x1b
 VK_LEFT = 0x25
 VK_UP = 0x26
@@ -110,15 +114,21 @@ VK_DOWN = 0x28
 VK_SPACE = 0x20
 VK_LWIN = 0x5b
 VK_RWIN = 0x5c
+INPUT_KEYBOARD = 1
+KEYEVENTF_KEYUP = 2
 
 POINTER_SIZE = [nil].pack('p').size
 case POINTER_SIZE # pointer directive "J" is introduced in Ruby 2.3, for backward compatibility, use fixed-length integer directives here
 when 4 # 32-bit ruby
-  MSG_INFO_STRUCT = 'L5a8'
+  INPUT_STRUCT_LEN = 28
+  INPUT_STRUCT = 'LSSLLLQ' # DWORD type; KEYBDINPUT ki {WORD wVK; WORD wScan; DWORD dwFlags; DWORD time; ULONG_PTR dwExtraInfo}; uint64_t dummy
+  MSG_INFO_STRUCT = 'L5a8' # HWND hwnd; UINT message; WPARAM wParam; LPARAM lParam; DWORD time; POINT pt {LONG x; LONG y}
   HANDLE_STRUCT = 'L'
   GetWindowLong = API.new('GetWindowLong', 'LI', 'L', 'user32')
   SetWindowLong = API.new('SetWindowLong', 'LIL', 'L', 'user32')
 when 8 # 64-bit
+  INPUT_STRUCT_LEN = 40
+  INPUT_STRUCT = 'QSSLQQQ' # must take alignment into consideration
   MSG_INFO_STRUCT = 'Q4La8'
   HANDLE_STRUCT = 'Q'
   GetWindowLong = API.new('GetWindowLongPtr', 'LI', 'L', 'user32')
@@ -130,6 +140,8 @@ end
 $bufHWait = "\0" * (POINTER_SIZE << 1)
 $bufDWORD = "\0" * 4
 $buf = "\0" * 640
+$keybdinput_struct = "\xFF"
+$keybdinput_num = 0
 $hMod = GetModuleHandle.call(0)
 
 module Win32
@@ -397,10 +409,7 @@ def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles a
   return r
 end
 def waitInit(waitForNextCompatibleTSW = false)
-  if $CONshowStatusTip
-    ShowWindow.call($hWndStatic1, SW_SHOW)
-    SetForegroundWindow.call($hWndStatic1)
-  end
+  Static1_Show()
   loop do # waiting while processing messages
     if waitForNextCompatibleTSW # though unlikely, if current TSW is incompatible, wait till its end
       case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
@@ -421,10 +430,7 @@ def waitInit(waitForNextCompatibleTSW = false)
         # though unlikely, if current TSW is incompatible, reshow waiting status window and wait till its end
         if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end
         waitForNextCompatibleTSW = true
-        if $CONshowStatusTip
-          ShowWindow.call($hWndStatic1, SW_SHOW)
-          SetForegroundWindow.call($hWndStatic1)
-        end
+        Static1_Show()
       end
     end
   end
@@ -456,17 +462,37 @@ def setTitleW(hWnd, textIndex, *argv)
 end
 
 def getKeyName(modifier, key)
-  return nil unless key
+  return nil if key.zero?
+  ctrl = !(modifier & 2).zero?
+  shift = !(modifier & 4).zero?
+  win = !(modifier & 8).zero?
+  alt = !(modifier & 1).zero?
   res = ''
-  res += 'Ctrl+' unless (modifier & 2).zero?
-  res += 'Shift+' unless (modifier & 4).zero?
-  res += 'Win+' unless (modifier & 8).zero?
-  res += 'Alt+' unless (modifier & 1).zero?
+  res << 'Ctrl+' if ctrl
+  res << 'Shift+' if shift
+  res << 'Win+' if win
+  res << 'Alt+' if alt
   key = 0 if key > 223
-  res += $str::VKEYNAMES[key]
+  res << $str::VKEYNAMES[key]
+  if $keybdinput_struct.ord.zero? # indicate this needs updating
+    $keybdinput_num = 2 # 2 events: key down and key up
+    $keybdinput_struct = ''
+    if ctrl then $keybdinput_num += 2; $keybdinput_struct << [INPUT_KEYBOARD, VK_CONTROL, 0, 0, 0, 0, 0].pack(INPUT_STRUCT) end
+    if shift then $keybdinput_num += 2; $keybdinput_struct << [INPUT_KEYBOARD, VK_SHIFT, 0, 0, 0, 0, 0].pack(INPUT_STRUCT) end
+    if win then $keybdinput_num += 2; $keybdinput_struct << [INPUT_KEYBOARD, VK_RWIN, 0, 0, 0, 0, 0].pack(INPUT_STRUCT) end
+    if alt then $keybdinput_num += 2; $keybdinput_struct << [INPUT_KEYBOARD, VK_MENU, 0, 0, 0, 0, 0].pack(INPUT_STRUCT) end
+    $keybdinput_struct << [INPUT_KEYBOARD, key, 0, 0, 0, 0, 0].pack(INPUT_STRUCT)
+    $keybdinput_struct << [INPUT_KEYBOARD, key, 0, KEYEVENTF_KEYUP, 0, 0, 0].pack(INPUT_STRUCT)
+    $keybdinput_struct << [INPUT_KEYBOARD, VK_CONTROL, 0, KEYEVENTF_KEYUP, 0, 0, 0].pack(INPUT_STRUCT) if ctrl
+    $keybdinput_struct << [INPUT_KEYBOARD, VK_SHIFT, 0, KEYEVENTF_KEYUP, 0, 0, 0].pack(INPUT_STRUCT) if shift
+    $keybdinput_struct << [INPUT_KEYBOARD, VK_RWIN, 0, KEYEVENTF_KEYUP, 0, 0, 0].pack(INPUT_STRUCT) if win
+    $keybdinput_struct << [INPUT_KEYBOARD, VK_MENU, 0, KEYEVENTF_KEYUP, 0, 0, 0].pack(INPUT_STRUCT) if alt
+  end
   return res
 end
 def getRegKeyName()
+  $keybdinput_struct[0] = "\0" # indicate this needs updating
   $regKeyName[0] = getKeyName(MP_MODIFIER, MP_HOTKEY) if $_HOTKEYMP
   $regKeyName[1] = getKeyName(CON_MODIFIER, CON_HOTKEY) if $_HOTKEYCON
+  $keybdinput_struct[0] = "\xFF" if $keybdinput_struct.ord.zero? # failed (unlikely)
 end
