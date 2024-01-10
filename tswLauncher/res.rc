@@ -1,0 +1,116 @@
+// encoding: GBK
+#include "tswLauncher.h"
+#include "winresrc.h"
+#pragma code_page(936)
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION	APP_VERSION
+ PRODUCTVERSION	APP_VERSION
+ FILEFLAGSMASK	0x3fL
+ FILEFLAGS	0x0L
+ FILEOS	0x40004L
+ FILETYPE	0x1L
+ FILESUBTYPE	0x0L
+BEGIN
+	BLOCK "StringFileInfo"
+	BEGIN
+		BLOCK "000004b0"
+		BEGIN
+			VALUE "CompanyName",	"Z.Sun"
+			VALUE "LegalCopyright",	"Copyright(C) Z.Sun, 2020-2024 All rights reserved."
+			VALUE "ProductName",	APP_TITLE
+		END
+	END
+	BLOCK "VarFileInfo"
+	BEGIN
+		VALUE "Translation", 0x0000, 0x04b0
+	END
+END
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+
+IDI_APP ICON DISCARDABLE "2.ico"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+IDD_APP DIALOG DISCARDABLE 0, 0, 200, 24
+ STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+ CAPTION APP_TITLE
+ FONT DLG_FONT_SIZE, "Tahoma"
+BEGIN
+	COMBOBOX	IDC_TYPE, 10, 5, 85, 200, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+	DEFPUSHBUTTON	"&Launch", IDC_OPEN, 105, 5, 40, 13
+	PUSHBUTTON	"&Initialize", IDC_INIT, 150, 5, 40, 13
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+
+IDD_APP DIALOG DISCARDABLE 0, 0, 200, 24
+ STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+ CAPTION APP_TITLE_CN
+ FONT DLG_FONT_SIZE, "MS Shell Dlg 2"
+BEGIN
+	COMBOBOX	IDC_TYPE, 10, 6, 85, 50, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+	DEFPUSHBUTTON	"启动(&L)", IDC_OPEN, 105, 5, 40, 13
+	PUSHBUTTON	"初始化(&I)", IDC_INIT, 150, 5, 40, 13
+END
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+STRINGTABLE
+BEGIN
+	IDS_TITLE	APP_TITLE " " APP_VERSION_STR " - "
+	IDS_ENTRY1	"English (Original)"
+	IDS_ENTRY2	"English (Revised)"
+	IDS_ENTRY3	"Chinese"
+	IDS_ENTRY4	"Chinese (Retranslated)"
+	IDS_TIP1	"Choose which " TARGET_TITLE " you would like to run"
+	IDS_TIP2	"Run the " TARGET_TITLE " specified in the dropdown list"
+	IDS_TIP3	"Initialize the " TARGET_TITLE " paths\n\nThe installation and data-save paths will be cleared, and they will be automatically populated the next time you run any " TARGET_TITLE " executable file"
+	IDS_ERR1	"Error: Cannot find " TARGET_TITLE " folder: ""." TSW_DIR """."
+	IDS_ERR2	"Error: The %%windir%% path is too long."
+	IDS_ERR3	"Error: The current app path is too long. Please move this whole folder to another location that has a shorter path."
+	IDS_ERR4	"Warning: Invalid initialization file: ""%%windir%%%s"",\nwhere the specified data-save path is invalid or too long:\n%s\n\nDo you want to remove this configuration and continue?"
+	IDS_ERR5	"Warning: Cannot delete file ""%%windir%%%s""."
+	IDS_ERR6	"Warning: Cannot rename file ""%%windir%%" TSW_INI """\nto ""%%windir%%" TSW_INI_BAK """. Continue anyway?"
+	IDS_ERR7	"Warning: Cannot write config file ""%%windir%%" TSW_INI """. Continue anyway?"
+	IDS_ERR8	"Warning: Cannot create folder ""." TSW_DIR DAT_DIR """."
+	IDS_ERR9	"Warning: Cannot run ""." TSW_DIR "%s""."
+	IDS_ERRA	"Internal error 0x%04x when calling %s."
+	IDS_ERRB	"Please select an item to launch in the dropdown list."
+	IDS_ERRC	"Are you sure to remove the configurations on the " TARGET_TITLE " installation and data-save paths?"
+	IDS_ERRD	"Another %s process has already been running (pID = %d)."
+END
+
+LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+
+STRINGTABLE
+BEGIN
+	IDS_TITLE	APP_TITLE_CN " " APP_VERSION_STR " - "
+	IDS_ENTRY1	"英语 (原版)"
+	IDS_ENTRY2	"英语 (修正版)"
+	IDS_ENTRY3	"汉化"
+	IDS_ENTRY4	"汉化 (日文精译版)"
+	IDS_TIP1	"选择想要运行的" TARGET_TITLE_CN "版本"
+	IDS_TIP2	"运行由左侧列表指定的" TARGET_TITLE_CN "游戏"
+	IDS_TIP3	"初始化" TARGET_TITLE_CN "程序的相关路径\n\n将会清除" TARGET_TITLE_CN "程序的安装路径和数据存储路径，下次运行任意一个" TARGET_TITLE_CN "游戏的程序文件后就会自动重设"
+	IDS_ERR1	"错误：找不到" TARGET_TITLE_CN "游戏文件夹: ""." TSW_DIR """。"
+	IDS_ERR2	"错误：系统路径 %%windir%% 过长。"
+	IDS_ERR3	"错误：当前程序路径过长。请将当前整个目录移动到其他更短的路径下。"
+	IDS_ERR4	"警告：无效的初始化文件：""%%windir%%%s""，\n其中所指定的数据存储路径过长或者不存在：\n%s\n\n是否移除此配置并继续？"
+	IDS_ERR5	"警告：无法删除文件 ""%%windir%%%s""。"
+	IDS_ERR6	"警告：无法将文件 ""%%windir%%" TSW_INI """ 重命名为\n""%%windir%%" TSW_INI_BAK """。仍然继续？"
+	IDS_ERR7	"警告：无法写入配置文件 ""%%windir%%" TSW_INI """。仍然继续？"
+	IDS_ERR8	"警告：无法创建目录 ""." TSW_DIR DAT_DIR """。"
+	IDS_ERR9	"警告：无法启动 ""." TSW_DIR "%s""。"
+	IDS_ERRA	"警告：内部错误 0x%04x，调用 %s 失败。"
+	IDS_ERRB	"请在左侧列表中选中一项想要运行的" TARGET_TITLE_CN "类型。"
+	IDS_ERRC	"确认清除" TARGET_TITLE_CN "的程序安装路径和数据存储路径的配置吗？"
+	IDS_ERRD	"另一个%s进程已正在运行中 (pID = %d)。"
+END
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
+
+IDM_MANIFEST MANIFEST DISCARDABLE "2.manifest"

@@ -2,7 +2,7 @@
 *.ex[ae]
 
 # compiled resource output
-/compile/res.*
+res.o
 
 # compiled static library
 /compile/*.a
@@ -19,3 +19,4 @@
 /tmp
 
 manifest.txt
+/tswLauncher/TSW1.2r1
