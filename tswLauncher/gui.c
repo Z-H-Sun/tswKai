@@ -2,6 +2,8 @@
 #include <stdarg.h>
 #define SegoeUIFontName "Segoe UI"
 
+extern char ini_state;
+
 HWND hWnd = NULL;
 HINSTANCE hIns = NULL;
 HANDLE hMapFile = NULL;
@@ -224,6 +226,7 @@ LRESULT CALLBACK dialog_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpar
       return TRUE;
     } else if (LOWORD(wparam) == IDC_INIT) { // initialize
       if (delete_ini()) {
+        ini_state = 0;
         HWND hwndType = GetDlgItem(hwnd, IDC_TYPE);
         SendMessage(hwnd, WM_NEXTDLGCTL, (WPARAM)hwndType, TRUE); // set focus (see https://devblogs.microsoft.com/oldnewthing/20040802-00/?p=38283)
       }

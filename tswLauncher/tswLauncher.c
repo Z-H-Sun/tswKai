@@ -4,7 +4,7 @@
 extern char app_title[MAX_PATH];
 
 char ini_state = 2; // 2 = have .ini and .bak.ini; 1 = have .ini but not .bak.ini; 0 = have neither
-char data_path[MAX_PATH] = {0}, cur_path[MAX_PATH] = {0}, tsw_ini_path[MAX_PATH] = {0}, tsw_ini_bak_path[MAX_PATH] = {0};
+char data_path[MAX_PATH] = {0}, cur_path[MAX_PATH] = {0}, tsw_exe_path[MAX_PATH] = {0}, tsw_ini_path[MAX_PATH] = {0}, tsw_ini_bak_path[MAX_PATH] = {0};
 char *tsw_exe[4] = TSW_EXE;
 int data_path_len, cur_path_len;
 
@@ -35,6 +35,7 @@ void get_app_path() { // .
   char *basename = strrchr(cur_path, '\\');
   basename[0] = '\0'; // mask basename
   strcat(cur_path, TSW_DIR);
+  strcat(tsw_exe_path, cur_path); // the basename for TSW executable will be appended later
   strcat(app_title, cur_path);
   cur_path_len = strlen(cur_path);
 //return (int)(basename - cur_path);
@@ -159,7 +160,7 @@ BOOL delete_ini() {
   BOOL success = TRUE;
   if (msgbox(MB_YESNO | MB_ICONINFORMATION, IDS_ERRC) == IDNO)
     return FALSE;
-  if (ini_state && !DeleteFile(tsw_ini_bak_path)) { // delete the .bak file only when `ini_state` is 
+  if (ini_state && !DeleteFile(tsw_ini_bak_path)) { // delete the .bak file only when `ini_state` is not 0
     msgbox(MB_ICONEXCLAMATION, IDS_ERR5, TSW_INI_BAK);
     success = FALSE;
   }
@@ -189,12 +190,12 @@ BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void *lpOut)
 }
 
 BOOL launch_tsw(int type) {
-  strcat(cur_path, tsw_exe[type]);
+  strcat(tsw_exe_path, tsw_exe[type]);
   STARTUPINFO si = {0};
   PROCESS_INFORMATION pi = {0};
   si.cb = sizeof(si);
   si.dwFlags = STARTF_FORCEONFEEDBACK;
-  BOOL success = CreateProcess(cur_path, NULL, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi);
+  BOOL success = CreateProcess(tsw_exe_path, NULL, NULL, NULL, FALSE, 0, NULL, cur_path, &si, &pi);
 
   if (success) {
     MessageBeep(MB_ICONINFORMATION);
@@ -215,6 +216,6 @@ BOOL launch_tsw(int type) {
 fail:
     msgbox(MB_ICONEXCLAMATION, IDS_ERR9, tsw_exe[type]);
 
-  cur_path[cur_path_len] = '\0';
+  tsw_exe_path[cur_path_len] = '\0';
   return success;
 }
