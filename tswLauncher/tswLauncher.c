@@ -175,7 +175,7 @@ BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void *lpOut)
   int i;
   HANDLE hPrc = p_pi->hProcess;
   for (i = 0; i < TARGET_WAIT_CYCLES; i++) {
-    Sleep(TARGET_WAIT_INTERVAL); // wait for 100 ms * 20
+    Sleep(TARGET_WAIT_INTERVAL); // wait for 200 ms * 20
     if (!ReadProcessMemory(hPrc, lpAddr, lpOut, TARGET_PTR_LEN, NULL)) {
       msgbox(MB_ICONEXCLAMATION, IDS_ERRA, GetLastError(), "ReadProcessMemory");
       break;

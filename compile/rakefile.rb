@@ -92,9 +92,9 @@ task :default => '../vendor/exerb-mingw' do
   end
   e_path = '../vendor/exerb-mingw/src/exerb'
   cp 'config.h', e_path
-  sh 'sed -i \'s/^\s*Init_Exe/void Init_api();\nInit_api();\nInit_Exe/g\' '+e_path+'/exerb.c' # patch exerb.c to initialize win32/api extension
+  sh 'sed -i \'s/^\s*Init_ExerbRuntime/void Init_api();\nInit_api();Init_ExerbRuntime/g\' '+e_path+'/exerb.c' # patch exerb.c to initialize win32/api extension
   $WRITE_EXA = true # see `mkexa.rb`; explicitly ask to output .exa file
-  load('mkexa.rb' ,wrap=true)
+  load('mkexa.rb', wrap=true)
   sh "windres resource.rc res.o"
   sh "#{CC} -Wall #{EXERB_CFLAGS} -I../vendor/ruby -I../vendor/ruby/missing -I../vendor/ruby/win32 -I../vendor/zlib -I. -L. -o ../tswKai3.exe #{e_path}/gui.c res.o #{e_path}/exerb.c #{e_path}/module.c #{e_path}/utility.c #{e_path}/patch.c ../vendor/exerb-mingw/vendor/zlib.c  ../vendor/win32/api.c -lruby187 -lz #{RUBY_LIBS}"
   sh "strip -R .reloc ../tswKai3.exe"

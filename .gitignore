@@ -6,6 +6,7 @@ res.o
 
 # compiled static library
 /compile/*.a
+/compile/test*
 
 # packages downloaded from github repos
 /vendor/ruby
@@ -18,5 +19,7 @@ res.o
 # compilation temp outputs
 /tmp
 
+# other test-related files
 manifest.txt
+/BGM
 /tswLauncher/TSW1.2r1

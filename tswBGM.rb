@@ -48,6 +48,8 @@ module BGM
  [40, 5, 5, 7, 5, 4, 18, 0x12, 0x15], [49, 1, 5, 2, 5, 91, 19, -0x69, nil]]
   BGM_PHANTOMFLOOR = 'b_095xgw'
   BGM_PATCH_BYTES = [ # address, len, original bytes, patched bytes[, variable to insert into patched bytes[, if `call relative`, an additional offset parameter is provided next]]
+[TTIMER4_ONTIMER_ADDR, 1, "\xc3", "\xc3"], # temporarily disable TTimer4 (otherwise, there might be a relatively low chance, esp. for some PCs with rubbish performance, that the Timer4OnTimer event is running at the same time as tswBGM is patching the asm codes, thus confused and leading to heap corruption)
+
 [0x430ef8, 9, 'Sequencer', 'MPEGVideo'], # lpstrDeviceType Sequencer=midi; MPEGVideo=mp3
 
 [0x4508a9, 1, "\x75", "\x7B"], # TTSW10.itemlive redefine TTimer4.Enabled (jne -> jnp)
@@ -91,6 +93,8 @@ module BGM
 
 [BGM_PLAY_ADDR, 13, "\x55\x8B\xEC\x6A\0\x53\x56\x57\x8B\xD8\x33\xC0\x55", "\x8B\x80\x1C\4\0\0\xB2\6\xE9\x8B\1\xFB\xFF"], # TTSW10.soundplay
 [0x47c960, 20, "\xC7\5\xF0\x87\x4B\0\x09\0\0\0\xC3\xC7\5\xF0\x87\x4B\0\x0A\0\0", "\x83\xC0\6\x74\3\xB0\xF3\x90\4\x0C\x90\4\x0A\x0F\xB6\xC0\xA3\xF0\x87\x4B"], # TTSW10.soundcheck
+
+[TTIMER4_ONTIMER_ADDR, 1, "\x55", "\x55"], # re-enable TTimer4 (see Line 51)
 
 # battle w Skeletons
 [0x46754c, 60, "\xFF\3\x8B\3\x8D\4\x40\x66\xC7\4\x46\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46\2\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46\4\0\0\xFF\3\x8B\3\x8D\4\x40\x66\xC7\4\x46\x0A\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46\2", "\x31\xD2\x83\x3D\xF0\x87\x4B\0\0\x74\x1D\x83\3\2\x83\xC0\6\x89\x54\x46\xFA\x66\x89\x54\x46\xFE\xC7\4\x46\1\0\5\0\x66\xC7\x44\x46\4\x0C\0\x83\3\2\x83\xC0\6\x89\x54\x46\xFA\x66\x89\x54\x46\xFE\xC7\4\x46\x0A\0"], # TTSW10.moncheck

@@ -19,7 +19,7 @@
 #$isCHN = 1
 # Uncomment the following line to make this app always shown in English language
 #$isCHN = nil
-# Uncomment the following line to make tswSL auto decide which language to use according to which TSW is running (Default)
+# Uncomment the following line to make this app auto decide which language to use according to which TSW is running (Default; however, before the first TSW game starts, the language is determined by the `true` / `false` value itself)
 #$isCHN = false
 
 # The following lines determine which patch to apply upon app startup
