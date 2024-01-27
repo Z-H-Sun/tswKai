@@ -60,7 +60,7 @@ if ICOFILE
 end
 if MANFILE
   RT_MANIFEST = 24
-  executable.rsrc.add(RT_MANIFEST, 1, Exerb::Resource::Binary.new(open(MANFILE) {|f| f.read}))
+  executable.rsrc.add(RT_MANIFEST, 1, Exerb::Resource::Binary.new(open(MANFILE, 'rb') {|f| f.read}))
 end
 if EXA
   $:.unshift '.'
