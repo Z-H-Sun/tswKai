@@ -47,6 +47,9 @@ module BGM
  [10, 2, 5, 6, 5, 4, 15, 0x12, 0x5a], [20, 4, 5, 8, 5, 4, 16, 0x12, 0x43], [25, 6, 5, 9, 5, 4, 7, 0x12, 0x2c],
  [40, 5, 5, 7, 5, 4, 18, 0x12, 0x15], [49, 1, 5, 2, 5, 91, 19, -0x69, nil]]
   BGM_PHANTOMFLOOR = 'b_095xgw'
+  BGM_PATCH_BYTES_0 = [ # address, len, original bytes, patched bytes
+[0x4312cb, 65, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0\0\xBB\xE4\1\0\0\0\x74\x18\x83\x8B\xDC\1\0\0\4\x8B\x83\xF0\1\0\0\x89\x44\x24\4\xC6\x83\xE4\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x74\x3D\x31\xD2\x89\x54\x24\4\5\x64\4\0\0\x3B\x18\x74\x1F\x3B\x58\xFC\xB2\4\x74\2\xB2\x40\xB8\x3B\xA1\x4B\0\x8A\x08\x39\x15\xAC\xC5\x48\0\x0F\x9F\0\x7F\x0C\x84\xC9\x75\x08\x83\x8B\xDC\1\0\0\4\x90"] # TMediaPlayer.Play
+  ] # this list: always patch
   BGM_PATCH_BYTES = [ # address, len, original bytes, patched bytes[, variable to insert into patched bytes[, if `call relative`, an additional offset parameter is provided next]]
 [TTIMER4_ONTIMER_ADDR, 1, "\xc3", "\xc3"], # temporarily disable TTimer4 (otherwise, there might be a relatively low chance, esp. for some PCs with rubbish performance, that the Timer4OnTimer event is running at the same time as tswBGM is patching the asm codes, thus confused and leading to heap corruption)
 
@@ -89,7 +92,7 @@ module BGM
 
 [0x430f83, 37, "\x89\x86\xDC\1\0\0\x80\xBE\xE2\1\0\0\0\x74\x1C\x80\xBE\xE0\1\0\0\0\x74\x0A\xC7\x86\xDC\1\0\0\2\0\0\0\xC6\x86\xE2", "\xB0\2\x89\x86\xDC\1\0\0\x8B\x46\4\x3B\xB0\xD8\2\0\0\x75\x22\xC7\x45\xF8%s\x66\x81\x8E\xDC\1\0\0\0\2\xEB\x10", :@_bgm_filename], # TMediaPlayer.Open
 [TMEDIAPLAYER_CLOSE_ADDR, 64, "\x53\x56\x51\x8B\xD8\x66\x83\xBB\xE6\1\0\0\0\x0F\x84\xAD\0\0\0\x33\xC0\x89\x83\xDC\1\0\0\x80\xBB\xE2\1\0\0\0\x74\x1C\x80\xBB\xE0\1\0\0\0\x74\x0A\xC7\x83\xDC\1\0\0\2\0\0\0\xC6\x83\xE2\1\0\0\0\xEB\x0A", "\x8B\x50\4\x3B\x82\xD8\2\0\0\x75\x22\x8B\x82\x1C\4\0\0\xB2\6\xC6\5\xF0\x87\x4B\0\xFF\x80\x3D%s\0\x0F\x84\xA5\xB2\xFF\xFF\x53\xE9\x75\x26\3\0\x66\x83\xB8\xE6\1\0\0\0\x75\1\xC3\x53\x56\x51\x8B\xD8\x90\x90\x90", :@_isInProlog], # TMediaPlayer.Close
-[0x4312cb, 32, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x75\x0A\x81\x8B\xDC\1\0\0\0\0\1\0\x3B\x98\x64\4\0\0\x74\x0C\x90\x90\x90"], # TMediaPlayer.Play
+[0x431312, 15, "\0\x74\x18\x83\x8B\xDC\1\0\0\x08\x8B\x83\xEC\1\0", "\1\x75\x18\x81\x8B\xDC\1\0\0\0\0\1\0\xEB\x0C"], # TMediaPlayer.Play
 
 [BGM_PLAY_ADDR, 13, "\x55\x8B\xEC\x6A\0\x53\x56\x57\x8B\xD8\x33\xC0\x55", "\x8B\x80\x1C\4\0\0\xB2\6\xE9\x8B\1\xFB\xFF"], # TTSW10.soundplay
 [0x47c960, 20, "\xC7\5\xF0\x87\x4B\0\x09\0\0\0\xC3\xC7\5\xF0\x87\x4B\0\x0A\0\0", "\x83\xC0\6\x74\3\xB0\xF3\x90\4\x0C\x90\4\x0A\x0F\xB6\xC0\xA3\xF0\x87\x4B"], # TTSW10.soundcheck
@@ -141,6 +144,7 @@ module BGM
   end
   module_function
   def init
+    BGM_PATCH_BYTES_0.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[3], i[1], 0)} # must-do patches
     @bgm_path = $BGMpath
     bgm_basename = BGM_PHANTOMFLOOR + '.mp3'
     unless @bgm_path

@@ -62,7 +62,7 @@
 # There can be an alternative hotkey that serves the same purpose as the primary one; if you don't need it, set it as 0 (Default: Tab key)
 #MP_KEY2 = 0 # Default: VK_TAB
 # In each of the following line, the high byte defines the modifier, and the low byte is the virtual key code
-# Uncomment the following lines to modify the 'Load Any Data' hotkey to be 'O' (Default: Ctrl+L)
+# Uncomment the following line to modify the 'Load Any Data' hotkey to be 'O' (Default: Ctrl+L)
 #SL_HOTKEYS[0] = 0x000 | 'O'.ord # Default: 0x200 | 'L'.ord
 # This line changes the 'Save Any Data' hotkey to be 'S' (Default: Ctrl+S)
 #SL_HOTKEYS[1] = 0x000 | 'S'.ord # Default: 0x200 | 'S'.ord
