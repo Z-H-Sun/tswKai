@@ -41,7 +41,7 @@
 # By default, tswKai3 will show the config dialog upon app startup. Uncomment the following line to cancel
 #$CONonTSWstartup = false # Default: true
 # The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
-#$CONaskOnTSWquit = false
+#$CONaskOnTSWquit = false # Default: true
 # Uncomment the following line to hide the status tip window after TSW has quitted
 #$CONshowStatusTip = false # Default: true
 # Although the previous line hides the tip window, it will still show up if you press a hotkey. To always hide the tip window even if a hotkey is pressed, use the following line.
