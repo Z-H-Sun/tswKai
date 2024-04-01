@@ -33,7 +33,7 @@ BASE:62560	TTSW10.madoushi2	proc near	; (rōmaji of '魔導師2') 49F Sorcerer s
 		; the first animation event sequence is 9,0xF,0xA7
 		; the current index (pointer) of the event sequence that will be executed is [BASE:8C5AC], i.e., [ebx] below
 		; once a event sequence is executed, [ebx]-=1; once a new event sequence is pushed to the end of the event sequnce array [BASE:8C7AC], [ebx]+=1. They will be executed in the reversed order. This event sequence array works like stack, the data stored there will not be actively cleaned up; it will only be overwritten when necessary, and the pointer ([BASE:8C5AC]) changes constantly as described above
-		; for more details on how the event sequences work in TSW, see https://github.com/Z-H-Sun/tswBGM/blob/main/tswBGM.asm
+		; for more details on how the event sequences work in TSW, see tswBGM.asm
 		; so what casued the bug here? the pointer was mistakenly added by 1 at the end of this subroutine. So if there is some garbage data from previous event sequences (because they will not be cleaned up), that specific sequence will then be executed mistakenly
 BASE:637B8		inc [ebx]	; pointer += 1
 BASE:637BA		mov eax, [ebx]
@@ -72,7 +72,7 @@ BASE:4A480	TTSW10.taisen	proc near	; (rōmaji of '対戦') battle (not strike-fi
 		; in order to realize OTK, we just need to jump out of the loop once the first animation is over
 		; original bytes:
 ;BASE:4A95E		inc [ebx]	; the lines below encodes a 0,0,0 event sequence
-;BASE:4A960		mov ecx, [ebx]	; for more details on how the event sequences work in TSW, see https://github.com/Z-H-Sun/tswBGM/blob/main/tswBGM.asm
+;BASE:4A960		mov ecx, [ebx]	; for more details on how the event sequences work in TSW, see tswBGM.asm
 ;BASE:4A962		lea ecx, [ecx+ecx*2]
 ;BASE:4A965		mov word ptr [esi+ecx*2], 0
 ;BASE:4A96B		mov word ptr [esi+ecx*2+2], 0
@@ -140,7 +140,7 @@ BASE:8003C		mov eax, 1	; `eax` is now 1, and will be later 0 at the end of the l
 
 BASE:526C0	TTSW10.stackwork	proc near	; decode event sequences
 		; ...
-		; for more details on how the event sequences work in TSW, see https://github.com/Z-H-Sun/tswBGM/blob/main/tswBGM.asm
+		; for more details on how the event sequences work in TSW, see tswBGM.asm
 		; 5,X,X (enemy HP update)
 		; original bytes:
 ;BASE:52BF4		add [TSW_battle_enemy_HP], eax	; eax is damage to enemy in a round

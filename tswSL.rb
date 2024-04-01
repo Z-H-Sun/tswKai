@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 # Author: Z.Sun
-# main repo: https://github.com/Z-H-Sun/tswSL.git
-# asm codes: https://github.com/Z-H-Sun/tswSL/blob/main/tswSL.asm
+# asm codes: tswSL.asm
 
 GENERIC_READ = 0x80000000
 GENERIC_WRITE = 0x40000000

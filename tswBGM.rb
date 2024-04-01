@@ -1,8 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 # Author: Z.Sun
-# main repo: https://github.com/Z-H-Sun/tswBGM.git
-# asm codes: https://github.com/Z-H-Sun/tswBGM/blob/main/tswBGM.asm
+# asm codes: tswBGM.asm
 
 OFFSET_PARENT = 0x4 # similar to OFFSET_OWNER (0x20) but for TTimer that is not applicable
 OFFSET_TTIMER_ENABLED = 0x20 # byte

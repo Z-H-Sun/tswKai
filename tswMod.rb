@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: ASCII-8Bit
 # Author: Z.Sun
-# asm codes: https://github.com/Z-H-Sun/tswKai/blob/main/tswMod.asm
+# asm codes: tswMod.asm
 # My special thanks to Bilibili User '竹林眠り猫', who pioneered the work of analyzing the assembly codes for TSW's battle events and came up with the idea of realizing 'OTK' in TSW (i.e., displaying only one-turn battle animation to save time)
 
 BS_NOTIFY = 0x4000
