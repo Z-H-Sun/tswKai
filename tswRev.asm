@@ -166,7 +166,7 @@ BASE:7F4E1		mov ebx, eax
 ;BASE:7F52D		xor edx, edx	; uncheck
 ;BASE:7F52F		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
 ;BASE:7F535		call TMenuItem.SetChecked	; BASE:102F0
-;BASE:7F53A		mov byte ptr [BASE:89B9F], 1	; this stores the speed mode: 1=High; 2=Middle; 3=Low
+;BASE:7F53A		mov byte ptr [BASE:89B9F], 2	; this stores the speed mode: 1=High; 2=Middle; 3=Low
 ;BASE:7F541		pop ebx
 ;BASE:7F542		ret
 ;BASE:7F543		nop	; align 04
@@ -182,17 +182,56 @@ BASE:7F4E8	loc_set_speed_next:
 BASE:7F4EC		sete dl	; check/uncheck
 BASE:7F4EF		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
 BASE:7F4F5		call TMenuItem.SetChecked	; BASE:102F0
-BASE:7F4FA		pop eax
-BASE:7F4FB		test al, al	; 0=SuperFast
-BASE:7F4FD		sete dl	; check/uncheck
-BASE:7F500		mov eax, [ebx+0358]	; TTSW10.N7: TMenuItem
-BASE:7F506		call TMenuItem.SetChecked	; BASE:102F0
-BASE:7F50B		xor edx, edx	; uncheck
-BASE:7F50D		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
-BASE:7F513		call TMenuItem.SetChecked	; BASE:102F0
-BASE:7F518		pop ebx
-BASE:7F519		ret
+BASE:7F4FA		xor edx, edx	; uncheck
+BASE:7F4FC		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
+BASE:7F502		call TMenuItem.SetChecked	; BASE:102F0
+BASE:7F507		pop eax
+BASE:7F508		test al, al	; 0=SuperFast
+BASE:7F50A		sete dl	; check/uncheck
+BASE:7F50D		jmp loc_set_speedsup_checked
 		; ...
+BASE:7F534	loc_set_speedsup_unchecked:	; this will be used in Low1Click below
+			xor edx, edx	; uncheck
+BASE:7F536	loc_set_speedsup_checked:
+			mov eax, [ebx+0358]	; TTSW10.N7: TMenuItem
+BASE:7F53C		call TMenuItem.SetChecked	; BASE:102F0
+BASE:7F541		pop ebx
+BASE:7F542		ret
+BASE:7F543		nop	; align 04
+;		TTSW10.speedmiddle	endp
+
+BASE:7F544	TTSW10.Low1Click	proc near	; <-- TTSW10.speedlow
+			push ebx
+BASE:7F545		mov ebx, eax
+BASE:7F547		;mov edx, 015E	; original bytes: 350 ms
+			mov edx, 0113	; patched bytes: 275 ms
+BASE:7F54C		mov eax, [ebx+01B4]	; TTSW10.Timer1: TTimer
+BASE:7F552		call TTimer.SetInterval	; BASE:2C464
+BASE:7F557		;mov edx, 015E	; original bytes: 350 ms
+			mov edx, 0096	; patched bytes: 150 ms
+BASE:7F55C		mov eax, [ebx+02EC]	; TTSW10.Timer2: TTimer
+BASE:7F562		call TTimer.SetInterval	; BASE:2C464
+BASE:7F567		;mov edx, 015E	; original bytes: 350 ms
+			mov edx, 0113	; patched bytes: 275 ms
+BASE:7F56C		mov eax, [ebx+030C]	; TTSW10.Timer3: TTimer
+BASE:7F572		call TTimer.SetInterval	; BASE:2C464
+BASE:7F577		xor edx, edx	; uncheck
+BASE:7F579		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
+BASE:7F57F		call TMenuItem.SetChecked	; BASE:102F0
+BASE:7F584		xor edx, edx	; uncheck
+BASE:7F586		mov eax, [ebx+03AC]	; TTSW10.Middle1: TMenuItem
+BASE:7F58C		call TMenuItem.SetChecked	; BASE:102F0
+BASE:7F591		mov dl, 1	; check
+BASE:7F593		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
+BASE:7F599		call TMenuItem.SetChecked	; BASE:102F0
+BASE:7F59E		mov byte ptr [BASE:89B9F], 3	; this stores the speed mode: 1=High; 2=Middle; 3=Low
+		; original bytes
+;BASE:7F5A5		pop ebx
+;BASE:7F5A6		ret
+		; patched bytes
+BASE:7F5A5		jmp loc_set_speedsup_unchecked
+		TTSW10.Low1Click	endp
+BASE:7F5A7	align 04
 
 
 BASE:7D324	TTSW10.OptionSave1Click	proc near	; save speed mode and other settings
@@ -313,3 +352,32 @@ BASE:42B2C	; ...
 BASE:42B30	; ...
 		; ...
 		TTSW10.formactivate	endp
+
+
+;============================================================
+		; Rev3: Default window title and font
+BASE:23FFC	TApplication.Create	proc near
+		; ...
+		; The default app title, before main form initialization (for example, the "Sorry, cannot execute plural TSW" msgbox is shown before TSW main form creation), is determined by the TApplication.Create procedure in the following rule:
+		; * The executable name of the app is read;
+		; * The basename of the file is found;
+		; * The string is split with . and all chars after the first occurrence of . is discarded (which is weird; this is not even the extension name).
+		; * All alphabets but the first one is converted to lower case (Why bother? Two things: 1. Whether the first char is upper or lower case is not considered; 2. non-Latin alphabets are not considered and will cause mojibake).
+BASE:24114		;lea edx, [ebp-0101]	; original bytes: from filename
+			mov edx, offset BASE:88E74	; patched bytes: from app title
+			nop
+		; ...
+		TApplication.Create	endp
+
+
+BASE:172C0	; first byte=length; followed by string
+		; Referenced by THintWindow.Create @ BASE:17284
+		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
+		07, 'Verdana'	; patched bytes: English Ver, or
+		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
+	; ...
+BASE:894A6	; first byte=length; followed by string
+		; likely part of the structure @ BASE:8949C, referenced by TFont.Create and TFont.SetHandle
+		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
+		07, 'Verdana'	; patched bytes: English Ver, or
+		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
