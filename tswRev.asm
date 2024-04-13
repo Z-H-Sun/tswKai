@@ -334,6 +334,9 @@ BASE:7D858		call TMenuItem.SetChecked	; BASE:102F0
 			; ...
 		TTSW10.option1	endp
 
+		; In addition to the Timer2.Interval settings above (recall that Timer2 controls game event processing), sometimes its interval will be separately changed in certain events like door opening (see TTSW10.dooropen at BASE:7717A as an example) / scrolling caption / stair animation / etc.
+		; However, the change will only happen when the High / Middle / Low speed menu itme is ticked; therefore, in cases where SuperHigh speed mode is selected, these interval-changing codes will not be executed, and Timer2.Interval will remain to be 10 msec, the shortest possible interval. So nothing is required to be done in these scenarios.
+
 
 ;============================================================
 		; Rev2: Fix prolog bug
@@ -381,3 +384,117 @@ BASE:894A6	; first byte=length; followed by string
 		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
 		07, 'Verdana'	; patched bytes: English Ver, or
 		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
+
+
+;============================================================
+		; Rev4: Improve tweened animation for hero and enemy movement
+		; Under common cases, the refreshing rate of the game map is < 10 FPS. However, this can cause an unnatural visual feeling during an animated event, e.g., moving the player position. Therefore, TSW will insert interpolation frames while you are moving, written in the TTSW10.idou procedure. The number of interpolated frames is `x` in low-speed mode, `x/2` in middle-speed mode, and `x/4` in high-speed mode, where `x` is the width of each tile (32 or 40 depending on the game window size you choose). And for the movement of monsters, the number of interpolation frames is always `x`, written in the TTSW10.monidou procedure. However, the original codes were flawed in the following two aspects:
+		; * Each frame is drawn consecutively without pausing. Modern CPU/GPUs can process GDI drawing (especially for memory DCs) quite quickly, typically < ms. Therefore, the 40 frames were drawn within several milliseconds, so it is really difficult to notice this tweened animation (in contrast, the routine map refreshing interval is greater than 100 milliseconds). As a result, CPU usage would become high without noticeable improvement of gaming experience
+		; * What's worse, only when the hero / monster moves to `x/4`, `x/2`, or `3x/4` pixels away from the original position would the app update the monster's actual position. In all other frames, the screen would just be exactly same as previous screens, yet the bitmap will still be drawn onto the display, which is a sheer waste of your PC's computation resource
+		; Therefore, I will do the following two changes here:
+		; * Sleep several milliseconds before drawing the next frame to make the transition animation appear more natural without noticeable lag (which also requires less CPU usage)
+		; * Cut down the number of interpolation frames to 4, because as discussed above, only 4 of them are useful (i.e., different from other bitmaps)
+		
+BASE:4C04C	TTSW10.idou	proc near	; rōmaji of 移動; movement; of hero
+		; ...
+BASE:4C0CD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
+BASE:4C0D3		mov esi, [eax+2C]	; esi = TImage.Width (32 or 40)
+		; original bytes
+;BASE:4C0D6		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
+;BASE:4C0DC		cmp byte ptr [eax+28], 1	; TMenuItem.FChecked
+		; ... (briefly: for high-speed mode, esi /= 4; for middle-speed mode, esi /= 2)
+;BASE:4C0FF		mov ebp, esi	; ebp = esi = width or width/2 or width/4
+;BASE:4C101		test ebp, ebp
+;BASE:4C103		jle loc_idou_loop_end
+		; patched bytes
+BASE:4C0D6		shr esi, 2	; esi = width/4 (everytime, draw hero at this offset)
+BASE:4C0D9		mov ebp, 4	; ebp = 4 (draw 4 frames in total)
+BASE:4C0DE		jmp BASE:4C109	; ebp = 4 (draw 4 frames in total)
+BASE:4C0E0	; ...
+		; ----------
+BASE:4C109		mov edi, 1	; edi = 1, 2, ..., ebp
+BASE:4C10E	loc_idou_loop_begin:
+			mov [BASE:8C56C], edi
+		; original bytes
+;BASE:4C114		mov [BASE:8C55C], edi	; distance w.r.t original position
+		; ... (briefly, test if esi is width/2 or width/4, and if so, multiply [BASE:8C55C] with 2 or 4)
+		; patched bytes
+BASE:4C114		mov eax, edi	; eax = 1, 2, 3, or 4
+BASE:4C116		mul esi	; eax *= width/4
+BASE:4C118		mov [BASE:8C55C], eax	; distance w.r.t original position
+BASE:4C11D		push offset BASE:4C15E	; will call loc_idou_sleep next; then should goto this address after `ret`
+BASE:4C122		xchg ax, ax	; 2-byte nop
+
+BASE:4C124	loc_idou_sleep:
+			mov eax, [ebx+02EC]	; TTSW10.Timer2: TTimer
+BASE:4C12A		mov eax, [eax+24]	; TTimer.Interval
+BASE:4C12D		shr eax, 3	; /=8 (floor)
+BASE:4C130		dec eax	; -=1
+BASE:4C131		push eax	; dwMilliseconds: SuperFast: 0 ms; Fast: 5 ms; Middle: 11 ms; Low: 17 ms
+BASE:4C132		mov eax, [BASE:89BFC]	; vacant dword pointer; used to store [KERNEL32.Sleep]
+BASE:4C137		test eax, eax	; if KERNEL32.Sleep is already loaded...
+BASE:4C139		jne loc_idou_sleep_call	; ...then no need to reload; call directly
+BASE:4C13B		push offset BASE:BB5FC	; 'kernel32.dll'
+BASE:4C140		call BASE:04BFC	; kernel32.LoadLibraryA
+BASE:4C145		push offset BASE:4C158	; ('Sleep' see below)
+BASE:4C14A		push eax
+BASE:4C14B		call BASE:04B84	; kernel32.GetProcAddress
+BASE:4C150		mov [BASE:89BFC], eax	; store address
+BASE:4C155	loc_idou_sleep_call:
+			call eax
+BASE:4C157		ret
+BASE:4C158	db 'Sleep', 0
+		; ----------
+
+BASE:4C15E		mov eax, ebx
+BASE:4C160		call TTSW10.yusyaidou	; rōmaji of 勇者移動; movement of hero
+BASE:4C165		mov eax, [BASE:8C514]	; TBitmap (the first of the two "oscillating" game map bitmaps)
+BASE:4C16A		push eax	; arg3
+BASE:4C16B		mov eax, [BASE:8C510]	; TTSW10
+BASE:4C170		call TForm.GetCanvas	; eax = arg0: TCanvas
+BASE:4C175		mov ecx, [BASE:8C57C]	; arg2 = Y (game map rect's Left)
+BASE:4C17B		mov edx, [BASE:8C578]	; arg1 = X (game map rect's Top)
+BASE:4C181		call TCanvas.Draw	; the codes from BASE:45165 till here draws a memory bitmap onto game window's screen DC
+BASE:4C186		inc edi	; edi = 1, 2, 3, or 4
+BASE:4C187		dec ebp	; ebp = 3, 2, 1, or 0
+BASE:4C188		jne loc_idou_loop_begin
+BASE:4C18A	loc_idou_loop_end:
+		; ...
+		TTSW10.idou	endp
+
+BASE:80384	TTSW10.monidou	proc near	; movement of monsters
+		; ...
+BASE:803DD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
+BASE:803E3		mov ebp, [eax+2C]	; ebp = TImage.Width (32 or 40)
+		; original bytes
+;BASE:803E6		test ebp, ebp
+;BASE:803E8		jle loc_monidou_loop_end
+;BASE:803EE		mov [esp], 1	; [esp] = 1, 2, ..., width
+;BASE:803F5	loc_monidou_loop_begin:
+		; patched bytes
+BASE:803E6		shr ebp, 2	; distance w.r.t original position = width/4
+BASE:803E9		mov [esp], ebp	; [esp] = width/4 (then width/2, 3width/4, width)
+BASE:803EC		nop [eax+0]	; 3-byte nop
+BASE:803F0	loc_monidou_loop_begin_new:
+			call loc_idou_sleep
+		; ----------
+
+BASE:803F5		mov eax, [esp]
+			; ...
+
+		; original bytes
+;BASE:807B2		inc [esp]
+;BASE:807B5		dec ebp
+;BASE:807B6		jne loc_monidou_loop_begin
+;BASE:807BC	loc_monidou_loop_end:
+;			mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
+;BASE:807C2		mov eax, [eax+2C]	; TImage.Width (32 or 40)
+		; patched bytes
+BASE:807B2		add [esp], ebp	; [esp] = width/2 (then 3width/4, width, 5width/4)
+BASE:807B5		mov eax, ebp
+BASE:807B7		shr eax, 2	; eax = width
+BASE:807BA		cmp [esp], eax
+BASE:807BD		jbe loc_monidou_loop_begin_new
+BASE:807C3		xchg ax, ax	; 2-byte nop
+BASE:807C5	; ...
+		TTSW10.monidou	endp
