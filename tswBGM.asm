@@ -147,7 +147,7 @@ BASE:312D8		mov [esp+4], edx	; DWORD dwFrom (in MCI_PLAY_PARMS)
 		; taisen.wav (battle): always
 		; get.wav, open.wav, zeno.wav (magic attack): in addition to their normal use, these sound effects will also be used in special events, such as 3F, 10F, 25F, and 50F. In these special events, I don't want to play the sound effects from the beginning every time; otherwise they will be way too quick and dense (like "da-da-da-da-da" without any pause); actually the original treatment is better, i.e. wait for the previous sound effect to finish before starting the next one.
 		; so I will set a threshold value, once the event count in [BASE:8C5AC] (pointer to the current event sequence, see elsewhere for its explanation) is greater than this value, it will be viewed as a special event, and then the file will not be played from the beginning (i.e. TSW's original treatment)
-BASE:312DC		add eax, TTSW10.TMediaPlayer3	; this one plays the "taisen" (battle) soundeffect
+BASE:312DC		add eax, offset TTSW10.TMediaPlayer3	; this one plays the "taisen" (battle) soundeffect
 BASE:312E1		cmp ebx, [eax]	; if is TMediaPlayer3
 BASE:312E3		je BASE:31304	; always play the soundeffect from the beginning; otherwise, there will be missing sounds if this sound has already been playing
 BASE:312E5		cmp ebx, [eax-4]	; if is TMediaPlayer2 (TTSW10.TMediaPlayer2=0x460=TTSW10.TMediaPlayer3-4)
@@ -930,7 +930,7 @@ EXTRA:0C63	align 04
 		;===== SUBROUTINE =====
 EXTRA:0C64	sub_checkBGM_ext	proc near	; judge the BGM id more accurately, such as whether the game is over and whether in the middle of a boss battle
 
-			mov eax, TSW_hero_status
+			mov eax, offset TSW_hero_status
 EXTRA:0C69		cmp [eax], 0	; HP
 EXTRA:0C6C		jne loc_floor
 

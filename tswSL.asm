@@ -97,12 +97,12 @@ BASE:7E614	TTSW10.Load81Click	proc near	; this is called when you click the Load
 		; `loadwork` alone is not enough, because it does not include some important pre- and post-processing. For example, save0.dat should be saved beforehand in case the data to load is a bad one; afterwards, `itemlive` should be called to re-enable buttons and menu items in case you were in the middle of a dialog, and TTimer1 should be re-enabled in case you are going up-/downstairs
 		; "Load Data 1" was reserved by the legacy version of tswSL, so for compatibility and to avoid conflicts, we choose to work on "Load Data 8" in this 
 		; ...
-BASE:7E6C8		mov eax, TSW_file_handle	; to this point, the temporary save0.dat has been saved
+BASE:7E6C8		mov eax, offset TSW_file_handle	; to this point, the temporary save0.dat has been saved
 BASE:7E6CD		call BASE:042B8	; system.@Close
 BASE:7E6D2		call BASE:02710	; system.@_IOTest
-BASE:7E6D7		lea ecx, [ebp-04]	; arg1, reserved for the pointer of savedat path
-BASE:7E6DA		mov eax, [ebx+0444]	; TMemo12, which stores the savedat path
 		; original bytes:
+;BASE:7E6D7		lea ecx, [ebp-04]	; arg1, reserved for the pointer of savedat path
+;BASE:7E6DA		mov eax, [ebx+0444]	; TMemo12, which stores the savedat path
 ;BASE:7E6E0		mov eax, [eax+0118]	; TMemo.FAlignment.TAlignment
 ;BASE:7E6E6		xor edx, edx	; line number?
 ;BASE:7E6E8		mov esi, [eax]
@@ -114,12 +114,14 @@ BASE:7E6DA		mov eax, [ebx+0444]	; TMemo12, which stores the savedat path
 		; ...
 
 		; patched bytes:
-		; actually the lines at BASE:7E6D7 and BASE:7E6DA are not necessary and can be removed. I kept them simply due to my "minimal perturbation" philosophy
+BASE:7E6D7		xchg ax, ax	; 2-byte nop
+BASE:7E6D9		mov eax, ebx
+BASE:7E6DB		call TTSW10.timerin	; this resets the TTimer2 interval. This is necessary because in some events, TTimer2.Interval will be set to other values, and if data loading happens before it is set back to the original value, the timer interval will remain incorrect
 BASE:7E6E0		mov eax, offset TSW_filename_addr
 BASE:7E6E5		cmp eax, [filename_pointer_addr]	; check if you are loading data 8 (original function) or tempdata/arbitrary data (tswSL)
 BASE:7E6EB		jne BASE:7E767	; for tempdata/arbitrary data, no need to set filename (already taken care of in `sub_load*`) or menu item check states
 BASE:7E6ED		mov edi, [eax]	; string move destination
-BASE:7E6EF		mov esi, BASE:7E7C8	; string "\save8.dat"; string move source
+BASE:7E6EF		mov esi, offset BASE:7E7C8	; string "\save8.dat"; string move source
 BASE:7E6F4		add edi, [edi-04]	; [edi-04]=length of the filename string; move to the end of string
 BASE:7E6F7		mov ecx, [esi-04]	; [esi-04]=length of the basename string "\save8.dat"
 BASE:7E6FA		sub edi, ecx	; move to the actual position for string replacement
@@ -875,7 +877,7 @@ EXTRA:08CE	align 04
 		;===== SUBROUTINE =====
 EXTRA:08D0	sub_checkitem	proc near	; xxx
 
-			mov eax, TSW_item_id
+			mov eax, offset TSW_item_id
 EXTRA:08D6		cmp eax, 0C	; SnowCrystal; no need to save temp data
 EXTRA:08D9		je loc_ret6
 

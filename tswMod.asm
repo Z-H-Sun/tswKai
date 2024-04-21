@@ -393,14 +393,14 @@ BASE:84F48	TTSW10.syokidata0	proc near	; (rōmaji of '初期data0') initializati
 ;BASE:84FA5		xor edx,edx
 ;BASE:84FA7		mov eax, [ebx+0474]	; TMenuItem:k1 ('Size')
 ;BASE:84FAD		call TMenuItem.SetEnabled	; BASE:10378
-;BASE:84FB2		mov eax, BASE:8C5FC	; AnsiString
-;BASE:84FB7		mov edx, BASE:88858	; '\data' (this is folder of image files for the smaller-sized window)
+;BASE:84FB2		mov eax, offset BASE:8C5FC	; AnsiString
+;BASE:84FB7		mov edx, offset BASE:88858	; '\data' (this is folder of image files for the smaller-sized window)
 ;BASE:84FBC		call @LStrAsg	; BASE:0352C
 ;BASE:84FC1		mov [BASE:8C578], 0090	; game_map.left = 144
 ;BASE:84FCB		mov [BASE:8C57C], 0018	; game_map.top = 24
 ;BASE:84FD5		jmp BASE:84FFA
-;BASE:84FD7		mov eax, BASE:8C5FC	; AnsiString
-;BASE:84FDC		mov edx, BASE:88868	; '\data3' (this is folder of image files for the larger-sized window)
+;BASE:84FD7		mov eax, offset BASE:8C5FC	; AnsiString
+;BASE:84FDC		mov edx, offset BASE:88868	; '\data3' (this is folder of image files for the larger-sized window)
 ;BASE:84FE1		call @LStrAsg	; BASE:0352C
 ;BASE:84FE6		mov [BASE:8C578], 00B4	; game_map.left = 180
 ;BASE:84FF0		mov [BASE:8C57C], 001E	; game_map.top = 30
@@ -434,8 +434,8 @@ BASE:84FB2		call SendMessageA
 BASE:84FB7		mov word ptr [TSW_Zeno_GOLD], 01F4	; reset temp var to TSW_Zeno_GOLD, 500
 BASE:84FC0		pop eax	; 7 or 10, indicating small or large game window respectively
 BASE:84FC1		cmp al, 07
-BASE:84FC3		mov eax, BASE:8C5FC	; AnsiString
-BASE:84FC8		mov edx,BASE:88858	; '\data' (this is folder of image files for the smaller-sized window)
+BASE:84FC3		mov eax, offset BASE:8C5FC	; AnsiString
+BASE:84FC8		mov edx, offset BASE:88858	; '\data' (this is folder of image files for the smaller-sized window)
 BASE:84FCD		jne BASE:84FE4
 BASE:84FCF		call @LStrAsg	; BASE:0352C
 BASE:84FD4		mov byte ptr [BASE:8C578], 90	; game_map.left = 144
