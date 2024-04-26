@@ -1,3 +1,8 @@
+; Other revisions:
+; - Solve 49F sorcerer show-up animation bug: addressed in tswMod.asm
+; - Allow data loading during events: addressed in tswSL.asm
+; - Properly process consecutive sound effects: addressed in tswBGM.asm
+
 BASE:41BFC	dw 000F	; total length of the structure
 BASE:41BFE	;dd offset BASE:7F544	; original bytes
 		dd offset BASE:7F4D8	; patched bytes
@@ -23,8 +28,8 @@ BASE:425F3	db 0A	; length of the subsequent string
 BASE:425F4	db 'High1Click'	; => TTSW10.speedhigh
 ; ...
 BASE:42611	dw 0010	; total length of the structure
-BASE:42613	;dd offset BASE:7F464	; original bytes
-		dd offset BASE:7F47C	; patched bytes
+BASE:42613	;dd offset BASE:7F474	; original bytes
+		dd offset BASE:7F544	; patched bytes
 BASE:42617	db 09	; length of the subsequent string
 BASE:42618	db 'Low1Click'	; => TTSW10.speedlow
 
@@ -58,7 +63,7 @@ BASE:7F471		ret
 BASE:7F472	align 04
 
 BASE:7F474	loc_DisTEdit8_2:	; <-- TTSW10.Low1Click	proc near
-		; original code
+		; original bytes:
 ;			call BASE:7F544	; => TTSW10.speedlow
 				; likewise, no need for this relay
 		; patched bytes:
@@ -76,7 +81,7 @@ BASE:7F47A	align 04
 BASE:7F47C	TTSW10.High1Click	proc near	; <-- TTSW10.speedhigh
 			push ebx
 BASE:7F47D		mov ebx, eax
-		; original bytes
+		; original bytes:
 ;BASE:7F47F		mov edx, 0096	; 150 ms
 ;BASE:7F484		mov eax, [ebx+01B4]	; TTSW10.Timer1: TTimer
 ;BASE:7F48A		call TTimer.SetInterval	; BASE:2C464
@@ -100,7 +105,7 @@ BASE:7F47D		mov ebx, eax
 ;BASE:7F4DE		ret
 ;BASE:7F4DF		nop	; align 04
 ;		TTSW10.speedhigh	endp
-		; patched bytes
+		; patched bytes:
 BASE:7F47F		push 1	; push arg0 (speed mode = 1 = High) to stack
 
 BASE:7F481	loc_set_speed:	; For SuperFast/High/Middle speed modes (Low will be treated elsewhere); arg0 (DWORD on stack) = speed mode
@@ -147,7 +152,7 @@ BASE:7F4DF	align 04
 BASE:7F4E0	TTSW10.speedmiddle	proc near
 			push ebx
 BASE:7F4E1		mov ebx, eax
-		; original bytes
+		; original bytes:
 ;BASE:7F4E3		mov edx, 00FA	; 250 ms
 ;BASE:7F4E8		mov eax, [ebx+01B4]	; TTSW10.Timer1: TTimer
 ;BASE:7F4EE		call TTimer.SetInterval	; BASE:2C464
@@ -171,7 +176,7 @@ BASE:7F4E1		mov ebx, eax
 ;BASE:7F542		ret
 ;BASE:7F543		nop	; align 04
 ;		TTSW10.speedmiddle	endp
-		; patched bytes
+		; patched bytes:
 BASE:7F4E3		push 2	; push arg0 (speed mode = 2 = Middle) to stack
 BASE:7F4E5		jmp loc_set_speed
 BASE:7F4E7		nop	; align 04
@@ -225,10 +230,10 @@ BASE:7F591		mov dl, 1	; check
 BASE:7F593		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
 BASE:7F599		call TMenuItem.SetChecked	; BASE:102F0
 BASE:7F59E		mov byte ptr [BASE:89B9F], 3	; this stores the speed mode: 1=High; 2=Middle; 3=Low
-		; original bytes
+		; original bytes:
 ;BASE:7F5A5		pop ebx
 ;BASE:7F5A6		ret
-		; patched bytes
+		; patched bytes:
 BASE:7F5A5		jmp loc_set_speedsup_unchecked
 		TTSW10.Low1Click	endp
 BASE:7F5A7	align 04
@@ -236,7 +241,7 @@ BASE:7F5A7	align 04
 
 BASE:7D324	TTSW10.OptionSave1Click	proc near	; save speed mode and other settings
 		; ...
-		; original bytes
+		; original bytes:
 ;BASE:7D387		mov byte ptr [BASE:89B9F], 2	; this stores the speed mode: 1=High; 2=Middle; 3=Low
 ;BASE:7D38E		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
 ;BASE:7D394		cmp byte ptr [eax+28], 1	; TMenuItem.FChecked: Boolean
@@ -249,7 +254,7 @@ BASE:7D324	TTSW10.OptionSave1Click	proc near	; save speed mode and other setting
 ;BASE:7D3AD		mov byte ptr [BASE:89B9F], 3	; Low
 ;BASE:7D3B4	loc_speed_not_low:
 			; ...
-		; patched bytes
+		; patched bytes:
 BASE:7D387		xor edx, edx	; `dl` will be assigned to [BASE:89B8F] later; now 0=SuperFast
 BASE:7D389		lea ecx, [ebx+03A8]	; offset TTSW10.High1
 BASE:7D38F		mov eax, [ecx]	; TTSW10.High1
@@ -275,7 +280,7 @@ BASE:7D3B4	; ...
 
 BASE:7D4A4	TTSW10.option1	proc near	; load speed mode and other settings
 		; ...
-		; original bytes
+		; original bytes:
 ;BASE:7D7FA		xor edx, edx	; uncheck
 ;BASE:7D7FC		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
 ;BASE:7D802		call TMenuItem.SetChecked	; BASE:102F0
@@ -309,7 +314,7 @@ BASE:7D4A4	TTSW10.option1	proc near	; load speed mode and other settings
 ;BASE:7D858		call TMenuItem.SetChecked	; BASE:102F0
 ;BASE:7D85D	loc_speed_default:
 			; ...
-		; patched bytes
+		; patched bytes:
 BASE:7D7FA		mov al, byte ptr [esi+3]	; esi=BASE:89B9C; BASE:89B9F stores the speed mode
 BASE:7D7FD		push eax
 BASE:7D7FE		cmp al, 3	; Low
@@ -334,8 +339,130 @@ BASE:7D858		call TMenuItem.SetChecked	; BASE:102F0
 			; ...
 		TTSW10.option1	endp
 
+
 		; In addition to the Timer2.Interval settings above (recall that Timer2 controls game event processing), sometimes its interval will be separately changed in certain events like door opening (see TTSW10.dooropen at BASE:7717A as an example) / scrolling caption / stair animation / etc.
 		; However, the change will only happen when the High / Middle / Low speed menu itme is ticked; therefore, in cases where SuperHigh speed mode is selected, these interval-changing codes will not be executed, and Timer2.Interval will remain to be 10 msec, the shortest possible interval. So nothing is required to be done in these scenarios.
+		; The only exception is TTSW10.opening9 (epilog) below
+BASE:42E60	TTSW10.opening9	proc near	; epilog ("The tower has fallen down")
+		; ...
+		; Task 4: Show animation of fallen tower zooming out
+BASE:839D0		mov edx, 0064	; 100 ms
+BASE:839D5		mov eax, [ebx+02EC]	; TTSW10.Timer2
+BASE:839DB	; original bytes:
+			; call TTimer.SetInterval
+		; patched bytes:
+			call loc_opening9_timer_setinterval	; BASE:7F5C0 (see below)
+		; briefly, the intervals here were too long. I think it's better to shorten the interval according to the game speed mode settings
+		; ...
+
+		; Task 5: Show scrolling caption
+BASE:83C8A		mov edx, 003C	; 60 ms
+BASE:83C8F		mov eax, [ebx+02EC]	; TTSW10.Timer2
+BASE:83C95	; original bytes:
+			; call TTimer.SetInterval
+		; patched bytes:
+			call loc_opening9_timer_setinterval	; BASE:7F5C0 (see below)
+		; ...
+
+		; Task 6: Show animation of tower falling down
+BASE:83E58		mov edx, 01C2	; 450 ms
+BASE:83E5D		mov eax, [ebx+02EC]	; TTSW10.Timer2
+BASE:83E63	; original bytes:
+			; call TTimer.SetInterval
+		; patched bytes:
+			call loc_opening9_timer_setinterval	; BASE:7F5C0 (see below)
+		; ...
+
+		; Task 8: End animation and show "See You Again" screen
+BASE:846F6		mov dl, 01	; True
+		; orignal bytes:
+;BASE:846F8		mov eax, [ebx+0480]	; TTSW10.Panel2 (frame for "See you again" button)
+;BASE:846FE		call TControl.SetVisible
+;BASE:84703		mov dl,01	; True
+;BASE:84705		mov eax, [ebx+0484]	; TTSW10.Image34 ("See you again" button)
+;BASE:8470B		call TControl.SetVisible
+;BASE:84710		mov eax, [BASE:8C510]	; TTSW10 handle; can be replaced by ebx
+;BASE:84715		mov byte ptr [eax+0118], 01	; don't know what this is
+;BASE:8471C		xor edx, edx	; False
+;BASE:8471E		mov eax, [ebx+02EC]	; TTSW10.Timer2
+;BASE:84724		call TTimer.SetEnabled
+		; patched bytes:
+BASE:846F8		lea esi, [ebx+0480]	; this can overall save 1 byte
+BASE:846FE		mov eax, [esi]
+BASE:84700		mov edi, offset TControl.SetVisible	; this can overall save 1 byte
+BASE:84705		call edi
+BASE:84707		mov dl, 01
+BASE:84709		mov eax, [esi+04]	; [ebx+0484]
+BASE:8470C		call edi
+BASE:8470E		mov byte ptr [ebx+0118], 01	; this can overall save 5 bytes
+BASE:84715		lea esi, [ebx+02EC]	; offset TTSW10.Timer2 (esi will be used to save space for [ebx+0334]: by replacing it with [esi+48], 3 bytes can be saved; see below)
+BASE:8471B		mov eax, [esi]	; this overall adds 2 more bytes
+BASE:8471D		xor edx, edx	; False
+BASE:8471F		call TTimer.SetEnabled
+		; Codes above save 5 bytes in total, which is enough to insert a `call` below
+BASE:84724		call loc_opening9_timer_postprocess	; BASE:7F5D8 (see below)
+		; briefly, two more functions will be called:
+		; the first one, TTimer.timerin resets the Timer2 interval. Originally, there was no this line, so this can be a small bug when you start the next round game, though the interval will be set back normal when you open a door (because TTSW10.timerin will be called in TTSW10.dooropen). The bug can be solved by explicitly calling TTimer.timerin here
+		; the other one: in tswSL.asm I cancelled disabling loading in TTSW10.itemdel, so you could load data during an event. However, it's not a good idea here because the "See you again" button won't be properly eliminated, so need to re-disable loading here
+		; (although this can't prevent user from loading arbitrary data or temp data in tswSL... Please don't do that)
+		; ...
+
+		TTSW10.opening9	endp
+
+
+BASE:7F5A8	TTSW10.timerin	proc near	; reset timer intervals (because sometimes, the interval of some timer, especially Timer2, will be changed in an event, so need to change back afterwards)
+BASE:7F5A8		push ebx
+BASE:7F5A9		mov ebx, eax	; prolog
+		; now need to take into account the SuperFast mode
+		; and space can be saved here to insert our codes
+		; original bytes:
+;BASE:7F5AB		mov eax, [ebx+03AC]	; TTSW10.Middle1: TMenuItem
+;BASE:7F5B1		cmp byte ptr [eax+28], 01	; TMenuItem.FChecked: Boolean
+;BASE:7F5B5		jne BASE:7F5BE
+;BASE:7F5B7		mov eax, ebx
+;BASE:7F5B9		call TTSW10.speedmiddle	; BASE:7F4E0
+;BASE:7F5BE		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
+;BASE:7F5C4		cmp byte ptr [eax+28], 01	; TMenuItem.FChecked: Boolean
+;BASE:7F5C8		jne BASE:7F5D1
+;BASE:7F5CA		mov eax, ebx
+;BASE:7F5CC		call TTSW10.speedhigh	; BASE:7F47C
+;BASE:7F5D1		mov eax, [ebx+03B0]	; TTSW10.Low1: TMenuItem
+;BASE:7F5D7		cmp byte ptr [eax+28], 01	; TMenuItem.FChecked: Boolean
+;BASE:7F5DB		jne BASE:7F5E4
+;BASE:7F5DD		mov eax, ebx
+;BASE:7F5DF		call TTSW10.speedlow	; BASE:7F544
+;BASE:7F5E4		pop ebx
+;BASE:7F5E5		ret
+;		TTSW10.timerin	endp
+
+		; patched bytes:
+BASE:7F5AB		movzx ecx, byte ptr [BASE:89B9F]	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
+BASE:7F5B2		cmp ecx, 03	; Low (this one is processed separately from other speed modes)
+BASE:7F5B5		je BASE:7F547	; snippet in TTSW10.Low1Click
+BASE:7F5B7		push ecx	; otherwise, push speed mode onto stack
+BASE:7F5B8		jmp loc_set_speed	; BASE:7F481
+BASE:7F5BD	loc_opening9_timer_setinterval_ret:
+			ret	; this is actually not necessary, but is used in BASE:7F5C9 below
+BASE:7F5BE		xchg ax, ax	; 2-byte nop
+		TTSW10.timerin	endp
+
+
+BASE:7F5C0	loc_opening9_timer_setinterval:	; see above; eax (Timer2), edx (Interval) already set
+			movzx ecx, byte ptr [BASE:89B9F]	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
+BASE:7F5C7		test ecx, ecx
+BASE:7F5C9		je loc_opening9_timer_setinterval_ret	; for SuperFast mode, don't change interval (which remains 10 ms)
+BASE:7F5CB		inc ecx
+BASE:7F5CC		imul edx, ecx
+BASE:7F5CF		shr edx, 02	; High: *1/2; Middle: *3/4; Low: *1
+BASE:7F5D2		jmp TTimer.SetInterval
+BASE:7F5D7		nop
+
+BASE:7F5D8	loc_opening9_timer_postprocess:	; see above; TTSW10.GameLoad1.SetEnabled(False) and TTSW10.timerin will be called
+			mov eax, [esi+48]	; TTSW10.GameLoad1: TMenuItem (=[ebx+0334] because esi=ebx+02EC; this can save 3 bytes space)
+BASE:7F5DB		xor edx, edx	; False
+BASE:7F5DD		call TMenuItem.SetEnabled	; BASE:10378
+BASE:7F5E2		mov eax, ebx
+BASE:7F5E4		jmp TTSW10.timerin
 
 
 ;============================================================
@@ -343,7 +470,7 @@ BASE:7D858		call TMenuItem.SetChecked	; BASE:102F0
 BASE:4280C	TTSW10.formactivate	proc near	; <= TTSW10.OnActivate
 		; this will be called when the main form is initialized and shown
 		; ...
-		; original bytes
+		; original bytes:
 ;BASE:42B23		mov eax, [ebp-4]	; TTSW10
 ;BASE:42B26		mov eax, [eax+0420]	; TTSW10.K5: TMenuItem
 ;BASE:42B2C		cmp byte ptr [eax+28], 1	; TMenuItem.FChecked: Boolean
@@ -399,14 +526,14 @@ BASE:4C04C	TTSW10.idou	proc near	; rōmaji of 移動; movement; of hero
 		; ...
 BASE:4C0CD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
 BASE:4C0D3		mov esi, [eax+2C]	; esi = TImage.Width (32 or 40)
-		; original bytes
+		; original bytes:
 ;BASE:4C0D6		mov eax, [ebx+03A8]	; TTSW10.High1: TMenuItem
 ;BASE:4C0DC		cmp byte ptr [eax+28], 1	; TMenuItem.FChecked
 		; ... (briefly: for high-speed mode, esi /= 4; for middle-speed mode, esi /= 2)
 ;BASE:4C0FF		mov ebp, esi	; ebp = esi = width or width/2 or width/4
 ;BASE:4C101		test ebp, ebp
 ;BASE:4C103		jle loc_idou_loop_end
-		; patched bytes
+		; patched bytes:
 BASE:4C0D6		shr esi, 2	; esi = width/4 (everytime, draw hero at this offset)
 BASE:4C0D9		mov ebp, 4	; ebp = 4 (draw 4 frames in total)
 BASE:4C0DE		jmp BASE:4C109	; ebp = 4 (draw 4 frames in total)
@@ -415,10 +542,10 @@ BASE:4C0E0	; ...
 BASE:4C109		mov edi, 1	; edi = 1, 2, ..., ebp
 BASE:4C10E	loc_idou_loop_begin:
 			mov [BASE:8C56C], edi
-		; original bytes
+		; original bytes:
 ;BASE:4C114		mov [BASE:8C55C], edi	; distance w.r.t original position
 		; ... (briefly, test if esi is width/2 or width/4, and if so, multiply [BASE:8C55C] with 2 or 4)
-		; patched bytes
+		; patched bytes:
 BASE:4C114		mov eax, edi	; eax = 1, 2, 3, or 4
 BASE:4C116		mul esi	; eax *= width/4
 BASE:4C118		mov [BASE:8C55C], eax	; distance w.r.t original position
@@ -466,12 +593,12 @@ BASE:80384	TTSW10.monidou	proc near	; movement of monsters
 		; ...
 BASE:803DD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
 BASE:803E3		mov ebp, [eax+2C]	; ebp = TImage.Width (32 or 40)
-		; original bytes
+		; original bytes:
 ;BASE:803E6		test ebp, ebp
 ;BASE:803E8		jle loc_monidou_loop_end
 ;BASE:803EE		mov [esp], 1	; [esp] = 1, 2, ..., width
 ;BASE:803F5	loc_monidou_loop_begin:
-		; patched bytes
+		; patched bytes:
 BASE:803E6		shr ebp, 2	; distance w.r.t original position = width/4
 BASE:803E9		mov [esp], ebp	; [esp] = width/4 (then width/2, 3width/4, width)
 BASE:803EC		nop [eax+0]	; 3-byte nop
@@ -482,14 +609,14 @@ BASE:803F0	loc_monidou_loop_begin_new:
 BASE:803F5		mov eax, [esp]
 			; ...
 
-		; original bytes
+		; original bytes:
 ;BASE:807B2		inc [esp]
 ;BASE:807B5		dec ebp
 ;BASE:807B6		jne loc_monidou_loop_begin
 ;BASE:807BC	loc_monidou_loop_end:
 ;			mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
 ;BASE:807C2		mov eax, [eax+2C]	; TImage.Width (32 or 40)
-		; patched bytes
+		; patched bytes:
 BASE:807B2		add [esp], ebp	; [esp] = width/2 (then 3width/4, width, 5width/4)
 BASE:807B5		mov eax, ebp
 BASE:807B7		shr eax, 2	; eax = width
@@ -531,7 +658,7 @@ BASE:52C95	; original bytes:
 		; ...
 		; Starting from BASE:53029, TSW would draw "hit" animation to memory bitmap #1 (the second of the two "oscillating" game map bitmaps), and we will change some codes here to hide the "hit" animation (thus serving as a pause for showing "hit" animations between battle rounds)
 
-		; original bytes
+		; original bytes:
 ;BASE:53029		push 0	; arg3: Y
 ;BASE:5302B		mov eax, [BASE:8C5AC]
 ;BASE:53030		lea eax, [eax+eax*2]
@@ -616,12 +743,12 @@ BASE:52C95	; original bytes:
 ;BASE:5315B		mov edx, [BASE:8C54C]	; arg1: X
 ;BASE:53161		call TCanvas.Draw
 
-		; patched bytes
+		; patched bytes:
 BASE:53029		imul eax, [BASE:8C5AC], 06
 BASE:53030		add eax, offset BASE:8C74C	; current event sequence pointer
 BASE:53035		push eax	; store this pointer
 BASE:53036		xor edx,edx	; dl = 0 <- TTimer.Enabled (False)
-BASE:53038		xor ecx,ecx	; clear all bits
+BASE:53038		xor ecx,ecx	; clear all bytes
 BASE:5303A		mov cl, [eax-0C]	; the major type of event; two sequences before
 BASE:5303D		sub cl, 04	; make sure is 4 or 5 (update hero or enemy HP), i.e., within a battle event (because 9,A,B can be used in other events as well, which should be excluded)
 BASE:53040		cmp cl, 01
@@ -724,9 +851,9 @@ BASE:53129		ret
 BASE:5312A		nop
 		; ...
 
-BASE:53166	; original bytes
+BASE:53166	; original bytes:
 ;			mov eax, [BASE:8C514]	; TBitmap: the first of the two "oscillating" game map bitmaps
-		; patched bytes
+		; patched bytes:
 		loc_stackwork_draw_bitmap2:
 			mov eax, [BASE:8C518]	; this was jumped from BASE:52C25 or BASE:52C95, where the "hit" animation is paused between rounds
 BASE:5316B	loc_stackwork_draw_bitmap:	; this can be jumped from BASE:5315F, in which case the "hit" animation will be drawn
@@ -745,7 +872,7 @@ BASE:53187		jmp loc_stackwork_end	; BASE:547E8; end of treatment
 		; Originally, TSW drew two "sword and staff" tile at a time, so showing and hiding 121 tiles in the map each took 61 Timer cycles. Timer interval is, at minimum, 10 ms on windows, so the whole up/downstairs animation took at least 1.21 s. This waiting time had better be shortened in the fast or superfast speed mode.
 		; 21,A,B (stair animation)
 		; A = 0/1 show/hide "sword and staff" tile; B = 0,1,...,121
-		; original codes
+		; original bytes:
 ;BASE:5433B		movsx eax, word ptr [ecx*2+BASE:8C750]	; `B` parameter in the current (21,A,B) event sequence (ecx = 3*[BASE:8C5AC])
 ;BASE:54343		mov [BASE:8C570], eax
 ;BASE:54348		mov eax, [BASE:8C570]	; redundant
@@ -776,16 +903,16 @@ BASE:53187		jmp loc_stackwork_end	; BASE:547E8; end of treatment
 ;BASE:5439E		je loc_stackwork_stair_ani_hide	; `A` == 1; BASE:544D9
 ;BASE:543A4		jmp loc_stackwork_end	; this is not likely
 ;BASE:543A9	loc_stackwork_stair_ani_show:
-;			cmp dword ptr [BASE:B87EC], 00	; this byte stores the "whether-to-enable-soundeffect" setting
+;			cmp [BASE:B87EC], 0	; this byte stores the "whether-to-enable-soundeffect" setting
 ;BASE:543B0		jne loc_stackwork_stair_ani_show_2
-;BASE:543B2		cmp dword ptr [BASE:8C570], 01	; play this sound effect only at the very beginning (i.e., `B` == 1)
+;BASE:543B2		cmp [BASE:8C570], 1	; play this sound effect only at the very beginning (i.e., `B` == 1)
 ;BASE:543B9		jne loc_stackwork_stair_ani_show_2
 ;BASE:543BB		mov eax, [ebx+02D4]	; TTSW10.MediaPlayer1: TMediaPlayer ('open.wav')
 ;BASE:543C1		call TMediaPlayer.Play	; BASE:31250
 ;BASE:543C6	loc_stackwork_stair_ani_show_2:
 			; this treatment will process two (21,A,B) event sequences at a time, i.e., will draw two tiles at a time
 
-		; patched bytes
+		; patched bytes:
 BASE:5433B		xor edi, edi	; edi = repetition times
 BASE:5433D		inc edi	; edi = 1
 BASE:5433E		cmp byte ptr [BASE:89B9F], 01	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
@@ -796,7 +923,7 @@ BASE:5434A		shl edi,1	; SuperFast mode: show 2*4 tiles at a time
 BASE:5434C		jmp BASE:54368
 
 BASE:5434E	loc_stackwork_stair_ani_hide_loop:
-			cmp dword ptr [BASE:8C570], 0079
+			cmp [BASE:8C570], 0079	; 121
 BASE:54355		je loc_stackwork_stair_ani_hide_end
 
 BASE:5435B	loc_stackwork_stair_ani_show_loop:
@@ -825,22 +952,23 @@ BASE:543A6		je loc_stackwork_stair_ani_show_2	; BASE:543C6
 BASE:543A8		jmp loc_stackwork_stair_ani_hide	; BASE:544D9
 		; ...
 
-BASE:5448C	; original code:
-;			cmp dword ptr [BASE:8C570], 01	; `B`
+BASE:5448C	; original bytes:
+;			cmp [BASE:8C570], 1	; `B`
 		; ...
 		; as I mentioned above, each Timer2 cycle draws 2 tiles, and here is just the second one. The codes here are similar to those starting from BASE:543B2
 		; however, it is impossible to have `B` == 1 here: Even at the very beginning, `B` will be 2, so this code block was never executed
-			cmp dword ptr [BASE:8C570], 02
+		; patched bytes:
+			cmp [BASE:8C570], 2
 		; as I mentioned above, I ran out of space and was unable to insert codes for playing the soundeffect. But here is a perfect place to handle this issue. So `B` == 2 just means it is the very beginning, and the soundeffect will be played in such cases.
 		; ...
 
-BASE:544D4	; original code:
+BASE:544D4	; original bytes:
 ;			jmp loc_stackwork_end
 		; patched bytes:
 			jmp loc_stackwork_stair_ani_show_loop	; check if more drawing needed in this cycle
 
-BASE:547B4	; original code:
-;			cmp dword ptr [;BASE:8C570], 0079
+BASE:547B4	; original bytes:
+;			cmp [BASE:8C570], 0079	; 121
 ;			jne loc_stackwork_end
 
 		; patched bytes:
@@ -869,6 +997,7 @@ BASE:42DC8	TTSW10.kaidanwork	proc near	; kaidan = rōmaji of 階段; stair
 ;BASE:42F0F		mov word ptr [esi+eax*2+02], 0009
 ;BASE:42F16		mov word ptr [esi+eax*2+04], 0000	; (1,9,0) = play MediaPlayer5 with file "kai.wav" (two consecutive "dadadadada" sounds)
 
+		; patched bytes:
 BASE:42EEE		xor edx,edx	; edx = 0
 BASE:42EF0		mov [esi+eax*2], edx
 BASE:42EF3		mov [esi+eax*2+04], dx
@@ -925,7 +1054,7 @@ BASE:660F9		mov [eax+04], ecx	; (0, 0, ecx), (0, ..., ...) (ecx = 16, 15, ..., 1
 BASE:660FC		mov byte ptr [eax+06], 0D	; (13, ..., ...)
 BASE:66100		mov [eax+08],edx	; (13, A, B)
 BASE:66103		add eax, 0C
-BASE:66106		add dword ptr [BASE:8C5AC], 02
+BASE:66106		add [BASE:8C5AC], 2
 BASE:6610D		loop loc_doorstackin_loop_begin	; ecx--; ecx>0
 BASE:6610F		ret
 
@@ -966,7 +1095,7 @@ BASE:66142		nop
 ;BASE:53A2A		mov eax, ebx
 ;BASE:53A2C		call TTSW10.dooropen
 ;BASE:53A31		jmp loc_stackwork_end
-		; patched bytes
+		; patched bytes:
 BASE:53A2A		push offset loc_stackwork_end	; will jump to this address when `ret`
 BASE:53A2F		jmp loc_dooropen_new
 BASE:53A34		xchg ax, ax	; 2-byte nop
@@ -978,9 +1107,9 @@ BASE:53A34		xchg ax, ax	; 2-byte nop
 
 BASE:6CB1C	TTSW10.ichicheck	proc near	; ichi = rōmaji of 位置; position
 
-BASE:740BE	; original bytes
+BASE:740BE	; original bytes:
 ;			mov word ptr [esi+eax*2], 0002	; originally, here will insert an event sequence (2,4,0) that will show 'The door has opened.' prompt in the status bar
-		; patched bytes
+		; patched bytes:
 			jmp +48	; bypass this event sequence
 		; ...
 
@@ -1003,7 +1132,7 @@ BASE:7FF47		mov eax, [eax+0100]	; ?
 BASE:7FF4D		mov edx, 000000C8	; the 200-th text item, i.e., "Received"
 BASE:7FF52		mov edi, [eax]
 
-		; original bytes
+		; original bytes:
 ;BASE:7FF54		call [edi+0C]	; this supposedly retrieves the caption of the corresponding ListBox2 item
 ;BASE:7FF57		push [ebp-0C]	; "Received"
 ;BASE:7FF5A		push BASE:8027C	; " "
@@ -1019,7 +1148,7 @@ BASE:7FF52		mov edi, [eax]
 ;BASE:7FF84		mov eax, [eax+0100]	; this calculation is done same as above; can be optimized
 ;BASE:7FF8A		mov edx, 000000C9	; the 201-th text item, i.e., " Gold."
 
-		; patched bytes
+		; patched bytes:
 BASE:7FF54		mov [ebp-14], eax	; originally this serves as the string buffer pointer to string " Gold." But it has not been used yet, so it can be used to store the value of pointer [TTSW10.ListBox2+0100], which can save a bit space
 BASE:7FF57		call [edi+0C]	; this supposedly retrieves the caption of the corresponding ListBox2 item
 BASE:7FF5A		push [ebp-0C]	; "Received"
