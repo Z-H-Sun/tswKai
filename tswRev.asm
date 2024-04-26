@@ -555,9 +555,9 @@ BASE:4C122		xchg ax, ax	; 2-byte nop
 BASE:4C124	loc_idou_sleep:
 			mov eax, [ebx+02EC]	; TTSW10.Timer2: TTimer
 BASE:4C12A		mov eax, [eax+24]	; TTimer.Interval
-BASE:4C12D		shr eax, 3	; /=8 (floor)
+BASE:4C12D		shr eax, 2	; /=4 (floor)
 BASE:4C130		dec eax	; -=1
-BASE:4C131		push eax	; dwMilliseconds: SuperFast: 0 ms; Fast: 5 ms; Middle: 11 ms; Low: 17 ms
+BASE:4C131		push eax	; dwMilliseconds: SuperFast: 1 ms; Fast: 11 ms; Middle: 24 ms; Low: 36 ms
 BASE:4C132		mov eax, [BASE:89BFC]	; vacant dword pointer; used to store [KERNEL32.Sleep]
 BASE:4C137		test eax, eax	; if KERNEL32.Sleep is already loaded...
 BASE:4C139		jne loc_idou_sleep_call	; ...then no need to reload; call directly
@@ -985,6 +985,19 @@ BASE:547E8	loc_stackwork_end:
 
 BASE:42DC8	TTSW10.kaidanwork	proc near	; kaidan = rōmaji of 階段; stair
 		; ...
+BASE:42E6D		cmp dword ptr [BASE:B87F0], 0	; this stores BGM id; and if ==0, it means the BGM is turned off by user
+BASE:42E74		je BASE:42E96
+BASE:42E76	; original bytes:
+;			cmp eax, 0014	; eax = 1 to 121; this line means that only when there are 20 "sword and staff" tiles remaining, the following codes (replay BGM) will be run
+;		However, in our modified SuperFast and High speed modes, several tile-drawing procedures are drawn at a time, and this eax==20 condition will be skipped
+;		In order to make this condition always be met, I will change the number from 20 to 1 now
+		; patched bytes:
+			cmp eax, 1	; eax = 1 to 121; this line means that only when there is 1 "sword and staff" tiles remaining, the following codes (replay BGM) will be run
+BASE:42E79		jne BASE:42E96
+		; ...
+		; briefly, a (15,0,0) event sequence (replay BGM according to the current floor number) will be added here
+BASE:42E96	; ...
+
 		; because the stair animation time will be different in different modes, so the duration of the soundeffect should also be adjusted accordingly
 		; original bytes:
 ;BASE:42EEE		mov word ptr [esi+eax*2], 0000
@@ -1169,3 +1182,218 @@ BASE:7FF8A		mov edx, 000000C9	; the 201-th text item, i.e., " Gold."
 		; ...
 
 		TTSW10.taisen2	endp
+
+
+;============================================================
+		; Rev10: Minimize keyboard delay when you move
+		; TSW uses KeyDown message to receive arrow key inputs. The disadvantage of doing so is the consequent involvement of system keyboard repeat delay. Under default cases, if you keep holding an arrow key, you have to wait for 500 milliseconds before you can move to the next position (known as keyboard repeat delay), and afterwards, you will move at a rough rate of 30 moves per second (known as keybard repeat rate, equivalent to a 33-millisecond interval). These are the system settings, which will cause some problems if you adjust them simply for this game. A better design is to not rely on the system KeyDown message but rather to use a timer to check whether an arrow key is pressed at a given, constant interval (e.g., 100 milliseconds)
+		; TTSW10.Timer3 is a handy, existent timer we can utilize. Originally, it was only enabled when you use OrbOfFlight and hold your mouse on the "Up" or "Down" button. So, when it's not in use, we can take advantage of it to serve as our arrow keystroke monitor. For Low, Middle, High, and SuperFast modes, the intervals will be set as 225, 150, 60, and 50 milliseconds respectively (interval2 below). However, the intervals for High and SuperFast are too short, which can easily lead to misoperation, so for the first key press event, the waiting interval will be set a bit larger, i.e., 125 milliseconds (interval1 below). When the arrow key is released, the Timer3 interval will set back to the original value, interval0, i.e., 275, 200, 125, and 125 milliseconds for each speed mode
+BASE:60BD8	TTSW10.formkeydown	proc near	; processed TForm.KeyDown event
+			push ebp
+BASE:60BD9		mov ebp, esp	; prolog
+BASE:60BDB		push ebx
+BASE:60BDC		push esi
+BASE:60BDD		push edi
+BASE:60BDE		mov esi, ecx	; now word ptr [esi] is the pressed virtual key code
+BASE:60BE0		mov ebx, eax	; TTSW10
+		; original bytes:
+;BASE:60BE2		cmp [BASE:8C5AC], 0	; remaining event count
+;BASE:60BE9		jnl BASE:60BF2
+;BASE:60BEB		xor eax,eax
+;BASE:60BED		mov [BASE:8C5AC], eax	; if < 0, set as 0
+;BASE:60BF2		mov eax, [ebx+0328]	; TTSW10.Option1: TMenuItem
+;BASE:60BF8		cmp byte ptr [eax+29], 1	; TMenuItem.FEnabled: Boolean; this checks if the game is in the middle of an internal event and thus you are not allowed to do anything during this period
+;BASE:60BFC		jne loc_formkeydown_end	; BASE:610A3
+;BASE:60C02		cmp [BASE:8C5AC], 0	; this can be done earlier with saved space
+;BASE:60C09		jne loc_formkeydown_end	; BASE:610A3
+		; patched bytes:
+BASE:60BE2		xor eax, eax	; eax = 0
+BASE:60BE4		mov dl, [esi]	; virtual key code
+BASE:60BE6		sub dl, 25
+BASE:60BE9		cmp dl, 03	; if 0x25 <= dl <= 0x28 (Left, Up, Right, and Down, respectively)
+BASE:60BEC		jbe BASE:60C0F	; for arrow keys, do not judge whether the event count is non-zero or whether the keyboard event is disabled; always turn on Timer3; leave the judgement there
+BASE:60BEE		cmp [BASE:8C5AC], eax	; eax = 0
+BASE:60BF4		jg loc_formkeydown_end	; BASE:610A3
+BASE:60BFA		mov [BASE:8C5AC], eax	; eax = 0
+BASE:60BFF		mov eax, [ebx+0328]	; TTSW10.Option1: TMenuItem
+BASE:60C05		cmp byte ptr [eax+29], 1	; TMenuItem.FEnabled: Boolean; this checks if the game is in the middle of an internal event and thus you are not allowed to do anything during this period
+BASE:60C09		jne loc_formkeydown_end	; BASE:610A3
+BASE:60C0F	; ...
+
+BASE:60C63	; Up key pressed ([esi]==0x26)
+			mov eax, [ebx+03F8]	; TTSW10.Image22:TImage
+BASE:60C69		cmp byte ptr [eax+37], 0	; checks if you are choosing an item
+BASE:60C6D		jne BASE:60CB8	; if so, arrow keys are used to select an item to use
+BASE:60C6F	; original bytes:
+		; ...
+		; briefly, these codes make "hero move left," which is more or less the same with TTSW10.BitBtn1Click, so we can reuse that subroutine to save space here
+		; patched bytes:
+			jmp loc_formkeydown_arrowkeydown	; BASE:60D78; see below
+
+BASE:60C74	loc_interval1:
+			db 78, 78, 96, E1	; 120, 120, 150, 225; the initial waiting interval when you press an arrow key for the first time (for SuperFast, High, Middle, Low speed modes, respectively, same below)
+		; these values must be different from those for interval0; see comments in BASE:617D6
+BASE:60C78	loc_interval2:
+			db 00, 0A, 64, AF	; 0(+50), 10(+50), 100(+50), 175(+50); the key repeat interval, interval2, is this number + 50
+BASE:60C7C	loc_interval0:
+			db 4B, 4B, 96, E1	; 75(+50), 75(+50), 150(+50), 225(+50), the original Timer3.Interval, interval0, is this number + 50, which will be restored after the arrow key is released. Because 275 > 255 (the maximum value for UCHAR), so I have to decrease each value by 50 to store them and will add 50 back later
+BASE:60C80	loc_BitBtnXClick_addr:
+			dd 484BB0, 484B5C, 484C04, 484C58	; these are addresses for TTSW10.BitBtn2/1/3/4Click for moving left/up/right/down respectively
+
+BASE:60C90	loc_timer2on_judge:
+		; Originally, in TTSW10.timer2on, when Timer2 is enabled, Timer3 would always be disabled; now we need to judge whether Timer3 is used by us for arrow keystroke monitoring; if so, no need to stop Timer3. See comments in TTSW10.timer2on
+			cmp byte ptr [BASE:8C5C7], 25	; this byte is used to store the last pressed key's virtual key code; see comments below in TTSW10.timer3ontimer
+BASE:60C97		jae BASE:60C9E	; if is >= 0x25, meaning that Timer3 is used by us for arrow keystroke monitoring, then do nothing
+BASE:60C99		call TTimer.SetEnabled	; otherwise, disable Timer3 (eax=TTSW10.Timer3; edx=0; see TTSW10.timer2on)
+BASE:60C9E		ret
+		; ...
+
+BASE:60D6C	; Left key pressed ([esi]==0x25)
+		; ...
+		; similar to above
+BASE:60D78	; ...
+		; similar to above
+		; patched bytes:
+		loc_formkeydown_arrowkeydown:	; this is common subroutine for all 4 arrow keydown events
+			movzx ecx, byte ptr [esi]	; which arrow key is pressed (0x25-0x28)
+BASE:60D7B		mov eax, [ebx+030C]	; TTSW10.Timer3
+BASE:60D81		mov edx, offset BASE:8C5C7	; this byte is used to store the last pressed key's virtual key code; see comments below in TTSW10.timer3ontimer
+BASE:60D86		cmp [edx], cl
+BASE:60D88		mov [edx], cl
+BASE:60D8A		pushfd	; store all flags register
+BASE:60D8B		je BASE:60D9C	; if the last pressed key is the same as the current pressed key, then no need to change Timer3.Interval, just enable Timer3 (if Timer3 is already enabled, this will be a no-op). Forcing enabling Timer3 might be unnecessary here, but just to make sure
+
+BASE:60D8D		mov cl, [BASE:89B9F]	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
+BASE:60D93		mov cl, [ecx+loc_interval1]	; if this key is not pressed before, set the interval to be a bit larger to avoid misoperation (see discussions at the beginning). Because all high bytes of ecx have been set 0 earlier, so ecx=cl
+BASE:60D99		mov [eax+24], ecx	; TTimer.Interval; Calling TTimer.SetEnabled will also update the interval if the enabled state of the timer changes. See TTimer.SetEnabled and TTimer.UpdateTimer
+		; an attempt that got eventually abandoned here:
+		; Currently, if you press a different arrow key, there will not be a delay involved, i.e., the Timer3 interval will remain `interval2` without changing to `interval1` in the middle. This is because Timer3.Enabled state doesn't change, so the interval change won't be updated. However, I think this is a good design
+		; If we must add an additional delay here, we can add the following line to force timer interval update:
+;			mov byte ptr [eax+20], 0	; this line itself won't stop the timer. But since `dl=1` below != byte ptr [eax+20], TTimer.UpdateTimer will always be called. See TTimer.SetEnabled and TTimer.UpdateTimer
+
+BASE:60D9C		mov dl, 01
+BASE:60D9E		call TTimer.SetEnabled	; enable Timer3 (and update its interval when needed)
+BASE:60DA3		popfd	; retrieve all flags register (because they might have changed during the previous `call`)
+BASE:60DA4		je BASE:60DAE	; if the last pressed key is the same as the current pressed key, then no need to do the following (because it's already taken care of in Timer3)
+
+BASE:60DA6		movzx ecx, byte ptr [esi]	; otherwise, move immediately (do not wait for a timer interval to do that)
+BASE:60DA9		call loc_move	; BASE:617F8; see below
+
+BASE:60DAE		jmp loc_formkeydown_end	; BASE:610A3
+BASE:60DB3		nop
+BASE:60DB4		; ...
+
+BASE:60E18	; Right key pressed ([esi]==0x27)
+		; ...
+		; similar to above
+BASE:60E24	; ...
+		; similar to above
+		; patched bytes:
+			jmp loc_formkeydown_arrowkeydown
+		; ...
+
+BASE:60E18	; Down key pressed ([esi]==0x28)
+		; ...
+		; similar to above
+BASE:60E24	; ...
+		; similar to above
+		; patched bytes:
+			jmp loc_formkeydown_arrowkeydown
+		; ...
+
+		TTSW10.formkeydown	endp
+
+
+BASE:61760	TTSW10.timer3ontimer	proc near	; processed Timer3.OnTimer event
+			push ebx
+BASE:61761		mov ebx, eax	; prolog
+		; original bytes:
+;BASE:61763		mov ax, [BASE:8C5C6]	; this word is either 0 or 1, determining whether Timer3 should be subsequently disabled. Because its high byte was never used, so I will use [BASE:8C5C7] to store the virtual key code of the last pressed key
+;BASE:61769		sub ax, 01
+;BASE:6176D		jb BASE:61776	; ==0
+;BASE:6176F		je BASE:61785	; ==1
+;BASE:61771		jmp loc_timer3ontimer_end	; BASE:618F8; this case is not possible
+
+;BASE:61776		xor edx, edx	; disable
+;BASE:61778		mov eax, [ebx+030C]	; TTimer3
+;BASE:6177E		call TTimer.SetEnabled
+;BASE:61783		pop ebx
+;BASE:61784		ret
+		; patched bytes:
+BASE:61763		xor edx, edx	; edx = 0 <- TTimer.Enabled (False)
+BASE:61765		xor eax, eax	; clear all bytes
+BASE:61767		mov al, [BASE:8C5C7]	; eax = pressed key's virtual key code
+BASE:6176C		cmp al, 25
+BASE:6176E		jae loc_timer3ontimer_task1	; BASE:617B6; if >= 0x25, meaning that Timer3 is used by us for arrow keystroke monitoring, then no need to care about the original treatment
+BASE:61770		cmp [BASE:8C5C6], dl	; edx = 0
+BASE:61776		jne BASE:61785
+BASE:61778		mov eax, [ebx+030C]	; TTimer3
+BASE:6177E		call BASE:2C454	; disable TTimer3
+BASE:61783		pop ebx
+BASE:61784		ret
+
+		; ----------
+BASE:61785		mov eax, [BASE:8C590]	; task index: 1-4 would have been moving up/left/right/down respectively but was never implemented (so it's safe for us to insert our new codes there); 5-6 = Go Up/Down stairs in OrbOfFlight
+BASE:6178A		cmp eax, 06
+BASE:6178D		ja loc_timer3ontimer_end	; BASE:618F8; this case is not possible
+BASE:61793		jmp [eax*4+BASE:6179A]	; switch jump
+
+BASE:6179A	; original bytes:
+;			dd loc_timer3ontimer_end, loc_timer3ontimer_task1, loc_timer3ontimer_task2, loc_timer3ontimer_task3, loc_timer3ontimer_task4, loc_timer3ontimer_task5, loc_timer3ontimer_task6
+		; patched bytes:
+			dd loc_timer3ontimer_end, loc_timer3ontimer_end, loc_timer3ontimer_end, loc_timer3ontimer_end, loc_timer3ontimer_end, loc_timer3ontimer_task5, loc_timer3ontimer_task6	; do nothing for tasks 1-4 just to be safe
+
+BASE:617B6	loc_timer3ontimer_task1:
+		; original bytes:
+		; ...
+		; would have been moving up but was never implemented (so it's safe for us to insert our new codes (for processing arrow keystrokes) here)
+		; patched bytes:
+BASE:617B6		push eax	; store eax=pressed key's virtual key code
+BASE:617B7		push eax	; vKey
+BASE:617B8		call User32.GetKeyState	; BASE:04FCC
+BASE:617BD		xor edx, edx	; edx = 0 <- TTimer.Enabled (False); clear all bytes
+BASE:617BF		test ax, ax	; high bit is 1 if specified key pressed
+BASE:617C2		mov eax, [ebx+030C]	; timer3
+BASE:617C8		mov ecx, offset loc_interval2
+BASE:617CD		pushfd	; store all flags register
+BASE:617CE		js BASE:617DC
+
+BASE:617D0		mov [BASE:8C5C7], dl	; reset last pressed key; edx=0
+BASE:617D6		mov [eax+20], dl	; TTimer.Enabled; Calling TTimer.SetInterval will also update the enabled state if the timer interval changes. See TTimer.SetInterval and TTimer.UpdateTimer
+BASE:617D9		lea ecx, [ecx+4]	; ecx=loc_interval0
+
+BASE:617DC		mov dl, [BASE:89B9F]	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
+BASE:617E2		mov dl, [ecx+edx]	; if key pressed before, set the interval to be interval2 (see discussions at the beginning); if key released, set the Timer3 interval back to original value, interval0. Because all high bytes of edx have been set 0 earlier, so edx=dl
+BASE:617E5		add edx, 32	; +50; see discusions in BASE:60C7C
+		; an attempt that got eventually abandoned here:
+		; Currently, there will be a delay when you first press an arrow key, where Timer3.Interval is `interval1`, and afterwards, Timer3.Interval will always be a shorter constant `interval2`. I previously thought that to make a smoother transition, it might be better if there could be a graduate (instead of abrupt) change of Timer3.Interval. The interval will halve every time, but no less than `interval2` (so it will eventually plateau). To take the SuperFast mode as an example, the interval can be 200, then 100, and then 50. However, it seems that the longer interval will make the game moving animation appear less smooth (because the refreshing rate will be lower), so actually we may want to keep the delay as short as possible, and having a "gradient" interval change will actually be worse.
+		; If must add a "gradient" interval change, the line above should be changed and a few more lines need to be added:
+;			lea edx, [edx+32]	; this is similar to `add edx, 32` but without affecting the flags register
+;			jns +0B
+;			mov ecx, [eax+24]	; Timer3.Interval
+;			shr ecx, 1	; divided by 2
+;			cmp edx, ecx	; see which one is larger and use the larger value
+;			jae +2
+;			mov edx, ecx
+
+BASE:617E8		call TTimer.SetInterval	; change Timer3 interval (and update its enabled state when needed); if the interval is not changed (e.g., Timer3.Interval is already interval2), this will be a no-op
+BASE:617ED		popfd	; retrieve all flags register (because they might have changed during the previous `call`)
+BASE:617EE		pop ecx	; retrieve ecx = pressed key's virtual key code
+BASE:617EF		jns BASE:617F6	; high bit not set, meaning key released, then don't call loc_move
+
+BASE:617F1		call loc_move	; BASE:617F8
+
+BASE:617F6		pop ebx
+BASE:617F7		ret
+
+BASE:617F8	loc_move:	; input: ecx: virtual key code (0x25-0x28: Left/Up/Right/Down); ebx: TTSW10 handle
+			sub cl, 25
+BASE:617FB		mov edx, [ebx+0328]	; TTSW10.option1: TMenuItem
+BASE:61801		cmp byte ptr [edx+29], 1	; TMenuItem.FEnabled; need to judge here whether the game window is disabled for input now (was implemented in TTSW10.formkeydown originally, now moved to here)
+		; but no need to judge whether event count is non-zero, as this will be done in TTSW10.BitBtnXClick later
+BASE:61805		jne BASE:617F7	; ret (if window is disabled)
+BASE:61807		mov eax, ebx
+BASE:61809		jmp [ecx*4+loc_BitBtnXClick_addr]	; TTSW10.BitBtnXClick
+		; ...
+
+		TTSW10.timer3ontimer	endp
