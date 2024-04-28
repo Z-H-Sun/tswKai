@@ -314,30 +314,31 @@ BASE:494E4	loc_45F_Merchant2:
 ;BASE:49502		mov [BASE:8C59C], 0040	; TSW_hero_status[BASE:BC59C] indicates whether you have obtained information from a specific Merchant after you made a deal with him
 		; ...
 		; patched bytes:
-BASE:494EE		mov eax, [TSW_backside_tower]	; 43 in backside tower or otherwise 0
-BASE:494F3		inc eax	; 44 or 1
-BASE:494F4		shr eax, 2	; 11 or 0
-BASE:494F7		add al, 0A	; 21 or 10
-BASE:494F9		mov [TSW_i], eax
-BASE:494FE		mov byte ptr [BASE:8C598], 0034
-BASE:49505		mov byte ptr [BASE:8C59C], 0040	; these values will never exceed 255, so we assign each of them as a BYTE rather than as a DWORD, which saves 3 bytes space
+BASE:494EE		xor eax, eax	; clear all high bytes
+BASE:494F0		mov edx, offset TSW_i	; BASE:8C558
+BASE:494F5		cmp [TSW_backside_tower], 0	; 43 in backside tower or otherwise 0
+BASE:494FC		je +2	; BASE:49500
+BASE:494FE		mov al, 0C	; 12 or 0
+BASE:49500		add al, 0A	; 22 or 10
+BASE:49502		mov [edx], eax	; [TSW-i] = 22 or 10
+BASE:49504		mov byte ptr [edx+0040], 0034	; BASE:8C598
+BASE:49508		mov byte ptr [edx+0044], 0040	; BASE:8C59C; these values will never exceed 255, so we assign each of them as a BYTE rather than as a DWORD, which saves 3 bytes space
 		; ...
 BASE:49583		mov eax, [TSW_i]
-BASE:49588		sub eax, 0C	; there are only 12 Merchants, so if the dialog ID is < 0 or >= 12, no dialog window will be shown
+BASE:49588		sub eax, 0C	; there are only 12 Merchants + a 2F Merchant, so if the dialog ID is < 0 or >= 12, no dialog window will be shown
 		; original bytes:
-BASE:4958B		jnb loc_Merchant_end2	; BASE:495BB
-BASE:4958D		lea ecx, [ebp-04]
-BASE:49590		mov edx, [TSW_i]
-BASE:49596		add edx, 00F6	; +246 -> the actual index of text entry in TListBox2
+;BASE:4958B		jnb loc_Merchant_end2	; BASE:495BB
+;BASE:4958D		lea ecx, [ebp-04]
+;BASE:49590		mov edx, [TSW_i]
+;BASE:49596		add edx, 00F6	; +246 -> the actual index of text entry in TListBox2
 		; ...
 		; patched bytes:
-BASE:4958B		jb loc_Merchant_normal	; BASE:49592 the normal dialogs for the 12 Merchants; ignore the lines below
-BASE:4958D		cmp al, 9	; i.e., if the ID is 21 (12+9)
+BASE:4958B		jb +4	; BASE:49591 the normal dialogs for the 12 Merchants; ignore the lines below
+BASE:4958D		cmp al, 0A	; i.e., if the ID is 22 (12+10)
 BASE:4958F		jne loc_Merchant_end2	; otherwise, there must be some error because there is no such Merchant dialog ID
-BASE:49591		inc eax	; if ID is 21, then change it to 22, because the new text entry index is 258 (=246+22)
-BASE:49592		lea ecx, [ebp-04]
-BASE:49595		add eax, 0102	; +258 (the actual index of text entry in TListBox2; need to take into consideration the previously subtracted number (12; 246+12=258))
-BASE:4959A		mov edx, eax
+BASE:49591		lea edx, [eax+0102]	; +258 (the actual index of text entry in TListBox2; need to take into consideration the previously subtracted number (12; 246+12=258))
+BASE:49597		lea ecx, [ebp-04]
+BASE:4959A		xchg ax, ax	; 2-byte nop
 		; ...
 		TTSW10.syounin	endp
 

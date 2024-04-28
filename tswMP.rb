@@ -513,16 +513,18 @@ module HookProcAPI
     UnhookWindowsHookEx.call(@hmhook || 0)
     @hmhook = nil
 
-    WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (restore; re-enable)
+    ClipCursor.call(nil) # do not confine cursor range
+    return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
     $x_pos = $y_pos = -1
     InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar
-    ClipCursor.call(nil) # do not confine cursor range
-    mFac = Monsters.statusFactor
-    return true if mFac == 1 or !$hWndMemo or $hWndMemo.empty?
-    SendMessage.call($hWndMemo[0], WM_SETTEXT, 0, Monsters.heroHP.to_s)
-    SendMessage.call($hWndMemo[1], WM_SETTEXT, 0, Monsters.heroATK.to_s)
-    SendMessage.call($hWndMemo[2], WM_SETTEXT, 0, Monsters.heroDEF.to_s)
+    ReadProcessMemory.call($hPrc || 0, MONSTER_STATUS_FACTOR_ADDR, $bufDWORD, 4, 0) # 0 or 43
+    return true if $bufDWORD.unpack('l')[0].zero? or !$hWndMemo or $hWndMemo.empty?
+    return true if ReadProcessMemory.call($hPrc || 0, STATUS_ADDR, $buf, STATUS_LEN << 2, 0).zero? # refresh, in case the values have changed
+    $heroStatus = $buf.unpack(STATUS_TYPE)
+    SendMessage.call($hWndMemo[0], WM_SETTEXT, 0, $heroStatus[STATUS_INDEX[0]].to_s)
+    SendMessage.call($hWndMemo[1], WM_SETTEXT, 0, $heroStatus[STATUS_INDEX[1]].to_s)
+    SendMessage.call($hWndMemo[2], WM_SETTEXT, 0, $heroStatus[STATUS_INDEX[2]].to_s)
     return true
   end
   private :_msHook
