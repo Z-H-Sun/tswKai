@@ -292,7 +292,6 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   HookProcAPI.abandon(true)
   DeleteObject.call($hBMP || 0)
   DeleteDC.call($hMemDC || 0)
-  ReleaseDC.call($hWnd || 0, $hDC || 0)
 end
 def preExit(msg=nil) # finalize
   return if $preExitProcessed # do not exec twice

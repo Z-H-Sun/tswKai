@@ -135,6 +135,7 @@ module HookProcAPI
       return true if @lastIsInEvent
       @lastIsInEvent = true # if @lastIsInEvent is false
       $x_pos = $y_pos = -1 # reset pos
+      initHDC # it is possible that hDC is not assigned yet
       showMsg(1, 0)
     elsif @lastIsInEvent # result is false and @lastIsInEvent is true
       if @hmhook # just waited an event over; redraw items bar and map damage
@@ -152,9 +153,24 @@ module HookProcAPI
     end
     return result
   end
+  def initHDC()
+    $hDC = GetDC.call_r($hWnd) unless $hDC
+    SelectObject.call_r($hDC, $hBr) # hDC returned by GetDC above will, every time, reset to default DC parameters, so need to set them accordingly
+    SelectObject.call_r($hDC, $hPen)
+    SetROP2.call_r($hDC, R2_XORPEN)
+    SetBkColor.call_r($hDC, HIGHLIGHT_COLOR[-2])
+    SetBkMode.call_r($hDC, 1) # transparent
+    SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
+  end
+  def disposeHDC()
+    @winDown = false
+    return unless $hDC
+    ReleaseDC.call($hWnd, $hDC)
+    $hDC = nil # hDC already released; no longer valid
+  end
   def abandon(force=true)
     unhookM(force)
-    @winDown = false
+    disposeHDC
     @lastIsInEvent = false
     @flying = nil
   end
@@ -418,7 +434,7 @@ module HookProcAPI
       if wParam == WM_KEYDOWN
         break if isInEvent # when holding [WIN] key, this (i.e. `isInEvent`) will automatically be called every ~50 msec (keyboard repeat delay)
         if alphabet and !@flying
-          @winDown = false # de-active; restore
+          disposeHDC # de-active; restore
           unhookM
 
           callFunc(CONSUMABLES['event_addr'][alphabet]) # imgXXwork = click that item
@@ -458,12 +474,13 @@ module HookProcAPI
               DrawTextW.call_r($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
               PatBlt.call_r($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
             else
-              @winDown = false
+              disposeHDC
               showMsgTxtbox(10, $str::LONGNAMES[16].gsub(' ', '')) if readMemoryDWORD(TEDIT8_MSGID_ADDR) != ORB_FLIGHT_RULE_MSG_ID # otherwise, it's because "you must be near the stairs to fly!"
             end
           end
         elsif !@winDown # only trigger at the first time
           @winDown = true
+          initHDC
           checkTSWsize
           recalcStatus
           drawItemsBar
@@ -472,10 +489,7 @@ module HookProcAPI
         end
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
-        if @flying
-          SetBkMode.call_r($hDC, 1) # transparent
-          callFunc(CONSUMABLES['event_addr'][2][4]) if @flying # click OK
-        end
+        callFunc(CONSUMABLES['event_addr'][2][4]) if @flying # click OK
         abandon
       end
     end
