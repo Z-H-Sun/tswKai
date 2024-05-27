@@ -47,9 +47,13 @@ def init()
   return true
 end
 def showWelcomingMsg()
+  showMsgTxtbox(9, $pID, $hWnd)
+  unless $CONmsgOnTSWstartup
+    API.focusTSW()
+    return
+  end
   keySL = Array.new(4)
   (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
-  showMsgTxtbox(9, $pID, $hWnd)
   msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0], $regKeyName[0])
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2=console

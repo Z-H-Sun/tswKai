@@ -40,6 +40,8 @@
 
 # By default, tswKai3 will show the config dialog upon app startup. Uncomment the following line to cancel
 #$CONonTSWstartup = false # Default: true
+# By default, tswKai3 will show a tutorial message box upon app startup. Uncomment the following line to cancel
+#$CONmsgOnTSWstartup = false # Default: true
 # The following line depresses the prompt that asks whether to continue after TSW has quitted, and this app will always hibernate and wait for the next TSW game to run
 #$CONaskOnTSWquit = false # Default: true
 # Uncomment the following line to hide the status tip window after TSW has quitted

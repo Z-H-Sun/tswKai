@@ -423,7 +423,10 @@ module HookProcAPI
         if (alphabet = CONSUMABLES['key'].index(key)) # which item chosen?
           break unless @itemAvail.include?(alphabet) # you must have that item
         elsif (arrow = CONSUMABLES['key'][2].index(key)) # up/downstairs?
-          break unless @itemAvail.include?(2) # you must have orb of flight
+          unless @itemAvail.include?(2) # you must have orb of flight
+            block = true if GetForegroundWindow.call == $hWnd # do not respond to arrow keys which may cause conflicts (because events can be triggered)
+            break
+          end
         else break
         end
       end

@@ -39,6 +39,7 @@ DIALOG_FONT_NAME_PREFERRED = 'Segoe UI' # will try using this font if the system
 DIALOG_FONT_NAME_FALLBACK = 'MS Shell Dlg' # otherwise use this old one instead (Microsoft Sans Serif -> SimSum (宋体) -> ...)
 DIALOG_FONT = [-12, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, DIALOG_FONT_NAME_FALLBACK]
 $CONonTSWstartup = true # whether to show config window and apply default config on TSW startup
+$CONmsgOnTSWstartup = true # whether to show tutorial message on TSW startup
 $CONmodStatus = [true, true, true, true, true] # if `$CONonTSWstartup`, this specifies the default config
 $_TSWMOD = true
 
