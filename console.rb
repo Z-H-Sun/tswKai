@@ -15,6 +15,7 @@ BACKGROUND_BLUE = 0x10
 BACKGROUND_GREEN = 0x20
 BACKGROUND_RED = 0x40
 BACKGROUND_INTENSITY = 0x80
+COMMON_LVB_GRID_HORIZONTAL = 0x400
 COMMON_LVB_UNDERSCORE = 0x8000 # warning: COMMON_LVB_* is not yet implemented in Windows Terminal (https://github.com/microsoft/terminal/issues/8037), nor is it supported on or before Win 7 (https://github.com/prompt-toolkit/python-prompt-toolkit/issues/775#issuecomment-436047407)
 
 STYLE_NORMAL = FOREGROUND_BLUE|FOREGROUND_GREEN|FOREGROUND_RED
@@ -28,6 +29,7 @@ STYLE_B_RED = FOREGROUND_RED|FOREGROUND_INTENSITY
 ENABLE_PROCESSED_OUTPUT = 1
 ENABLE_WRAP_AT_EOL_OUTPUT = 2
 ENABLE_VIRTUAL_TERMINAL_PROCESSING = 4
+ENABLE_LVB_GRID_WORLDWIDE = 16 # this supposedly solve the COMMON_LVB_* issue mentioned above, even on a non-DBCS code page (https://learn.microsoft.com/en-us/windows/console/getconsolemode); however, this does not seem to work in my tests on Windows 7 (en-US locale)
 KEY_EVENT = 1
 
 GetConsoleWindow = API.new('GetConsoleWindow', 'V', 'L', 'kernel32')
@@ -37,6 +39,7 @@ DeleteMenu = API.new('DeleteMenu', 'LLL', 'L', 'user32')
 GetStdHandle = API.new('GetStdHandle', 'I', 'L', 'kernel32')
 AllocConsole = API.new('AllocConsole', 'V', 'L', 'kernel32')
 FreeConsole = API.new('FreeConsole', 'V', 'L', 'kernel32')
+GetLargestConsoleWindowSize = API.new('GetLargestConsoleWindowSize', 'L', 'I', 'kernel32')
 SetConsoleScreenBufferSize = API.new('SetConsoleScreenBufferSize', 'LL', 'L', 'kernel32')
 SetConsoleWindowInfo = API.new('SetConsoleWindowInfo', 'LLS', 'L', 'kernel32')
 SetConsoleCtrlHandler = API.new('SetConsoleCtrlHandler', 'PL', 'L', 'kernel32')
@@ -70,17 +73,25 @@ end
 class Console
   class STDINTimeoutError < TSWKaiError
   end
+  class STDINCancelError < TSWKaiError # arrow key pressed
+    attr_reader :arrow
+    def initialize(msg) # raise(STDINCancelError, <arrow>)
+      @arrow = msg
+      super(nil)
+    end
+  end
 
   attr_reader :hConIn
   attr_reader :hConOut
   attr_reader :hConWin
   attr_reader :conWidth
   attr_reader :conHeight
+  attr_accessor :init
   attr_accessor :active
   EMPTY_EVENT_ARRAY = [{}]
   BUFFER_EVENT_SIZE = 16
   BUFFER_SIZE = 20*BUFFER_EVENT_SIZE # enough in this application
-  def initialize(conWidth=60, conHeight=15)
+  def initialize(conWidth=60, conHeight=16)
     if (@hConWin = GetConsoleWindow.call).zero?
       AllocConsole.call_r
       @hConWin = GetConsoleWindow.call
@@ -93,13 +104,13 @@ class Console
     @conSize = @conWidth*@conHeight
     @active = false
     @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
-    SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
+    @init = true
+
+    system('') # do not delete this seemingly useless line, which is useful on Windows 10; otherwise, the frame of the console window will not display properly; not yet know what this does
+    SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
     SetConsoleCtrlHandler.call_r(nil, 1) # depress Ctrl-C [Ideally, Ctrl-Break and Close signals should also be handled by passing a callback function address here rather than NULL; however, there is a bug with win32/api that will lead to stack overflow (cause not yet clear). As a result, I will leave NULL here, but do some monkey patching in the C code of win32/api extension so as to implement the callback function there; see vendor/win32/api.c]
 
-    SetConsoleScreenBufferSize.call(@hConOut, packS2(1024, 1024)) # win size must be <= buffer size, so first set a very large buf size to make sure set_win_size works
-    SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, conWidth-1, conHeight-1].pack('S4')) # -1 is necessary because the last row/col is included
-    SetConsoleScreenBufferSize.call(@hConOut, packS2(conWidth, conHeight))
-    # remember to call self.setConWinProp somewhere later
+    # remember to call self.resize and self.setConWinProp somewhere later
   end
   def ===(activated) # if the activated state is the same (true=true; false=false; false=nil)
     return !(@active ^ activated)
@@ -130,6 +141,31 @@ class Console
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)
+  end
+  def resize(w=@conWidth, h=@conHeight) # the effect of this function is equivalent to `system("mode con: cols=#{w} lines=#{h}")`
+# this implementation of this function is through reverse engineering Windows OS' `mode.com` and `ulib.dll`
+# mode.com#main -> GetRequest -> ConLine -> ConRc -> MakeRequest --> ConHandler -> ConSetRolCol --> ulib.com#ChangeScreenSize
+# see also: https://github.com/tongzx/nt5src/blob/master/Source/XPSP1/NT/base/fs/utils/ulib/src/screen.cxx#L211-L375
+    GetConsoleScreenBufferInfo.call_r(@hConOut, $buf)
+    b_w, b_h, c_x, c_y, a, w_l, w_t, w_r, w_b, max_w_w, max_w_h = $buf.unpack('s11')
+    w_w = w_r - w_l + 1
+    w_h = w_b - w_t + 1
+    return 0 if w_w == w and w_h == h and b_w == w and b_h == h
+
+    coord = GetLargestConsoleWindowSize.call(@hConOut)
+    return if coord.zero? # for legacy console, this call (as well as SetConsoleWindowInfo/SetConsoleScreenBufferSize) may fail in the full screen mode, and GetLastError will return ERROR_FULLSCREEN_MODE, but there's nothing we can do about it
+    max_s_w = coord & 0xFFFF
+    max_s_h = coord >> 16 & 0xFFFF
+
+    if (w < w_w) or (h < w_h) # If the desired window size is smaller than the current window size, we have to resize the current window first. (The buffer size cannot be smaller than the window size)
+      max_w = [w, b_w, max_s_w].min
+      max_h = [h, b_h, max_s_h].min # Set the window to a size that will fit in the current screen buffer and that is no bigger than the size to which we want to grow the screen buffer or the largest window size
+      return if SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, max_w-1, max_h-1].pack('S4')).zero? # -1 is necessary because the last row/col is included
+    end
+    return if SetConsoleScreenBufferSize.call(@hConOut, packS2(w, h)).zero?
+    w = max_s_w if w > max_s_w
+    h = max_s_h if h > max_s_h
+    return !SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, w-1, h-1].pack('S4')).zero?
   end
   def show(active, tswActive=true) # active=true/false : show/hide console window; tswActive: if TSW is still running, determining whether to do further operations
     return false if self === active
@@ -204,9 +240,8 @@ class Console
     SetConsoleCursorPosition.call_r(@hConOut, packS2(x, y))
   end
   def get_cursor()
-    buf = "\0"*22
-    GetConsoleScreenBufferInfo.call_r(@hConOut, buf)
-    return buf.unpack('SSSSSssssSS')[2, 2]
+    GetConsoleScreenBufferInfo.call_r(@hConOut, $buf)
+    return $buf.unpack('SSSSSssssSS')[2, 2]
   end
   def show_cursor(visible, size=100)
     visible = (visible ? 1 : 0) unless visible.is_a?(Integer)
@@ -242,7 +277,7 @@ class Console
     loop do
       c = get_input[0]['char']
       next if c.nil?
-      if allowESC and c == VK_ESCAPE
+      if allowESC and (c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE)
         i = -1; break
       end
       i = choices.index(c.chr.upcase)
@@ -265,7 +300,7 @@ class Console
         count = c['repeat']
         case ord
         when VK_ESCAPE # esc
-          return -1
+          beep(); return -1
         when 0x30..0x39 # num
           count = digits - digitCount if count > digits - digitCount
           char *= count if count > 1
@@ -282,16 +317,15 @@ class Console
           digitCount -= count
           str = str[0, digitCount]
         when VK_RETURN, VK_SPACE # space/enter
+          beep()
+          return -1 if str.empty? # empty input; cancel
           return str.to_i
         else
           beep(MB_ICONERROR)
         end
       end
     end
-    return str.to_i
-  ensure # always beep
-    beep()
-    #self.puts # new line
+    beep(); return str.to_i
   end
   def beep(msg=MB_ICONASTERISK)
     MessageBeep.call(msg)
@@ -317,6 +351,7 @@ class Console
       raise STDINTimeoutError
     end
 
+    resize() # in case the windows size is changed
     PeekConsoleInput.call_r(@hConIn, $buf, BUFFER_EVENT_SIZE, $bufDWORD)
     eventCount = $bufDWORD.unpack('L')[0]
     return EMPTY_EVENT_ARRAY if eventCount.zero?
@@ -327,6 +362,8 @@ class Console
       next if event[0] != KEY_EVENT
       next if event[2].zero? # ignore keyup
       next if event[6] > 127 # allow ascii only
+      raise(STDINCancelError, event[4]) if event[4] >= VK_LEFT and event[4] <= VK_DOWN # arrow key
+
       res[i]['repeat'] = event[3]
       res[i]['vKey'] = event[4]
       res[i]['char'] = event[6]

@@ -75,7 +75,7 @@
 
 # You can change the shortcut key for each status variable in the cheat console interface
 # For example, the first line below changes the keys for the 12th and 13th variables (Sword and Shield) to 'W' and 'S' respectively
-# The second line changes the key for refreshing the list to 'J'
+# The second line changes the key for setting the back-side tower status factor to 'J'
 #KAI_OPTIONS[12..13] = ['W', 'S'] # Default: ['S', 'I']
 #KAI_OPTIONS[14] = 'J' # Default: 'Z'
 # You can change the shortcut key for using each item when pressing the WIN or TAB hotkey

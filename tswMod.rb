@@ -25,11 +25,14 @@ IsDialogMessage = API.new('IsDialogMessage', 'LP', 'I', 'user32')
 EnumFontFamilies = API.new('EnumFontFamilies', 'LSKL', 'I', 'gdi32')
 
 LISTBOX2_45FMERCHANT_DIALOG_ID = 256
+LISTBOX2_2NDMAGICIAN_DIALOG_ID = [265, 266]
 LISTBOX2_NEWENTRY_DIALOG_ID = 268
 OFFSET_LISTBOX2 = 0x44c
 OFFSET_RICHEDIT1 = 0x1cc
 WINSIZE_ADDR = 0x89ba4 + BASE_ADDRESS # byte (0:640x400; 1:800x500)
-STR_45FMERCHANT_ADDHP = ['2000', '88000'] # 1000 gold for 2000 HP in the 1st found; for 88000 HP in the backside tower
+STR_45FMERCHANT_GOLD = '1000'
+INT_45FMERCHANT_ADDHP = 2000 # 1000 gold for 2000 HP in the 1st round
+INT_1STMAGICIAN_SUBHP = [200, 100] # 1st-round Magician A and B's magic attack damage
 
 MOD_PATCH_OPTION_COUNT = 5
 MOD_TOTAL_OPTION_COUNT = 8
@@ -223,23 +226,50 @@ module Mod
     SendMessagePtr.call($hWndChkBoxes[6], BM_SETCHECK, $SLautosave ? 1 : 0, 0)
     SendMessagePtr.call($hWndChkBoxes[7], BM_SETCHECK, $BGMtakeOver ? (BGM.bgm_path ? 1 : 2) : 0, 0)
   end
+  def replace45FmerchantDialog(factor)
+    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
+
+    newhp_str = (INT_45FMERCHANT_ADDHP * (factor+1)).to_s
+    len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
+    newentry = $buf[0, len]
+    numindex = newentry.index(INT_45FMERCHANT_ADDHP.to_s)
+    unless newentry.include?(STR_45FMERCHANT_GOLD) and numindex then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
+    newentry[numindex, 4] = newhp_str
+    if diff.zero? # need to add a new entry
+      SendMessage.call_r($hWndListBox, LB_ADDSTRING, 0, newentry)
+    else # new entry already exists
+      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
+      newentry2 = $buf[0, len]
+      unless newentry2.include?(STR_45FMERCHANT_GOLD) then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_NEWENTRY_DIALOG_ID + newentry2, MB_ICONEXCLAMATION); return end
+      unless newentry2.include?(newhp_str) then SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_NEWENTRY_DIALOG_ID, nil); SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_NEWENTRY_DIALOG_ID, newentry) end # replace this entry when the HP value is incorrect
+    end
+    return true
+  end
+  def replace2ndMagicianDialog(factor)
+    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
+
+    (0..1).each do |i|
+      hp_str = (INT_1STMAGICIAN_SUBHP[i] * (factor+1)).to_s
+      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], $buf)
+      entry = $buf[0, len]
+      numindex = (entry =~ /(\d+)/)
+      unless numindex then API.msgbox($str::APP_TARGET_2ND_ERROR_STR % LISTBOX2_2NDMAGICIAN_DIALOG_ID[i] + entry, MB_ICONEXCLAMATION); return end
+      unless entry.include?(hp_str) # replace this entry when the HP value is incorrect
+        entry[numindex, $1.size] = hp_str
+        SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], nil)
+        SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], entry)
+      end
+    end
+    return true
+  end
   def patch(i, s) # index; new status (0 or 1)
     # extra treatment
     if i == 2 and s == 1 # merchant dialog content
-      diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
-      if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
-      if diff.zero? # need to add a new entry
-        len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
-        newentry = $buf[0, len]
-        numindex = newentry.index(STR_45FMERCHANT_ADDHP[0])
-        unless numindex then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
-        newentry[numindex, 4] = STR_45FMERCHANT_ADDHP[1]
-        SendMessage.call_r($hWndListBox, LB_ADDSTRING, 0, newentry)
-      else # new entry already exists
-        len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
-        newentry = $buf[0, len]
-        unless newentry.include?(STR_45FMERCHANT_ADDHP[1]) then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_NEWENTRY_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
-      end
+      factor = readMemoryDWORD(MONSTER_STATUS_FACTOR_ADDR)
+      factor = readMemoryDWORD(FUTURE_STATUS_FACTOR_ADDR) if factor.zero?
+      return unless replace45FmerchantDialog(factor) # do not proceed if an error is thrown
     elsif i == 4 # make margin change immediately
       w = readMemoryDWORD($RichEdit1+OFFSET_CTL_WIDTH)
       h = readMemoryDWORD($RichEdit1+OFFSET_CTL_HEIGHT)

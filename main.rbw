@@ -38,6 +38,7 @@ def init()
   ReleaseDC.call($hWnd, hDC)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
+  $console.init = true if $console # refresh console in case there is any change
   SL.init
   BGM.init
   Mod.init

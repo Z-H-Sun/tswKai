@@ -19,7 +19,8 @@ module Str
   @strlen = 0
   module StrEN
     LONGNAMES = ['Life Pt (HP)', 'Offense(ATK)', 'Defense(DEF)', 'Gold Count', 'CurrentFloor', 'HighestFloor', 'X Coordinate', 'Y Coordinate', '(Yellow) Key', 'Blue Key', 'Red  Key', 'Altar Visits',
-'Weapon(Sword)', 'Shield Level', 'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
+'Weapon(Sword)', 'Shield Level', 'Back Tower *',
+'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
     STRINGS = [
 APP_NAME+': Please wait for game event to complete...', # 0
 APP_NAME+': Click the mouse to teleport to (%X,%X)%s',
@@ -68,7 +69,7 @@ to screen you from the magic attacks of wizards?',
 'You have Sacred Shield but just switched to a lower level
 shield. Do you want to disarm Sacred Shield, though you will
 no longer be able to resist the magic attacks from wizards?',
-'Refresh List   Press ESC to leave',
+['Press a key to select an item or ESC/ENTER to return to TSW', 'Enter a value here; press ESC to cancel or ENTER to confirm'],
 
 '-- tswKai3 --  
 Waiting for   
@@ -101,9 +102,9 @@ This can also bypass the 2500-round limit bug',
 'Fix 47F Magician_A movement bug
 Rectify their behavior in first/last row/col',
 'Fix 45F Merchant bug in the backside tower
-Add 88000 instead of 2000 HP (>=2nd round)', # 35
+Shouldn\'t add just 2000 HP (>=2nd round)', # 35
 'Fix 50F Zeno status bug in the backside tower
-44 mistakenly multiplied twice (>=3rd round)',
+Shouldn\'t multiply factor twice (>=3rd round)',
 'Increase the margins of the dialog window',
 
 'Display
@@ -168,7 +169,8 @@ process has already been running (pID = %d).',
 
   module StrCN
     LONGNAMES = ['生 命 力', '攻 击 力', '防 御 力', '金 币 数', '当 前 楼 层', '最 高 楼 层', 'Ｘ 坐 标', 'Ｙ 坐 标', '黄 钥 匙', '蓝 钥 匙', '红 钥 匙', '祭 坛 次 数',
-'佩 剑 等 级', '盾 牌 等 级', '勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
+'佩 剑 等 级', '盾 牌 等 级', '里侧塔属性×',
+'勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
     STRINGS = [
 APP_NAME+': 请等待游戏内部事件结束……', # 0
 APP_NAME+': 单击鼠标传送至 (%X,%X)%s',
@@ -215,7 +217,7 @@ APP_NAME+' 已退出。',
 '现有装备中存有「神盾」，但目前切换到了等级较低的
 盾牌。是否解除「神盾」装备？
 注意：这么做将丧失对魔法使的魔法攻击的免疫能力。',
-'刷 新 列 表     请按 ESC 返回游戏',
+['按 方向键 / 对应按键选择一个项目；按 ESC / ENTER 键返回游戏', '在此键入指定范围内的数值；按 ESC / 方向键 取消或 ENTER 确认'],
 
 '-- tswKai3 --  
 正在等待魔塔
@@ -247,9 +249,9 @@ APP_NAME+' 设置（动态）- pID=%p',
 '修正47层「魔術士A」魔法回退路线Bug
 (指其在首行/首列/末行/末列的后撤行为)',
 '修正45层里侧塔「商人」的加血点数Bug
-(二周目以上属性加点应×44: 2000→88000)', # 35
+(二周目后属性增倍，不应只加2000 HP)', # 35
 '修正50层里侧塔「芝诺」的属性Bug
-(三周目以上有时芝诺属性会错误地多×44)',
+(三周目后有时芝诺属性会多算一遍倍数)',
 '增加对话窗格内部文字边距，不至于太挤',
 
 '在地图上
