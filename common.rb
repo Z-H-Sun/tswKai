@@ -281,7 +281,7 @@ MAP_TYPE = 'C121'
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
   VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE) if $_TSWSL or $_TSWBGM
   CloseHandle.call($hPrc || 0)
-  $appTitle = nil
+  $appTitle = nil unless $preExitProcessed # if quitting, no need to change current $appTitle
   if $console === true # hide console on TSW exit
     $console.show(false, false) # when this app exits, even if TSW is still running, no need to do any further treatments
   elsif $configDlg # hide dialog on TSW exit

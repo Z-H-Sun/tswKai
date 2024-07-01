@@ -537,7 +537,10 @@ BASE:4C0D3		mov esi, [eax+2C]	; esi = TImage.Width (32 or 40)
 BASE:4C0D6		shr esi, 2	; esi = width/4 (everytime, draw hero at this offset)
 BASE:4C0D9		mov ebp, 4	; ebp = 4 (draw 4 frames in total)
 BASE:4C0DE		jmp BASE:4C109	; ebp = 4 (draw 4 frames in total)
-BASE:4C0E0	; ...
+
+BASE:4C0E0	loc_duration1:
+			db 0A, 0E, 1C, 2A	; 10, 14, 28, 42 ms sleep during movement tweens (for SuperFast, High, Middle, Low speed modes, respectively)
+		; ...
 		; ----------
 BASE:4C109		mov edi, 1	; edi = 1, 2, ..., ebp
 BASE:4C10E	loc_idou_loop_begin:
@@ -553,11 +556,9 @@ BASE:4C11D		push offset BASE:4C15E	; will call loc_idou_sleep next; then should 
 BASE:4C122		xchg ax, ax	; 2-byte nop
 
 BASE:4C124	loc_idou_sleep:
-			mov eax, [ebx+02EC]	; TTSW10.Timer2: TTimer
-BASE:4C12A		mov eax, [eax+24]	; TTimer.Interval
-BASE:4C12D		shr eax, 2	; /=4 (floor)
-BASE:4C130		dec eax	; -=1
-BASE:4C131		push eax	; dwMilliseconds: SuperFast: 1 ms; Fast: 11 ms; Middle: 24 ms; Low: 36 ms
+			movzx eax, byte ptr [BASE:89B9F]	; this stores the speed mode: 0=SuperFast; 1=High; 2=Middle; 3=Low
+BASE:4C12B		mov al, [eax+loc_duration1]	; 10/14/28/42 (the high-24-bits are 0 anyway; only need to set the low byte)
+BASE:4C131		push eax	; dwMilliseconds: SuperFast: 10 ms; Fast: 14 ms; Middle: 28 ms; Low: 42 ms
 BASE:4C132		mov eax, [BASE:89BFC]	; vacant dword pointer; used to store [KERNEL32.Sleep]
 BASE:4C137		test eax, eax	; if KERNEL32.Sleep is already loaded...
 BASE:4C139		jne loc_idou_sleep_call	; ...then no need to reload; call directly
@@ -1397,3 +1398,126 @@ BASE:61809		jmp [ecx*4+loc_BitBtnXClick_addr]	; TTSW10.BitBtnXClick
 		; ...
 
 		TTSW10.timer3ontimer	endp
+
+;============================================================
+		; Rev11: Place TSW game window to a better location on the screen
+		; TSW, upon startup or changing game window size, will put its window on the top left corner of the whole screen, which is a) a weird position and b) will overlap with the taskbar if it is located at the left or top side of the screen (though this is not an issue in Windows 11 because taskbar can only be at the bottom of the screen)
+		; Currently, I changed the code such that 1) on startup, the game window will be in the primary screen center, excluding the taskbar area; 2) on game window size change, the window will grow / shrink from its original center; 3) however, if the window exceed the primary screen working area (i.e., excluding the taskbar area), then it will reposition itself such that its edge do not go beyond the screen working area edge
+BASE:84F48	TTSW10.syokidata0	proc near	; (rōmaji of '初期data0') initialization of GUI
+		; ... (for the part before BASE:84FFA, one can refer to Entry 5 of `tswMod.asm`)
+		; original bytes:
+;BASE:84FF0	; this part through BASE:850EF is about setting the position and size of the game window, but the code is too lengthy and redundant. Therefore, I will show the pseudocode instead here:
+;		TControl.SetTop(TTSW10, 0);
+;		if (byte_ptr_BASE_89BA4 < 1) { // TSW size setting: 0=640x400; 1=800x500
+;			if (TScreen.GetWidth() > 640) { // this judgement is not useful
+;				TControl.SetLeft(TTSW10, 0);
+;				TForm.SetClientHeight(TTSW10, 424); // this contains 4 pixel margin
+;				TControl.SetWidth(TTSW10, 648); // this contains 4 pixel margin and 4 pixel border
+;			} else {
+;				TControl.SetLeft(TTSW10, -4); // -4 might be used to account for the margin, but should be -2 (2 pixel on the left side and 2 pixel on the right side)
+;				TForm.SetClientHeight(TTSW10, 424); // this contains 4 pixel margin
+;				TControl.SetWidth(TTSW10, 648); // this contains 4 pixel margin and 4 pixel border
+;			}
+;		} else if (byte_ptr_BASE_89BA4 == 1) { // TSW size setting: 0=640x400; 1=800x500
+;			if (TScreen.GetWidth() > 640) { // this judgement is not useful
+;				TControl.SetLeft(TTSW10, 0);
+;				TForm.SetClientHeight(TTSW10, 530); // this contains 4 (6?) pixel margin
+;				TControl.SetWidth(TTSW10, 808); // this contains 4 pixel margin and 4 pixel border
+;			} else {
+;				TControl.SetLeft(TTSW10, -3); // -3 might be used to account for the margin, but should be -2 (2 pixel on the left side and 2 pixel on the right side)
+;				TForm.SetClientHeight(TTSW10, 530); // this contains 4 (6?) pixel margin
+;				TControl.SetWidth(TTSW10, 808); // this contains 4 pixel margin and 4 pixel border
+;			}
+;		}
+;BASE:850EF	; ...
+
+		; patched bytes:
+		; these are the parameters for TForm.GetClientRect (eax=TForm; edx=&DWORD[4])
+BASE:84FFA		lea edx, [ebp-14]	; use the 16 bytes pre-allocated by the syokidata0 subroutine (between ebp-14 ... ebp-04) as buffer for getting TSW window client area's [c_L, c_T, c_W, c_H] (C_L and C_T are always 0)
+		; ebp-14:=_DWORD[0]
+		; ebp-10:=_DWORD[1]
+		; ebp-0C:=_DWORD[2]
+		; ebp-08:=_DWORD[3]
+BASE:84FFD		mov eax, ebx	; TTSW10
+
+; we will first push the parameters for User32.SystemParametersInfoA to stack first
+BASE:84FFF		push 0	; fWinIni = FALSE
+BASE:85001		push edx	; pvParam = the 16 bytes between esp_old-16 .. esp_old as buffer for getting the primary screen's working area RECT [s_L, s_T, s_R, s_B] (excluding the taskbar)
+BASE:85002		push 0	; uiParam
+BASE:85004		push 30	; uiAction=SPI_GETWORKAREA
+
+BASE:85006		call TForm.GetClientRect	; BASE:21370
+
+; calculate the new TSW window size (width and height): esi:=n_W; edi:=n_H
+BASE:8500B		mov esi, 0288	; 648
+BASE:85010		mov edi, 01A8	; 424
+BASE:85015		cmp byte ptr [BASE:89BA4], 0	; TSW size setting: 0=640x400; 1=800x500
+BASE:8501C		je BASE:85026
+BASE:8501E		mov si, 0328	; 808
+BASE:85022		mov di, 0212	; 530
+
+BASE:85026		add edi, [ebx+30]	; += old TSW window height (w_H)
+BASE:85029		sub edi, [ebp-08]	; -= old TSW client height (c_H)
+
+BASE:8502C		call BASE:0522C	; user32.SystemParametersInfoA
+		; Known issue: this will only get information for the primary monitor; a better solution is to use MonitorFromWindow + GetMonitorInfo
+
+		; calculate the new TSW window center position: edx:=2*c_X; ecx:=2*c_Y
+BASE:85031		cmp byte ptr [ebx+5C], 0	; used to judge whether this subroutine is executed at the first time (this byte will +1/2/4/8 if TControl.SetLeft/Top/Width/Height has been called); if so, place the window in the screen center; otherwise, preserve the TSW window center
+BASE:85035		je loc_first_time_reposition
+
+BASE:85037		mov edx, [ebx+24]	; old TSW window left (w_L)
+BASE:8503A		sal edx, 1
+BASE:8503C		add edx, [ebx+2C]	; old TSW window width (w_W)
+BASE:8503F		mov ecx, [ebx+28]	; old TSW window top (w_T)
+BASE:85042		sal ecx, 1
+BASE:85044		add ecx, [ebx+30]	; old TSW window height (w_H)
+BASE:85047		jmp loc_first_time_reposition_end
+BASE:85049	loc_first_time_reposition:
+			mov edx, [ebp-14]	; screen working area: left (s_L)
+BASE:8504C		add edx, [ebp-0C]	; screen working area: right (s_R)
+BASE:8504F		mov ecx, [ebp-10]	; screen working area: top (s_T)
+BASE:85052		add ecx, [ebp-08]	; screen working area: bottom (s_B)
+BASE:85055	loc_first_time_reposition_end:
+		; calculate the new TSW window left top: edx:=n_L; ecx:=n_T
+			sub edx, esi
+BASE:85057		sar edx, 1
+BASE:85059		sub ecx, edi
+BASE:8505B		sar ecx, 1
+
+		; judge whether the resultant new corners exceed the screen working area edges, if so, place the new corner at the edge (check the bottom right first, and then the top left (higher priority to fulfill))
+BASE:8505D		mov eax, [ebp-0C]	; screen working area: right (s_R)
+BASE:85060		sub eax, esi	; new TSW window width (n_W)
+BASE:85062		inc eax
+BASE:85063		inc eax	; 2 pixel margin
+BASE:85064		cmp eax, edx	; n_L should not exceed eax:= s_R-n_W+2
+BASE:85066		cmovl edx, eax
+
+BASE:85069		mov eax, [ebp-08]	; screen working area: bottom (s_B)
+BASE:8506C		sub eax, edi	; new TSW window height (n_H)
+BASE:8506E		inc eax
+BASE:8506F		inc eax	; 2 pixel margin
+BASE:85070		cmp eax, ecx	; n_T should not exceed eax:= s_B-n_H
+BASE:85072		cmovl ecx, eax
+
+BASE:85075		mov eax, [ebp-14]	; screen working area: left (s_L)
+BASE:85078		dec eax
+BASE:85079		dec eax	; 2 pixel margin
+BASE:8507A		cmp edx, eax	; n_L should not be less than eax:= s_L-2
+BASE:8507C		cmovl edx,eax
+
+BASE:8507F		mov eax, [ebp-10]	; screen working area: top (s_T)
+BASE:85082		cmp ecx, eax	; n_T should not be less than eax:= s_T
+BASE:85084		cmovl ecx, eax
+
+BASE:85087		push esi	; width
+BASE:85088		push edi	; height
+BASE:85089		mov eax, ebx	; TTSW10
+		; edx = left; ecx = top
+BASE:8508B		call TWinControl.SetBounds	; BASE:167AC
+BASE:85090		or byte ptr [ebx+5C], 7	; see comment in BASE:85031; used to indicate that TControl.SetLeft/Top/Width has already be called
+		; oddly enough, TForm.SetClientHeight will not set `[ebx+5C] |= 8`, so the value here is 7 not 15
+BASE:85094		jmp BASE:850EF	; end
+		; ...
+
+		TTSW10.syokidata0	endp
