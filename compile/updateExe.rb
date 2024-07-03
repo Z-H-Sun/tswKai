@@ -11,7 +11,7 @@ ICOFILE = {'../1.ico' => # new icon to replace (set to `nil` if not needed)
     [48,  48, 32],
     [16,  16, 32]]}
 MANFILE = '../tswKai3.exe.MANIFEST'
-VER = [3, 1, 0, 0] # new version number to assign (set to `nil` if not needed)
+VER = [3, 1, 5, 0] # new version number to assign (set to `nil` if not needed)
 
 BEGIN {
   begin

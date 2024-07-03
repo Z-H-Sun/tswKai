@@ -30,6 +30,6 @@
 #define IDC_STATIC -1
 #endif
 
-#define EXERB_RES_EXERB_VERSION1 3,1,0,0
+#define EXERB_RES_EXERB_VERSION1 3,1,5,0
 
 #endif

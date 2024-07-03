@@ -287,7 +287,7 @@ BGM_CHECK_EXT.map {|i| [0xf883, i[0], 0x75, i[7], 0xb8, 0, i[5], i[6], 0xa0,
     end
     if bEnable
       callFunc(@_sub_initBGM)
-    else
+    elsif !$preExitProcessed or ($BGMtakeOver and @bgm_path) # the following condition should not call sub_finalizeBGM: ($preExitProcessed && !($BGMtakeOver && @bgm_path)), because Timer4 is now changed back to prolog, so quitting tswBGM can sometimes cause unexpectedly ending the current game (more details: if $BGMtakeOver has never been turned on, then `sub_initBGM` never has a chance to run, and `isInProlog` thus remains TRUE; if @bgm_path is always nil, then `@_sub_finalizeBGM` will never be assigned)
       callFunc(@_sub_finalizeBGM)
     end
   end

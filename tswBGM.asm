@@ -757,7 +757,7 @@ EXTRA:0A1A		align 0104	; len = MAX_PATH
 
 EXTRA:0B04	bgm_phantomfloor_str	dd 'b_09', '5xgw'	; "b_095xgw.mp3" (new BGM for 44F added in TSW3D v1.8)
 
-EXTRA:0B0C	isInProlog	db 0	; the time when tswBGM is started, if TTimer4 is still enabled (meaning still in prolog), then initialization will be delayed because we can't use TTimer4 now
+EXTRA:0B0C	isInProlog	db 1	; the time when tswBGM is started, if TTimer4 is still enabled (meaning still in prolog), then initialization will be delayed because we can't use TTimer4 now
 EXTRA:0B0D		align 04
 EXTRA:0B10	last_bgmid	db 0	; if TSW_BGM_ID == last_bgmid, then do nothing
 EXTRA:0B11		align 04
