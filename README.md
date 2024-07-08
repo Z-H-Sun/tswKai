@@ -3,6 +3,9 @@ Tower of the Sorcerer for Windows Kai (改): Modifier of game variables and impr
 
 魔塔英文原版 TSW 修改器 及 汉化、提升游戏体验补丁
 
+***New Release v3.1.5: Please visit [the release page](https://github.com/Z-H-Sun/tswKai/releases/tag/v3.1.5) for details on new features!***<br>
+***新版本 v3.1.5：请前往 [发布页面](https://github.com/Z-H-Sun/tswKai/releases/tag/v3.1.5) 查看新版本特性！***
+
 > See Also / 另请参见: [PC98TSKai（PC98 原版魔塔-改）](https://github.com/Z-H-Sun/PC98TSKai)［Coming soon! / 开发中，即将上线］
 
 > [!important]
@@ -24,9 +27,9 @@ You will need a Windows OS to run this software. ***Windows XP and later (up to 
 
 本软件的运行平台为 Windows，推荐使用 ***Windows XP 及以上（含 Windows 11）*** 版本。无法保证在更低 Windows 版本或模拟器上能正常运行。*无其他系统需求。*
 
-It is recommended to download the latest <ins>[all-in-one package](https://github.com/Z-H-Sun/tswKai/releases/latest/download/TSW_all_in_one.zip)</ins>. Extract its contents into any path you like (*preferably a permanent path*), and no need to install. It will take up ~50 MB space.
+It is recommended to download the latest <ins>[all-in-one package](https://github.com/Z-H-Sun/tswKai/releases/latest/download/TSW_all_in_one.zip)</ins>. Extract its contents into any path you like (*preferably a permanent path*), and no need to install. It will take up ~35 MB space.
 
-推荐下载最新版的 <ins>[软件整合包](https://github.com/Z-H-Sun/tswKai/releases/latest/download/TSW_all_in_one.zip)</ins>。功能俱全，绿色无需安装（约 50 MB），解压到任意路径即可（*最好是一个不会变动的永久路径*）。
+推荐下载最新版的 <ins>[软件整合包](https://github.com/Z-H-Sun/tswKai/releases/latest/download/TSW_all_in_one.zip)</ins>。功能俱全，绿色无需安装（约 35 MB），解压到任意路径即可（*最好是一个不会变动的永久路径*）。
 
 > [!tip]
 > The package also includes this README and all Wiki pages. For Chinese, please open `使用必读.html`; for English, please open `README.html`. Chrome / Edge is recommended for browsing the files.
@@ -42,6 +45,15 @@ For the TSW program itself: / 针对魔塔游戏本体：
 
 * Raised the refresh rate and solved lag<br/>
 提高刷新率，解决卡顿
+
+* Improved keyboard control of player movement by shortening the delay when holding down an arrow key<br/>
+  大幅改进键盘控制玩家移动的手感，减弱长按方向键后第一下的停顿感
+
+* Improved movement / stair / door-opening / battle animations, which are made much smoothier<br/>
+  大幅改进移动、上下楼、开门、战斗等动画，使其变得十分丝滑
+
+* Fixed a bug on the display of GOLD income for defeating "strike-first" monsters<br/>
+  修正先攻怪显示奖励金币数的 bug
 
 * Changed the text colors so as to make them clearer against the gray background<br/>
 解决对话框底色字色衬度低看不清的问题
@@ -131,8 +143,8 @@ For the tswKai3 mod: / 针对魔塔修改器：
 
   *For its usage,see [Patch Config](#patch-config--修正设置) (For details, refer to its [Wiki page](https://github.com/Z-H-Sun/tswKai/wiki/1.2.1-‐-Patch-Config))<br/>具体用法请参见 [修正设置](#patch-config--修正设置)（详见其对应的 [百科页面](https://github.com/Z-H-Sun/tswKai/wiki/§1.2.1-‐-修正设置)）*
 
-* Can use mouse to teleport in the current map (i.e., fast-move to a new destination; the connectivity of the destination with respect to the starting location will be checked); can use shortcut keys to use items; can display on-map damage for each monster; can show monster details (with analyses of ATK-critical-values and battle round counts) and 44 analyses in the back-side tower (i.e., display the real properties after divided by 44)<br/>
-支持使用鼠标点选（快速移动到地图上的新位置，会判断当前位置和目的地之间的连通性）、宝物快捷使用（按快捷键直接使用道具）、地图显伤（显示怪物伤害）、怪物详情（攻击临界和回合数等分析）、里侧塔 44 分析（显示除以 44 以后的实际属性值）
+* Can use mouse to teleport in the current map (i.e., fast-move to a new destination; the connectivity of the destination with respect to the starting location will be checked); can use shortcut keys to use items; can display on-map damage for each monster; can show monster details (with analyses of ATK-critical-values and battle round counts) and 44 analyses in the back-side tower (i.e., display the real properties after divided by 44 (*or other custom multiplication factor specified in [the cheat console](https://github.com/Z-H-Sun/tswKai/wiki/1.2.5-‐-Cheat-Console#usage)*))<br/>
+支持使用鼠标点选（快速移动到地图上的新位置，会判断当前位置和目的地之间的连通性）、宝物快捷使用（按快捷键直接使用道具）、地图显伤（显示怪物伤害）、怪物详情（攻击临界和回合数等分析）、里侧塔 44 分析（显示除以 44（*或者其他由 [作弊控制台](https://github.com/Z-H-Sun/tswKai/wiki/§1.2.5-‐-作弊控制台#用法) 指定的自定义倍数*）以后的实际属性值）
 
   *For its usage,see [Map Enhancement](#map-enhancement--地图增强) (For details, refer to its [Wiki page](https://github.com/Z-H-Sun/tswKai/wiki/1.2.2-‐-Map-Enhancement))<br/>具体用法请参见 [地图增强](#map-enhancement--地图增强)（详见其对应的 [百科页面](https://github.com/Z-H-Sun/tswKai/wiki/§1.2.2-‐-地图增强)）*
 
@@ -307,8 +319,8 @@ Hold <kbd>Tab</kbd> or the left <kbd>⊞ WIN</kbd> hotkey to use the ***Mouse Fa
     * ${\textsf{\color{red}Red}}$ = unbeatable; additional line on top = next critical ATK gain<br/>
     ${\textsf{\color{red}红字}}$ = 无法战胜；上方额外数值 = 下一攻击临界；
 
-    * In the backside tower (≥ 2nd-round game), the displayed damage/critical values, as well as your properties in the top left panel, will be the real values divided by 44 (right figure below).<br/>
-    里侧塔（二周目及以上）里的伤害/临界值，包括左上角玩家的属性栏里，显示的都将是除以 44 以后的真实值（右下图）。
+    * In the backside tower (≥ 2nd-round game), the displayed damage/critical values, as well as your properties in the top left panel, will be the real values divided by 44 (*or other custom multiplication factor specified in [the cheat console](https://github.com/Z-H-Sun/tswKai/wiki/1.2.5-‐-Cheat-Console#usage)*); same below); see right figure below.<br/>
+    里侧塔（二周目及以上）里的伤害/临界值，包括左上角玩家的属性栏里，显示的都将是除以 44（*或者其他由 [作弊控制台](https://github.com/Z-H-Sun/tswKai/wiki/§1.2.5-‐-作弊控制台#用法) 指定的自定义倍数，下同*）以后的真实值（右下图）。
 
   * When hovering the mouse over a monster,<br/>
   将鼠标移到某个怪物上时，
@@ -393,14 +405,14 @@ In the original version of TSW, the BGM function is very user-hostile, which is 
 * During the game, press <kbd>F8</kbd> twice to enter the Cheat Console. As shown in the left figure below, a list of variables and their values will be displayed.<br/>
 在游戏中途，按两次 <kbd>F8</kbd> 可以进入作弊控制台。界面将显示游戏变量列表及对应值，如左下图所示。
 
-* Each variable is denoted as a single letter or number (labelled in yellow on the right). Press the corresponding key to select that variable, or press <kbd>Z</kbd> to simply refresh the list.<br/>
-各变量在右侧以单个字母或数字表示，按下对应按键以选择该变量。若按 <kbd>Z</kbd> 键则仅刷新此列表。
+* Each variable is denoted as a single letter or number (labelled in yellow on the right). Press the corresponding key to select that variable, or use arrow keys to navigate to an item.<br/>
+各变量在右侧以单个字母或数字表示，按下对应按键以选择该变量；或者按方向键来选定一个项目。
 
-* Follow the instructions to input the desired new value. Note the upper and lower limits.<br/>You can use <kbd>Backspace</kbd> to clear the input, and you can press <kbd>Enter</kbd> or <kbd>Space</kbd> to confirm. When the number of digits reaches the upper limit, the value will be accepted immediately.<br/>At any time, press <kbd>ESC</kbd> to cancel.<br/>
-根据提示输入想要的新数值，请注意上限及下限。<br/>可用 <kbd>退格</kbd> 删除键入，按 <kbd>回车</kbd> 或 <kbd>空格</kbd> 确认。当数字位数达到上限也会自动确认并返回。<br/>中途可以按 <kbd>ESC</kbd> 取消。
+* Follow the instructions to input the desired new value. Note the upper and lower limits.<br/>You can use <kbd>Backspace</kbd> to clear the input, and you can press <kbd>Enter</kbd> or <kbd>Space</kbd> to confirm. When the number of digits reaches the upper limit, the value will be accepted immediately.<br/>At any time, press <kbd>ESC</kbd> to cancel, or press an arrow key to cancel and redirect to a neighboring item.<br/>
+根据提示输入想要的新数值，请注意上限及下限。<br/>可用 <kbd>退格</kbd> 删除键入，按 <kbd>回车</kbd> 或 <kbd>空格</kbd> 确认。当数字位数达到上限也会自动确认并返回。<br/>中途可以按 <kbd>ESC</kbd> 取消，或者按方向键取消并重新定向到一个相邻的项目。
 
-* After you are done, press <kbd>ESC</kbd> to leave the interface and return to the TSW game.<br/>
-设置结束后，按 <kbd>ESC</kbd> 退出控制台界面返回游戏。
+* After you are done, press <kbd>ESC</kbd> or <kbd>Enter</kbd> or <kbd>Space</kbd> to leave the interface and return to the TSW game.<br/>
+设置结束后，按 <kbd>ESC</kbd> 或 <kbd>回车</kbd> 或 <kbd>空格</kbd> 退出控制台界面返回游戏。
 
 |![Cheat Console](https://github.com/Z-H-Sun/tswKai/wiki/img/1.2.5-1.png)|![Mojibake](https://github.com/Z-H-Sun/tswKai/wiki/img/1.1-2.png)|
 |---|---|
@@ -423,6 +435,24 @@ In the original version of TSW, the BGM function is very user-hostile, which is 
 * In case the <kbd>Tab</kbd> or left <kbd>⊞ WIN</kbd> hotkey stops working (which is rare), you can quickly press <kbd>F7</kbd> twice to reset the hotkeys.<br/>
 虽然不太可能发生，但如果 <kbd>Tab</kbd> 或 左侧 <kbd>⊞ WIN</kbd> 热键失效，可以快速按两下 <kbd>F7</kbd> 重置热键。
 
+* For touchpad users:<br/>
+  针对使用触摸板的用户：
+
+  * While holding down the <kbd>Tab</kbd> key, if you cannot use the touchpad to perform left or right click, please go to `Settings -> Devices (or, “Bluetooth & devices”) -> Touchpad -> Taps -> Touchpad sensitivity` dropdown list and choose `Most sensitive`.<br/>
+    如果在 <kbd>Tab</kbd> 键按下时，无法使用触摸板单击左键或右键，请前往 `设置 -> 设备（或“蓝牙和其他设备”）-> 触摸板 -> 点击 -> 触摸板敏感度` 下拉框，选取 `最高敏感度`。
+
+  * While holding down the <kbd>⊞ WIN</kbd> key, if you cannot use the touchpad to move the cursor, please go to `Control Panel -> TouchPad -> Advanced settings`, and untick `To help prevent cursor from accidentally moving while you type, change the delay before touchpad works` (or equivalent settings); if the issue persists, also untick `Turn on PalmCheck` (or equivalent settings).<br/>
+    如果在 <kbd>⊞ WIN</kbd> 键按下时无法使用触摸板移动光标，请前往 `控制面板 -> TouchPad -> 高级设置`：在 `敲击和拖动` 选项卡中，取消勾选 `键盘输入时，指定的延迟时间内禁用触摸板`（或其他类似选项）；若仍然无法工作，再将 `灵敏度` 选项卡中的 `开启手掌检测` 取消勾选（或其他类似选项）。
+
+* In case of lag (which is rare):<br/>
+  如果遇到卡顿（极少情况下才会发生）：
+
+  * If the game lags every time the background music replays, it might be because you are running on an old, slow PC with poor performance, which requires extra time for reading and decoding MP3 files. In this case, press <kbd>F3</kbd> (*or, untick the "Options -> Background Music On" menu item in the TSW game*) to turn off the background music.<br/>
+    如果每次都会在背景音乐重新开始播放的时候卡顿一下，可能是因为对于某些性能较差的旧电脑，播放 MP3 音乐时会需要一些额外的读取、解码时间，因此，请按 <kbd>F3</kbd>（*或者，取消勾选魔塔游戏的 `选项 -> 开启背景音乐` 菜单*）关闭背景音乐。
+
+  * If the game lags every time you open a door, go up/downstairs, and battle (and the sound effects are noticeably cut off), it might be because the built-in speaker sound card of your laptop brand has poor performance (possibly due to energy saving considerations). In this case, simply plugging in external speakers or headphones can solve the problem; or, untick the "Options -> Wav Sound On" menu item of the TSW game to turn off the sound effects.<br/>
+    如果每次都在开门、上下楼、战斗时卡顿一下（同时音效有明显“掐头去尾”感），可能是由于某些品牌的笔记本电脑内置扬声器声卡性能较差（也有可能是出于节能设置），此时插入外接音箱或耳机就可解决；或者，取消勾选魔塔游戏的 `选项 -> 开启音效` 菜单以关闭音效。
+
 * If you encounter any problems, please follow the instructions provided by this mod. If the problem persists, please [submit an issue here](https://github.com/Z-H-Sun/tswKai/issues/new).<br/>
 如果遇到问题，请按照本修改器弹出的提示文本操作。如果仍然无法解决问题，请 [提交 Issue](https://github.com/Z-H-Sun/tswKai/issues/new)。
 
@@ -443,13 +473,14 @@ In the original version of TSW, the BGM function is very user-hostile, which is 
 * For example, the mod will, by default, use the same language as the currently running TSW game (English vs. Chinese), but if you delete the leading pound sign in Line 21 of the exemplary option file as follows, the mod will always be displayed in English: `$isCHN = nil`.<br/>
 例如，修改器默认使用与当前运行中的魔塔游戏相同的语言（中文或英文），而删除样例配置文件第 19 行代码开头的井号（如后所示），表示总是使用中文作为修改器的显示语言：`$isCHN = 1`。
 
-* If you have been familiar with the usage of this mod after using it for several times, and you would like to focus on the strategic calculations and route optimizations, it is advisable to uncomment the 12th, 16th, 42nd, 44th, and 46th lines in the exemplary option file to minimize distraction (meaning: always show on-map damage, disable BGM enhancement, hide the config dialog on startup, skip asking whether to hibernate on quitting, and hide the TSW status window, respectively):<br/>
-如果经过多次运行，你已经熟悉了本修改器的用法，并且希望专注于路线计算和优化，则可以对样例配置文件中的第 12、16、42、44、46 行取消注释以降低干扰（分别表示：总是显示地图伤害、关闭 BGM 增强、启动时不显示设置窗口、退出时不询问是否待机、不显示 TSW 状态窗口）：
+* If you have been familiar with the usage of this mod after using it for several times, and you would like to focus on the strategic calculations and route optimizations, it is advisable to uncomment the 12th, 16th, 42nd, 44th, 46th, and 48th lines in the exemplary option file to minimize distraction (meaning: always show on-map damage, disable BGM enhancement, hide the config dialog on startup, hide the tutorial message box on startup, skip asking whether to hibernate on quitting, and hide the TSW status window, respectively):<br/>
+如果经过多次运行，你已经熟悉了本修改器的用法，并且希望专注于路线计算和优化，则可以对样例配置文件中的第 12、16、42、44、46、48 行取消注释以降低干扰（分别表示：总是显示地图伤害、关闭 BGM 增强、启动时不显示设置窗口、启动时不显示使用教程提示框、退出时不询问是否待机、不显示 TSW 状态窗口）：
 
   ```ruby
   $MPshowMapDmg = 1
   $BGMtakeOver = false # Default: true
   $CONonTSWstartup = false # Default: true
+  $CONmsgOnTSWstartup = false # Default: true
   $CONaskOnTSWquit = false # Default: true
   $CONshowStatusTip = false # Default: true
   ```
