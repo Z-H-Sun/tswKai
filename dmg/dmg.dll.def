@@ -2,3 +2,4 @@ EXPORTS
     ini
     fin
     inj
+    dmg = dmg@16

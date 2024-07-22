@@ -127,14 +127,18 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(char monsterID) { // HIWORD=cri (
     return dmg | (cri << 16); // MAKELONG(dmg, cri)
 }
 
-NOINLINE static void REGCALL draw_dmg(HANDLE TTSW10) {
+extern void REGCALL dmg(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapTop, HANDLE TSW_cur_mBitmap) {
+    HANDLE TTSW10 = get_h(TTSW10_ADDR);
     DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
+    WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
+    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    BitBlt(hMemDC, 0, 0, TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
+
     STATUS TSW_hero_status = *(STATUS*)TTSW10_HERO_STATUS_ADDR;
     WORD offset = 123u*(UCHAR)TSW_hero_status.floor + 2u;
     char* TSW_curFloor_tiles = (char*)TTSW10_MAP_STATUS_ADDR+offset;
     char strInt_1[8]; int lenInt_1;
     char strInt_2[8]; int lenInt_2;
-    BitBlt(hMemDC, 0, 0, 440, 440, NULL, 0, 0, WHITENESS);
     for (UCHAR i = 0; i < 121; i++) {
         char mID = getMonsterID(TSW_curFloor_tiles[i]);
         if (mID == -1)
@@ -146,7 +150,7 @@ NOINLINE static void REGCALL draw_dmg(HANDLE TTSW10) {
 
         if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
             SetTextColor(hMemDC, color_no_go);
-            SetROP2(hMemDC, R2_BLACK);
+            SetROP2(hMemDC, R2_WHITE);
         }
         else {
             SetTextColor(hMemDC, color_foreground);
@@ -166,16 +170,9 @@ NOINLINE static void REGCALL draw_dmg(HANDLE TTSW10) {
             TextOutA(hMemDC, x, y-12, strInt_2, lenInt_2);
         }
     }
-}
 
-NOINLINE static void REGCALL overlay(HANDLE TTSW10) {
-    DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
-    WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
-    DWORD TSW_mapLeft = get_p(TTSW10_GAMEMAP_LEFT_ADDR), TSW_mapTop = get_p(TTSW10_GAMEMAP_TOP_ADDR);
-
-    HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
     HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
-    TransparentBlt(TTSW10_TCanvas_hDC, TSW_mapLeft, TSW_mapTop, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, TSW_mapSize, TSW_mapSize, RGB(0xFF,0xFF,0xFF)); // For some unknown reason, the black color can't be used as the mask color on some computers (what the heck?), see https://stackoverflow.com/q/70062625/11979352
+    BitBlt(TTSW10_TCanvas_hDC, TSW_mapLeft, TSW_mapTop, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
 }
 
 extern void ini(void) { // initialize
@@ -209,12 +206,17 @@ extern void fin(void) { // finalize
 }
 extern void inj(void) { // inject
     HANDLE TTSW10 = get_h(TTSW10_ADDR);
-    DWORD TSW_event_count = get_p(TTSW10_EVENT_COUNT_ADDR);
-    if (!TSW_event_count)
-    {
-        draw_dmg(TTSW10);
-        overlay(TTSW10);
-    }/*
+    HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
+    DWORD TSW_mapLeft = get_p(TTSW10_GAMEMAP_LEFT_ADDR), TSW_mapTop = get_p(TTSW10_GAMEMAP_TOP_ADDR);
+    HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
+    HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
+    BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
+    HANDLE TSW_cur_mBitmap = TSW_cur_frame ? TSW_mBitmap_2 : TSW_mBitmap_1;
+
+    //DWORD TSW_event_count = get_p(TTSW10_EVENT_COUNT_ADDR);
+    //if (!TSW_event_count)
+        dmg(TTSW10_TCanvas, TSW_mapLeft, TSW_mapTop, TSW_cur_mBitmap);
+    /*
     HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
     HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
     HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_mBitmap_1));

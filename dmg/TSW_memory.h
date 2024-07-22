@@ -23,9 +23,10 @@
 #include <windows.h>
 
 // Delphi uses "Borland register" calling convention (argv passed to eax/edx/ecx)
-// so each extern function bears with __attribute__((__regparm__(3)))
+// so each extern function bears with __attribute__((__regparm__(3))) (using 3 registers before pushing params on stack)
+// __stdcall means that the callee will clean up the stack
 // https://en.wikipedia.org/wiki/X86_calling_conventions#Borland_register
-#define REGCALL __attribute__((__regparm__(3)))
+#define REGCALL __stdcall __attribute__((__regparm__(3)))
 
 #define TTSW10_ADDR 0x48C510
 #define TTSW10_HERO_ITEM_ADDR 0x4B86C4
@@ -33,6 +34,7 @@
 #define TTSW10_ENEMY_STATUS_ADDR 0x489910
 #define TTSW10_MAP_STATUS_ADDR 0x4B8934
 #define TTSW10_STATUS_FACTOR_ADDR 0x4B8904
+#define TTSW10_GAMEMAP_FRAME_ADDR 0x48C5D2
 #define TTSW10_GAMEMAP_BITMAP_1_ADDR 0x48C514
 #define TTSW10_GAMEMAP_BITMAP_2_ADDR 0x48C518
 #define TTSW10_GAMEMAP_LEFT_ADDR 0x48C578
