@@ -129,14 +129,7 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(char monsterID) { // HIWORD=cri (
     return dmg | (cri << 16); // MAKELONG(dmg, cri)
 }
 
-extern void REGCALL dmg(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapTop, HANDLE TSW_cur_mBitmap) {
-    HANDLE TTSW10 = get_h(TTSW10_ADDR);
-    DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
-    WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
-    BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
-    HPEN hPen_old; HFONT hFont_old;
-    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
-
+extern void cmp(void) { // calculate the damage / critical value for the current whole map
     STATUS TSW_hero_status = *(STATUS*)TTSW10_HERO_STATUS_ADDR;
     WORD offset = 123u*(UCHAR)TSW_hero_status.floor + 2u;
     char* TSW_curFloor_tiles = (char*)TTSW10_MAP_STATUS_ADDR+offset;
@@ -155,53 +148,65 @@ extern void REGCALL dmg(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapT
             need_update |= 3; // both frames should be updated
         }
     }
+}
 
+extern void REGCALL dtl(HDC hDC, char i, DWORD xy) { // draw the damage / critical value for a specific tile `i` at a given `xy` coordinate
+    DWORD x = (DWORD)LOWORD(xy), y = (DWORD)HIWORD(xy);
+    DWORD dmgCri = m_dmg_cri[i & 0x7F];
+    WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
+    HPEN hPen_old; HFONT hFont_old;
+    char strInt_1[8]; int lenInt_1;
+    char strInt_2[8]; int lenInt_2;
+
+    if (dmgCri == (DWORD)(-2)) // no draw
+        return;
+    SetBkMode(hDC, TRANSPARENT);
+    hPen_old = SelectObject(hDC, hPen_stroke);
+    hFont_old = SelectObject(hDC, hFont_dmg);
+    if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
+        SetTextColor(hDC, color_no_go);
+        SetROP2(hDC, R2_WHITE);
+    }
+    else {
+        SetTextColor(hDC, color_foreground);
+        SetROP2(hDC, R2_COPYPEN);
+    }
+    BeginPath(hDC); // TODO:
+    lenInt_1 = itoa2(dmg, strInt_1);
+    TextOutA(hDC, x, y, strInt_1, lenInt_1);
+    if (cri != 0x7FFF) {
+        lenInt_2 = itoa2(cri, strInt_2);
+        TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+    }
+    EndPath(hDC); // TODO:
+    StrokePath(hDC); // TODO:
+    TextOutA(hDC, x, y, strInt_1, lenInt_1);
+    if (cri != 0x7FFF)
+        TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+    SelectObject(hDC, hPen_old);
+    SelectObject(hDC, hFont_old);
+}
+
+extern void REGCALL dmp(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapTop, HANDLE TSW_cur_mBitmap) { // draw the damage / critical value for the current whole map
+    HANDLE TTSW10 = get_h(TTSW10_ADDR);
+    DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
+    WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
+    BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
+    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+
+    cmp();
     if (need_update & (TSW_cur_frame+1)) { // `TSW_cur_frame`: i=0, 1; if i-th bit (right-to-left) is set
         need_update &= (2-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0
         
         SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
         BitBlt(TSW_mBitmap_hDC, 0, 0, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
 
-        SetBkMode(TSW_mBitmap_hDC, TRANSPARENT);
-        hPen_old = SelectObject(TSW_mBitmap_hDC, hPen_stroke);
-        hFont_old = SelectObject(TSW_mBitmap_hDC, hFont_dmg);
-        char strInt_1[8]; int lenInt_1;
-        char strInt_2[8]; int lenInt_2;
         for (UCHAR i = 0; i < 121; i++) {
             WORD x = i % 11u * (UCHAR)TSW_tileSize + 1;
             WORD y = (i / 11u + 1) * (UCHAR)TSW_tileSize - 15;
-            DWORD dmgCri = m_dmg_cri[i & 0x7F];
-            WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
-            HPEN hPen_old; HFONT hFont_old;
-            char strInt_1[8]; int lenInt_1;
-            char strInt_2[8]; int lenInt_2;
-
-            if (dmgCri == (DWORD)(-2)) // no draw
-                continue;
-            if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
-                SetTextColor(TSW_mBitmap_hDC, color_no_go);
-                SetROP2(TSW_mBitmap_hDC, R2_WHITE);
-            }
-            else {
-                SetTextColor(TSW_mBitmap_hDC, color_foreground);
-                SetROP2(TSW_mBitmap_hDC, R2_COPYPEN);
-            }
-            BeginPath(TSW_mBitmap_hDC); // TODO:
-            lenInt_1 = itoa2(dmg, strInt_1);
-            TextOutA(TSW_mBitmap_hDC, x, y, strInt_1, lenInt_1);
-            if (cri != 0x7FFF) {
-                lenInt_2 = itoa2(cri, strInt_2);
-                TextOutA(TSW_mBitmap_hDC, x, y-12, strInt_2, lenInt_2);
-            }
-            EndPath(TSW_mBitmap_hDC); // TODO:
-            StrokePath(TSW_mBitmap_hDC); // TODO:
-            TextOutA(TSW_mBitmap_hDC, x, y, strInt_1, lenInt_1);
-            if (cri != 0x7FFF)
-                TextOutA(TSW_mBitmap_hDC, x, y-12, strInt_2, lenInt_2);
-
+            DWORD xy = x | (y << 16); // MAKELONG(x, y)
+            dtl(TSW_mBitmap_hDC, i, xy);
         }
-        hPen_old = SelectObject(TSW_mBitmap_hDC, hPen_old);
-        hFont_old = SelectObject(TSW_mBitmap_hDC, hFont_old);
     }
 
     HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
@@ -232,8 +237,16 @@ extern void ini(void) { // initialize
     //DrawTextA(TTSW10_TCanvas_hDC, "Golden Knight is Tsundere!\nSays Zeno.", -1, &rect, DT_CENTER);
 }
 extern void fin(void) { // finalize
-    DeleteObject(hMemBmp[0]);
-    DeleteObject(hMemBmp[1]);
+    HANDLE* pTBitmap = (HANDLE*)TTSW10_GAMEMAP_BITMAP_1_ADDR;
+    HDC TSW_mBitmap_hDC;
+    for (int i = 0; i < 2; i++) { // for the second loop, will be TTSW10_GAMEMAP_BITMAP_2_ADDR
+        SelectObject(hMemDC, hMemBmp[i]);
+        TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
+        BitBlt(TSW_mBitmap_hDC, 0, 0, 440, 440, hMemDC, 0, 0, SRCCOPY); // switch back the original game map without dmg / cri overlay
+        // TODO: BitBlt above only needs to be done when pressing F9 but not when TSW quits
+        // Maybe add one parameter `BOOL need_change_back_game_bitmap` for this function and add an `if` judgement here?
+        DeleteObject(hMemBmp[i]);
+    }
     DeleteObject(hPen_stroke);
     DeleteObject(hPen_polyline);
     DeleteObject(hFont_dmg);
@@ -251,7 +264,7 @@ extern void inj(void) { // inject
 
     //DWORD TSW_event_count = get_p(TTSW10_EVENT_COUNT_ADDR);
     //if (!TSW_event_count)
-        dmg(TTSW10_TCanvas, TSW_mapLeft, TSW_mapTop, TSW_cur_mBitmap);
+        dmp(TTSW10_TCanvas, TSW_mapLeft, TSW_mapTop, TSW_cur_mBitmap);
     /*
     HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
     HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);

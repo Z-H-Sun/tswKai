@@ -2,4 +2,6 @@ EXPORTS
     ini
     fin
     inj
-    dmg = dmg@16
+    cmp
+    dtl = dtl@12
+    dmp = dmp@16
