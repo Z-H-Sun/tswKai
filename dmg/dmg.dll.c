@@ -20,7 +20,9 @@ const LOGFONTA lfont_dmg = {16, 6, 0, 0, 700, // height, width, esc, orient, wei
     0, 0, 0, 0, 0, 0, 3, 0, // italic, underline, strike, charset, out, clip, quality, pitch
     "Tahoma"};
 HPEN hPen_stroke, hPen_polyline; HFONT hFont_dmg;
-HDC hMemDC; HBITMAP hMemBmp;
+HDC hMemDC; HBITMAP hMemBmp[2]; // 2 game map bitmaps because there are 2 frames
+DWORD m_dmg_cri[121] = {0}; // this stores each tile's damage / critical value of the current floor
+BYTE need_update = 0; // the i-th bit: should update hMemBmp[i] or not
 
 #define msgboxDWORD10(h,i) msgboxDWORD(h,i,10) // use 10-base
 NOINLINE static void REGCALL msgboxDWORD(HANDLE TTSW10, DWORD i, int base) { // for debug use; show value of int `i`
@@ -131,48 +133,79 @@ extern void REGCALL dmg(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapT
     HANDLE TTSW10 = get_h(TTSW10_ADDR);
     DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
     WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
+    BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
+    HPEN hPen_old; HFONT hFont_old;
     HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
-    BitBlt(hMemDC, 0, 0, TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
 
     STATUS TSW_hero_status = *(STATUS*)TTSW10_HERO_STATUS_ADDR;
     WORD offset = 123u*(UCHAR)TSW_hero_status.floor + 2u;
     char* TSW_curFloor_tiles = (char*)TTSW10_MAP_STATUS_ADDR+offset;
-    char strInt_1[8]; int lenInt_1;
-    char strInt_2[8]; int lenInt_2;
     for (UCHAR i = 0; i < 121; i++) {
         char mID = getMonsterID(TSW_curFloor_tiles[i]);
-        if (mID == -1)
-            continue;
-        WORD x = i % 11u * (UCHAR)TSW_tileSize + 1;
-        WORD y = (i / 11u + 1) * (UCHAR)TSW_tileSize - 15;
-        DWORD dmgCri = getMonsterDmgCri(mID); // TODO: create a hash for existing monsters...
-        WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
+        DWORD dmgCri;
+        if (mID == -1) {
+            // TODO: if passable, should check magicians & sorcerers...
+            dmgCri = (DWORD)(-2); // no show (it is not likely to have cri=0xFFFF and dmg=0xFFFE for a monster)
+        }
+        else // TODO: take strike-first monsters into consideration
+            dmgCri = getMonsterDmgCri(mID);
 
-        if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
-            SetTextColor(hMemDC, color_no_go);
-            SetROP2(hMemDC, R2_WHITE);
-        }
-        else {
-            SetTextColor(hMemDC, color_foreground);
-            SetROP2(hMemDC, R2_COPYPEN);
-        }
-        BeginPath(hMemDC); // TODO:
-        lenInt_1 = itoa2(dmg, strInt_1);
-        TextOutA(hMemDC, x, y, strInt_1, lenInt_1);
-        if (cri != 0x7FFF) {
-            lenInt_2 = itoa2(cri, strInt_2);
-            TextOutA(hMemDC, x, y-12, strInt_2, lenInt_2);
-        }
-        EndPath(hMemDC); // TODO:
-        StrokePath(hMemDC); // TODO:
-        TextOutA(hMemDC, x, y, strInt_1, lenInt_1);
-        if (cri != 0x7FFF) {
-            TextOutA(hMemDC, x, y-12, strInt_2, lenInt_2);
+        if (m_dmg_cri[i] != dmgCri) {
+            m_dmg_cri[i] = dmgCri;
+            need_update |= 3; // both frames should be updated
         }
     }
 
+    if (need_update & (TSW_cur_frame+1)) { // `TSW_cur_frame`: i=0, 1; if i-th bit (right-to-left) is set
+        need_update &= (2-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0
+        
+        SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
+        BitBlt(TSW_mBitmap_hDC, 0, 0, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
+
+        SetBkMode(TSW_mBitmap_hDC, TRANSPARENT);
+        hPen_old = SelectObject(TSW_mBitmap_hDC, hPen_stroke);
+        hFont_old = SelectObject(TSW_mBitmap_hDC, hFont_dmg);
+        char strInt_1[8]; int lenInt_1;
+        char strInt_2[8]; int lenInt_2;
+        for (UCHAR i = 0; i < 121; i++) {
+            WORD x = i % 11u * (UCHAR)TSW_tileSize + 1;
+            WORD y = (i / 11u + 1) * (UCHAR)TSW_tileSize - 15;
+            DWORD dmgCri = m_dmg_cri[i & 0x7F];
+            WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
+            HPEN hPen_old; HFONT hFont_old;
+            char strInt_1[8]; int lenInt_1;
+            char strInt_2[8]; int lenInt_2;
+
+            if (dmgCri == (DWORD)(-2)) // no draw
+                continue;
+            if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
+                SetTextColor(TSW_mBitmap_hDC, color_no_go);
+                SetROP2(TSW_mBitmap_hDC, R2_WHITE);
+            }
+            else {
+                SetTextColor(TSW_mBitmap_hDC, color_foreground);
+                SetROP2(TSW_mBitmap_hDC, R2_COPYPEN);
+            }
+            BeginPath(TSW_mBitmap_hDC); // TODO:
+            lenInt_1 = itoa2(dmg, strInt_1);
+            TextOutA(TSW_mBitmap_hDC, x, y, strInt_1, lenInt_1);
+            if (cri != 0x7FFF) {
+                lenInt_2 = itoa2(cri, strInt_2);
+                TextOutA(TSW_mBitmap_hDC, x, y-12, strInt_2, lenInt_2);
+            }
+            EndPath(TSW_mBitmap_hDC); // TODO:
+            StrokePath(TSW_mBitmap_hDC); // TODO:
+            TextOutA(TSW_mBitmap_hDC, x, y, strInt_1, lenInt_1);
+            if (cri != 0x7FFF)
+                TextOutA(TSW_mBitmap_hDC, x, y-12, strInt_2, lenInt_2);
+
+        }
+        hPen_old = SelectObject(TSW_mBitmap_hDC, hPen_old);
+        hFont_old = SelectObject(TSW_mBitmap_hDC, hFont_old);
+    }
+
     HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
-    BitBlt(TTSW10_TCanvas_hDC, TSW_mapLeft, TSW_mapTop, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
+    BitBlt(TTSW10_TCanvas_hDC, TSW_mapLeft, TSW_mapTop, TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
 }
 
 extern void ini(void) { // initialize
@@ -186,23 +219,26 @@ extern void ini(void) { // initialize
     HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
     HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
     hMemDC = CreateCompatibleDC(TTSW10_TCanvas_hDC);
-    hMemBmp = CreateCompatibleBitmap(TTSW10_TCanvas_hDC, 440, 440);
-    SetBkMode(hMemDC, TRANSPARENT);
-    SaveDC(hMemDC); // see `RestoreDC` in `finalize`
-    SelectObject(hMemDC, hMemBmp);
-    SelectObject(hMemDC, hPen_stroke);
-    SelectObject(hMemDC, hFont_dmg);
+    HANDLE* pTBitmap = (HANDLE*)TTSW10_GAMEMAP_BITMAP_1_ADDR;
+    HDC TSW_mBitmap_hDC;
+    for (int i = 0; i < 2; i++) { // for the second loop, will be TTSW10_GAMEMAP_BITMAP_2_ADDR
+        hMemBmp[i] = CreateCompatibleBitmap(TTSW10_TCanvas_hDC, 440, 440);
+        SelectObject(hMemDC, hMemBmp[i]);
+        TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
+        BitBlt(hMemDC, 0, 0, 440, 440, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
+    }
 
     //RECT rect = {180, 30, 620, 440};
     //DrawTextA(TTSW10_TCanvas_hDC, "Golden Knight is Tsundere!\nSays Zeno.", -1, &rect, DT_CENTER);
 }
 extern void fin(void) { // finalize
-    RestoreDC(hMemDC, -1); // this will deselect custom GDI objects so they can be properly disposed of
-    DeleteDC(hMemDC);
-    DeleteObject(hMemBmp);
+    DeleteObject(hMemBmp[0]);
+    DeleteObject(hMemBmp[1]);
     DeleteObject(hPen_stroke);
     DeleteObject(hPen_polyline);
     DeleteObject(hFont_dmg);
+    // TODO: Though unlikely, what if hPen and hFont are still using (selected in a DC)?
+    DeleteDC(hMemDC);
 }
 extern void inj(void) { // inject
     HANDLE TTSW10 = get_h(TTSW10_ADDR);

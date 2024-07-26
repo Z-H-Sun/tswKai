@@ -45,6 +45,7 @@
 #define TCONTROL_WIDTH_OFFSET 0x2C
 #define TCONTROL_HWND_OFFSET 0xC0
 #define TFORM_TCANVAS_OFFSET 0x120
+#define TCANVAS_TCONTROL_OFFSET 0x34 // according to reverse engineering of TBitmap.GetCanvas and TBitmapCanvas.Create, [TBitmapCanvas+0x28/0x30/0x34] all are the corresponding TBitmap; in TControlCanvas.SetControl, only [TControlCanvas+0x34] is the corresponding TCanvas
 
 typedef struct {
     INT32 HP;
