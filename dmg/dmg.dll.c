@@ -19,10 +19,28 @@ const COLORREF color_foreground = RGB(0xFE, 0xFE, 0xFE);
 const LOGFONTA lfont_dmg = {16, 6, 0, 0, 700, // height, width, esc, orient, weight
     0, 0, 0, 0, 0, 0, 3, 0, // italic, underline, strike, charset, out, clip, quality, pitch
     "Tahoma"};
-HPEN hPen_stroke, hPen_polyline; HFONT hFont_dmg;
-HDC hMemDC; HBITMAP hMemBmp[2]; // 2 game map bitmaps because there are 2 frames
-DWORD m_dmg_cri[121] = {0}; // this stores each tile's damage / critical value of the current floor
-BYTE need_update = 0; // the i-th bit: should update hMemBmp[i] or not
+
+#define DWORD_M_DMG_CRI_ADDR (DWORD*)0x489C00 // idle memory block from 0x489BA8 till 0x48A000
+#define BOOL_NEED_UPDATE_ADDR (BYTE*)0x4BA1B6 // idle memory block from 0x4BA1B5 till 0x4BB000
+#define HMEMDC_ADDR (HDC*)0x4BA1B8
+#define HMEMBMP_1_ADDR (HBITMAP*)0x4BA1BC
+#define HMEMBMP_2_ADDR (HBITMAP*)0x4BA1C0
+#define HPEN_STROKE_ADDR (HPEN*)0x4BA1C4
+#define HPEN_POLYLINE_ADDR (HPEN*)0x4BA1C8
+#define HFONT_DMG_ADDR (HFONT*)0x4BA1CC
+DWORD *p_m_dmg_cri = DWORD_M_DMG_CRI_ADDR; // 121 DWORDs; this stores each tile's damage / critical value of the current floor
+BYTE *p_need_update = BOOL_NEED_UPDATE_ADDR; // the i-th bit: should update hMemBmp[i] or not
+HDC *p_hMemDC = HMEMDC_ADDR;
+HBITMAP *p_hMemBmp = HMEMBMP_1_ADDR; // 2 HBITMAPs; 2 game map bitmaps because there are 2 frames
+HPEN *p_hPen_stroke = HPEN_STROKE_ADDR, *p_hPen_polyline = HPEN_POLYLINE_ADDR;
+HFONT *p_hFont_dmg = HFONT_DMG_ADDR;
+#define m_dmg_cri p_m_dmg_cri
+#define need_update (*p_need_update)
+#define hMemDC (*p_hMemDC)
+#define hMemBmp p_hMemBmp
+#define hPen_stroke (*p_hPen_stroke)
+#define hPen_polyline (*p_hPen_polyline)
+#define hFont_dmg (*p_hFont_dmg)
 
 #define msgboxDWORD10(h,i) msgboxDWORD(h,i,10) // use 10-base
 NOINLINE static void REGCALL msgboxDWORD(HANDLE TTSW10, DWORD i, int base) { // for debug use; show value of int `i`
@@ -188,7 +206,7 @@ extern void REGCALL dtl(HDC hDC, char i, DWORD xy) { // draw the damage / critic
 }
 
 extern void REGCALL dmp(HANDLE TTSW10_TCanvas, DWORD TSW_mapLeft, DWORD TSW_mapTop, HANDLE TSW_cur_mBitmap) { // draw the damage / critical value for the current whole map
-    HANDLE TTSW10 = get_h(TTSW10_ADDR);
+    HANDLE TTSW10 = get_h((DWORD)TTSW10_TCanvas+TCANVAS_TCONTROL_OFFSET); //get_h(TTSW10_ADDR);
     DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
     WORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
     BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
@@ -253,6 +271,7 @@ extern void fin(void) { // finalize
     // TODO: Though unlikely, what if hPen and hFont are still using (selected in a DC)?
     DeleteDC(hMemDC);
 }
+/*
 extern void inj(void) { // inject
     HANDLE TTSW10 = get_h(TTSW10_ADDR);
     HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
@@ -265,6 +284,7 @@ extern void inj(void) { // inject
     //DWORD TSW_event_count = get_p(TTSW10_EVENT_COUNT_ADDR);
     //if (!TSW_event_count)
         dmp(TTSW10_TCanvas, TSW_mapLeft, TSW_mapTop, TSW_cur_mBitmap);
+}*/
     /*
     HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
     HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
@@ -272,4 +292,3 @@ extern void inj(void) { // inject
     draw_dmg(TTSW10, TSW_mBitmap_hDC);
     TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_mBitmap_2));
     draw_dmg(TTSW10, TSW_mBitmap_hDC);*/
-}

@@ -1,7 +1,6 @@
 EXPORTS
     ini
     fin
-    inj
     cmp
     dtl = dtl@12
     dmp = dmp@16
