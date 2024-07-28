@@ -71,8 +71,12 @@ NOINLINE static int REGCALL itoa2(WORD i, char* a){ // return value is `len`; ou
 }
 
 NOINLINE static char REGCALL getMonsterID(const UCHAR tileID) { // tileID -> monsterID
-    if (tileID < 61)
-        return -1; // 1-60: not a monster tile
+    if (tileID < 8) // doors/gates/roads
+        return -2; // show magic attack if applicable
+    else if (tileID < 61) { // 1-60: not a monster tile
+        if (tileID >= 29) // items
+            return -2; // show magic attack if applicable
+        return -1; }
     else if (tileID < 97)
         return tileID-61 >> 1; // slimeG - vampire
     else if (tileID < 106)
@@ -92,13 +96,9 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(const char monsterID, const BOOL 
     const HADG TSW_hero_HADG = get_t(TTSW10_HERO_STATUS_ADDR, HADG);
     const HADG *const TSW_enemy_HADG = (const HADG *const)TTSW10_ENEMY_STATUS_ADDR; // 33 monsters
     const BOOL cross = TSW_hero_items.cross, dragonSl = TSW_hero_items.dragonSl;
-    UINT factor = get_p(TTSW10_STATUS_FACTOR_ADDR); // 0 or 43 (back side)
+    UINT factor = get_p(TTSW10_STATUS_FACTOR_ADDR) + 1; // 1 or 44 (back side)
     const int hHP = TSW_hero_HADG.HP, hATK = TSW_hero_HADG.ATK, hDEF = TSW_hero_HADG.DEF;
-    int mHP = TSW_enemy_HADG[monsterID].HP, mATK = TSW_enemy_HADG[monsterID].ATK, mDEF = TSW_enemy_HADG[monsterID].DEF;
-    if (factor) {
-        ++factor; // 0 or 44 (back side)
-        mHP *= factor; mATK *= factor; mDEF *= factor;
-    }
+    const int mHP = TSW_enemy_HADG[monsterID].HP * factor, mATK = TSW_enemy_HADG[monsterID].ATK * factor, mDEF = TSW_enemy_HADG[monsterID].DEF * factor;
     UINT dmg, cri;
 
     int oneTurnDmg = mATK - hDEF;
@@ -110,9 +110,7 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(const char monsterID, const BOOL 
     int oneTurnDmg2Mon = hATK - mDEF;
     if (oneTurnDmg2Mon <= 0) { // in TSW, when you battle with vampire / dragon, even with Cross / DragonSlayer, you will not be able to attack it if your ATK <= its DEF, despite that your ATK*2 > its DEF
         dmg = 0xFFFF; // infinity
-        cri = 1-oneTurnDmg2Mon;
-        if (factor)
-            cri = norm44(cri, factor);
+        cri = norm44(1-oneTurnDmg2Mon, factor);
         if (cri > 0x7FFF) // max val [not likely, through]
             cri = 0xFFFF; // no show + set most significant bit
         else
@@ -135,17 +133,14 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(const char monsterID, const BOOL 
                 int tmp = (mHP-1) / turnsCount + mDEF;
                 if (hATKDouble)
                     tmp >>= 1;
-                cri = tmp + 1 - hATK;
-                if (factor)
-                    cri = norm44(cri, factor);
+                cri = norm44(tmp + 1 - hATK, factor);
                 if (cri > 0x7FFF) // max val [not likely, through]
                     cri = 0x7FFF; // no show
             } else
                 cri = 0x7FFF; // for strike-first monsters, even if you already one-turn-kill, it is still possible to have a non-zero damage, in which case the critical value is zero (do not draw this value)
             if (dmg >= hHP) // this comparison must be done before the dmg value is normalized by 44
                 cri |= 0x8000; // set most significant bit
-            if (factor)
-                dmg = norm44(dmg, factor);
+            dmg = norm44(dmg, factor);
             if (dmg > 0xFFFF) // max val [not likely, through] (dmg might have overflown, though unlikely)
                 dmg = 0xFFFF; // infinity
         }
@@ -161,9 +156,42 @@ extern void cmp(void) { // calculate the damage / critical value for the current
     for (UCHAR i = 0; i < 121; ++i) {
         const char mID = getMonsterID(TSW_curFloor_tiles[i]);
         DWORD dmgCri;
-        if (mID == -1) {
-            // TODO: if passable, should check magicians & sorcerers...
-            dmgCri = (DWORD)(-2); // no show (it is not likely to have cri=0xFFFF and dmg=0xFFFE for a monster)
+        if (mID < 0) {
+            if (mID == -1 || get_p(TTSW10_HERO_SACRED_SHIELD_ADDR))
+                dmgCri = (DWORD)(-2); // no show (it is not likely to have cri=0xFFFF and dmg=0xFFFE for a monster)
+            else { // check magician / sorcerers' magic attack
+                UINT dmg = 0;
+                const int hHP = TSW_hero_status.HADG.HP;
+                const UINT factor = get_p(TTSW10_STATUS_FACTOR_ADDR) + 1;
+                const UCHAR x = i % 11u, y = i / 11u;
+                char adjacent[4] = {0};
+                if (x >  0)
+                    adjacent[0] = getMonsterID(TSW_curFloor_tiles[i -  1]);
+                if (x < 10)
+                    adjacent[1] = getMonsterID(TSW_curFloor_tiles[i +  1]);
+                if (y >  0)
+                    adjacent[2] = getMonsterID(TSW_curFloor_tiles[i - 11]);
+                if (y < 10)
+                    adjacent[3] = getMonsterID(TSW_curFloor_tiles[i + 11]);
+                for (UCHAR j = 0; j < 4; ++j) { // adjacent magician A/B
+                    if (adjacent[j] == 29)
+                        dmg += 200;
+                    else if (adjacent[j] == 30)
+                        dmg += 100;
+                }
+                dmg *= factor;
+                if ((((WORD*)adjacent)[0] == 0x1010 || ((WORD*)adjacent)[1] == 0x1010) // ((adjacent[0] == 16 && adjacent[1] == 16) || (adjacent[2] == 16 && adjacent[3] == 16))
+                    && hHP > 0) // flanked by sorcerers
+                    dmg += hHP + 1 >> 1;
+                if (dmg) {
+                    UINT cri = (dmg >= hHP) ? cri = 0x8000 : 0; // set most significant bit
+                    dmg = norm44(dmg, factor);
+                    if (dmg > 0xFFFF) // max val [not likely unless you cheat]
+                        dmg = 0xFFFF; // infinity
+                    dmgCri = MAKELONG(dmg, cri);
+                } else
+                    dmgCri = (DWORD)(-2); // no show
+            }
         }
         else {
             BOOL isStrikeFirst = FALSE; // take strike-first monsters into consideration
@@ -215,16 +243,27 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
     }
     BeginPath(hDC); // TODO:
     lenInt_1 = itoa2(dmg, strInt_1);
-    TextOutA(hDC, x, y, strInt_1, lenInt_1);
-    if (cri != 0x7FFF) {
-        lenInt_2 = itoa2(cri, strInt_2);
-        TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+    if (cri) { // for normal monsters, draw dmg (and cri, if applicable) at bottom left of cell
+        TextOutA(hDC, x, y, strInt_1, lenInt_1);
+        if (cri != 0x7FFF) {
+            lenInt_2 = itoa2(cri, strInt_2);
+            TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+        }
+        EndPath(hDC); // TODO:
+        StrokePath(hDC); // TODO:
+        TextOutA(hDC, x, y, strInt_1, lenInt_1);
+        if (cri != 0x7FFF)
+            TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+    } else { // cri == 0 means it is magical attack
+        const HANDLE TTSW10 = get_h(TTSW10_ADDR);
+        const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
+        RECT cell = {x-1, y+15-TSW_tileSize, x-1+TSW_tileSize, y+15}; // current cell bounds
+        DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
+        EndPath(hDC); // TODO:
+        StrokePath(hDC); // TODO:
+        DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
     }
-    EndPath(hDC); // TODO:
-    StrokePath(hDC); // TODO:
-    TextOutA(hDC, x, y, strInt_1, lenInt_1);
-    if (cri != 0x7FFF)
-        TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
+
     SelectObject(hDC, hPen_old);
     SelectObject(hDC, hFont_old);
 }
@@ -242,7 +281,7 @@ extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, co
     cmp();
     if (need_update & (TSW_cur_frame+1)) { // `TSW_cur_frame`: i=0, 1; if i-th bit (right-to-left) is set
         need_update &= (2-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0
-        
+
         SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
         BitBlt(TSW_mBitmap_hDC, 0, 0, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
 
