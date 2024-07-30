@@ -193,7 +193,7 @@ TTSW10_GameQuit1Click: // F9
 463933: // part of TTSW10_Exit1Click
   jmp TTSW10_TSW10close
 
-44314D:
+44314D: // part of TTSW10_Timer1Timer
   call draw_map
 443275:
   call draw_map

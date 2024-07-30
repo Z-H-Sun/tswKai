@@ -29,12 +29,22 @@ const LOGFONTA lfont_dmg = {16, 6, 0, 0, 700, // height, width, esc, orient, wei
 #define HPEN_STROKE_ADDR (HPEN *const)0x4BA1C4
 #define HPEN_POLYLINE_ADDR (HPEN *const)0x4BA1C8
 #define HFONT_DMG_ADDR (HFONT *const)0x4BA1CC
+UCHAR *const p_prev_i = (UCHAR *const)TTSW10_PREV_I;
+CHAR *const p_next_i = (CHAR*)TTSW10_NEXT_I;
 DWORD *const p_m_dmg_cri = DWORD_M_DMG_CRI_ADDR; // 121 DWORDs; this stores each tile's damage / critical value of the current floor
-BYTE *const p_need_update = BOOL_NEED_UPDATE_ADDR; // the i-th bit: should update hMemBmp[i] or not (i=0,1; from right to left); if the 2-rd bit is set, do not update; the initial value is 3
+BYTE *const p_need_update = BOOL_NEED_UPDATE_ADDR; /* the initial value is 1|2|16
+    Bit # (right-to-left) | Meaning
+    0 | should update hMemBmp[0] or not
+    1 | should update hMemBmp[1] or not
+    2 | do not update until all events are over (to prevent TSW's redrawing from erasing our drawing)
+    3 | do not show dmg overlay until all events are over (useful when gameover)
+    4 | do not show dmg overlay without OrbOfHero */
 HDC *const p_hMemDC = HMEMDC_ADDR;
 HBITMAP *const p_hMemBmp = HMEMBMP_1_ADDR; // 2 HBITMAPs; 2 game map bitmaps because there are 2 frames
 HPEN *const p_hPen_stroke = HPEN_STROKE_ADDR, *p_hPen_polyline = HPEN_POLYLINE_ADDR;
 HFONT *const p_hFont_dmg = HFONT_DMG_ADDR;
+#define prev_i (*p_prev_i)
+#define next_i (*p_next_i)
 #define m_dmg_cri p_m_dmg_cri
 #define need_update (*p_need_update)
 #define hMemDC (*p_hMemDC)
@@ -163,15 +173,16 @@ extern void cmp(void) { // calculate the damage / critical value for the current
                 UINT dmg = 0;
                 const int hHP = TSW_hero_status.HADG.HP;
                 const UINT factor = get_p(TTSW10_STATUS_FACTOR_ADDR) + 1;
-                const UCHAR x = i % 11u, y = i / 11u;
+                const UCHAR ix = i % 11u, iy = i / 11u;
                 char adjacent[4] = {0};
-                if (x >  0)
+                // need to rule out situations where player is on the map edge: there will not be a magician outside the map (set the corresponding adjacent[i] to zero, meaning Green Slime (not a magician anyway))
+                if (ix != 0)
                     adjacent[0] = getMonsterID(TSW_curFloor_tiles[i -  1]);
-                if (x < 10)
+                if (ix !=10)
                     adjacent[1] = getMonsterID(TSW_curFloor_tiles[i +  1]);
-                if (y >  0)
+                if (iy != 0)
                     adjacent[2] = getMonsterID(TSW_curFloor_tiles[i - 11]);
-                if (y < 10)
+                if (iy !=10)
                     adjacent[3] = getMonsterID(TSW_curFloor_tiles[i + 11]);
                 for (UCHAR j = 0; j < 4; ++j) { // adjacent magician A/B
                     if (adjacent[j] == 29)
@@ -205,10 +216,10 @@ extern void cmp(void) { // calculate the damage / critical value for the current
                 if (TSW_curFloor_tiles[71] != 7 && TSW_curFloor_tiles[5] != 11 && i < 77) // 40F boss battle (trap triggered; the upstairs tile has not yet appear (40F boss battle not clear yet); monsters in the boss room)
                     isStrikeFirst = TRUE;
             } else if (floor == 49) {
-                if (TSW_curFloor_tiles[60] != 7 && i < 44 && get_p(TTSW10_EVENT_COUNT_ADDR)) // 49F boss battle (trap triggered; monsters in the boss room)
+                if (TSW_curFloor_tiles[60] != 7 && i < 44 && (int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0) // 49F boss battle (trap triggered; monsters in the boss room)
                     continue; // if the event is still ongoing, then do not consider refreshing the monster damage yet; otherwise it will be erased by TSW's redrawing later
             } else if (floor == 20) {
-                if (TSW_curFloor_tiles[82] != 7 && mID == 17 && get_p(TTSW10_EVENT_COUNT_ADDR)) // 20F boss battle (trap triggered; Vampire)
+                if (TSW_curFloor_tiles[82] != 7 && mID == 17 && (int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0) // 20F boss battle (trap triggered; Vampire)
                     continue; // if the event is still ongoing, then no refreshing like above
             }
             dmgCri = getMonsterDmgCri(mID, isStrikeFirst);
@@ -220,8 +231,8 @@ extern void cmp(void) { // calculate the damage / critical value for the current
     }
 }
 
-extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw the damage / critical value for a specific tile `i` at a given `xy` coordinate
-    const DWORD x = (DWORD)LOWORD(xy), y = (DWORD)HIWORD(xy);
+extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw the damage / critical value for a specific tile `i` at a given `xy` coordinate (with (x, y) being the bottom left corner of the current tile cell)
+    DWORD x = (DWORD)LOWORD(xy), y = (DWORD)HIWORD(xy);
     const DWORD dmgCri = m_dmg_cri[i & 0x7F];
     const WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
     HPEN hPen_old; HFONT hFont_old;
@@ -244,6 +255,7 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
     BeginPath(hDC); // TODO:
     lenInt_1 = itoa2(dmg, strInt_1);
     if (cri) { // for normal monsters, draw dmg (and cri, if applicable) at bottom left of cell
+        ++x; y -= 15; // this is the top left corner of the drawing rect
         TextOutA(hDC, x, y, strInt_1, lenInt_1);
         if (cri != 0x7FFF) {
             lenInt_2 = itoa2(cri, strInt_2);
@@ -257,7 +269,7 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
     } else { // cri == 0 means it is magical attack
         const HANDLE TTSW10 = get_h(TTSW10_ADDR);
         const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
-        RECT cell = {x-1, y+15-TSW_tileSize, x-1+TSW_tileSize, y+15}; // current cell bounds
+        RECT cell = {x, y-TSW_tileSize, x+TSW_tileSize, y}; // current cell bounds
         DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
         EndPath(hDC); // TODO:
         StrokePath(hDC); // TODO:
@@ -269,41 +281,100 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
 }
 
 extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, const DWORD TSW_mapTop, const HANDLE TSW_cur_mBitmap) { // draw the damage / critical value for the current whole map
-    if (need_update & 4) // if the 2-nd bit is set, do not update
-        return;
-
     const HANDLE TTSW10 = get_h((DWORD)TTSW10_TCanvas+TCANVAS_TCONTROL_OFFSET); // instead of using `get_h(TTSW10_ADDR)`; saved 2-3 bytes
-    const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
-    const DWORD TSW_mapSize = 11u * (UCHAR)TSW_tileSize;
+    const UCHAR TSW_tileSize = (UCHAR)get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
+    const DWORD TSW_mapSize = 11u * TSW_tileSize;
     const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
-    const HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
+    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+
+    if ((need_update & 16) && !(((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero)) // if 4th bit is set, show no overlay if without OrbOfHero
+        goto no_overlay;
+    if (need_update & 8) { // if 3rd bit is set, show no overlay until event is over
+        if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0) {
+no_overlay:
+            SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
+            TSW_mBitmap_hDC = hMemDC;
+            goto draw;
+        } else
+            need_update &= (BYTE)(~8|4);
+    }
+    else if (need_update & 4) { // if 2nd bit is set, do not update until event is over
+        if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0)
+            goto draw;
+        else
+            need_update &= (BYTE)(~4);
+    }
 
     cmp();
     if (need_update & (TSW_cur_frame+1)) { // `TSW_cur_frame`: i=0, 1; if i-th bit (right-to-left) is set
-        need_update &= (2-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0
+        need_update &= (18-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0; keep the 4th bit but discard 2nd and 3rd bits
 
         SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
         BitBlt(TSW_mBitmap_hDC, 0, 0, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
 
         for (UCHAR i = 0; i < 121; ++i) {
-            WORD x = i % 11u * (UCHAR)TSW_tileSize + 1;
-            WORD y = (i / 11u + 1) * (UCHAR)TSW_tileSize - 15;
+            WORD x = i % 11u * TSW_tileSize;
+            WORD y = (i / 11u + 1) * TSW_tileSize;
             dtl(TSW_mBitmap_hDC, i, MAKELONG(x, y));
+        }
+    } else if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) <= 0) { // even if the map dmg/cri values haven't changed, it is possible that the drawings will be erased by TSW's redrawing, in which case dmg/cri should be redrawn (should wait until the end of event (animation might redraw the tile and erase our drawing))
+        const STATUS TSW_hero_status = get_t(TTSW10_HERO_STATUS_ADDR, STATUS);
+        const UCHAR cur_ix = TSW_hero_status.x, cur_iy = TSW_hero_status.y, cur_i = cur_ix + cur_iy*11;
+        { // firstly, check the player's current location
+            WORD x = cur_ix*TSW_tileSize, y = (cur_iy+1)*TSW_tileSize;
+            dtl(TSW_mBitmap_hDC, cur_i, MAKELONG(x, y));
+        }
+
+        HANDLE TSW_nxt_mBitmap = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
+        if (TSW_nxt_mBitmap == TSW_cur_mBitmap)
+            TSW_nxt_mBitmap = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
+        const HDC TSW_mBitmap2_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_nxt_mBitmap)); // need to draw another frame as well
+        if (prev_i >= 121)
+            prev_i = cur_i; // this is unlikely, but rectify this error
+        else if (prev_i != cur_i) { // if the player has changed location (either via walking or WarpWing), check player's previous location
+            WORD x = prev_i % 11u * TSW_tileSize;
+            WORD y = (prev_i / 11u + 1) * TSW_tileSize;
+            DWORD xy = MAKELONG(x, y);
+            dtl(TSW_mBitmap_hDC, prev_i, xy);
+            dtl(TSW_mBitmap2_hDC, prev_i, xy);
+            prev_i = cur_i;
+        }
+
+        // Finally, check player's next location. In most cases, this won't be triggered, because if player meets an event (monster/item/etc) then player walks to that tile immediately, without the chance of refreshing the game bitmap during this process. The only exception is door opening: Player will not immediately move over after the door opens
+        if ((UCHAR)next_i >= 121)
+            next_i = cur_i; // this is possible: if the player is on the map edge, TSW will assign a `next_i` will be outside the range of [0,121); rectify this error
+        else if ((cur_i - next_i == 1 && cur_ix != 0) || // you won't be able to move left if you are on the left edge of the map
+            (next_i - cur_i == 1 && cur_ix !=10) || // you won't be able to move right if you are on the right edge of the map
+            (cur_i - next_i ==11) || // for the rest 2 conditions, no need to compare `cur_iy`
+            (next_i - cur_i ==11)) { // since those conditions have already been ruled out earlier ((UCHAR)next_i >= 121)
+            const UCHAR floor = (const UCHAR)TSW_hero_status.floor;
+            const WORD offset = 123u*floor + 2u;
+            const char *const TSW_curFloor_tiles = (const char *const)TTSW10_MAP_STATUS_ADDR+offset;
+            if (TSW_curFloor_tiles[next_i] != 6)
+                goto draw;
+            // the door has opened (become road) and the animation is over
+            WORD x = (UCHAR)next_i % 11u * TSW_tileSize;
+            WORD y = ((UCHAR)next_i / 11u + 1) * TSW_tileSize;
+            DWORD xy = MAKELONG(x, y);
+            dtl(TSW_mBitmap_hDC, next_i, MAKELONG(x, y));
+            dtl(TSW_mBitmap2_hDC, next_i, MAKELONG(x, y));
+            next_i = cur_i;
         }
     }
 
-    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
+draw:
     BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY); // instead of using TSW_mapLeft / TSW_mapTop in argv; no need to push on stack
 }
 
 extern void ini(void) { // initialize
-    const HANDLE TTSW10 = get_h(TTSW10_ADDR);
     LOGPEN lpen = {PS_SOLID, {3, 0}, color_background};
     hPen_stroke = CreatePenIndirect(&lpen);
     lpen.lopnColor = color_polyline;
     hPen_polyline = CreatePenIndirect(&lpen);
     hFont_dmg = CreateFontIndirectA(&lfont_dmg);
 
+    const HANDLE TTSW10 = get_h(TTSW10_ADDR);
     const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
     const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
     hMemDC = CreateCompatibleDC(TTSW10_TCanvas_hDC);
@@ -315,9 +386,7 @@ extern void ini(void) { // initialize
         TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
         BitBlt(hMemDC, 0, 0, 440, 440, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
     }
-    need_update = 3;
-    //RECT rect = {180, 30, 620, 440};
-    //DrawTextA(TTSW10_TCanvas_hDC, "Golden Knight is Tsundere!\nSays Zeno.", -1, &rect, DT_CENTER);
+    need_update = 19; // always update upon init; do not show if without OrbOfHero
 }
 extern void fin(void) { // finalize
     const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
@@ -336,24 +405,3 @@ extern void fin(void) { // finalize
     // TODO: Though unlikely, what if hPen and hFont are still using (selected in a DC)?
     DeleteDC(hMemDC);
 }
-/*
-extern void inj(void) { // inject
-    HANDLE TTSW10 = get_h(TTSW10_ADDR);
-    HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
-    DWORD TSW_mapLeft = get_p(TTSW10_GAMEMAP_LEFT_ADDR), TSW_mapTop = get_p(TTSW10_GAMEMAP_TOP_ADDR);
-    HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
-    HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
-    BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
-    HANDLE TSW_cur_mBitmap = TSW_cur_frame ? TSW_mBitmap_2 : TSW_mBitmap_1;
-
-    //DWORD TSW_event_count = get_p(TTSW10_EVENT_COUNT_ADDR);
-    //if (!TSW_event_count)
-        dmp(TTSW10_TCanvas, TSW_mapLeft, TSW_mapTop, TSW_cur_mBitmap);
-}*/
-    /*
-    HANDLE TSW_mBitmap_1 = get_h(TTSW10_GAMEMAP_BITMAP_1_ADDR);
-    HANDLE TSW_mBitmap_2 = get_h(TTSW10_GAMEMAP_BITMAP_2_ADDR);
-    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_mBitmap_1));
-    draw_dmg(TTSW10, TSW_mBitmap_hDC);
-    TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_mBitmap_2));
-    draw_dmg(TTSW10, TSW_mBitmap_hDC);*/
