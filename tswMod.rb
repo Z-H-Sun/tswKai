@@ -44,7 +44,6 @@ DIALOG_FONT = [-12, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, DIALOG_FON
 $CONonTSWstartup = true # whether to show config window and apply default config on TSW startup
 $CONmsgOnTSWstartup = true # whether to show tutorial message on TSW startup
 $CONmodStatus = [true, true, true, true, true] # if `$CONonTSWstartup`, this specifies the default config
-$_TSWMOD = true
 
 hDC_tmp = GetDC.call(0)
 enumFontCallBack = API::Callback.new('LLIL', 'I') {|lpelf, lpntm, font_type, lParam| DIALOG_FONT[-1] = DIALOG_FONT_NAME_PREFERRED; 0} # once find this font, set it as the dialog font, and then return immediately
@@ -204,7 +203,7 @@ module Mod
       return true unless tswActive
       IsWindow.call_r($hWnd)
       API.focusTSW()
-      HookProcAPI.hookK() if $_TSWMP # reenable tswMP hook
+      HookProcAPI.hookK() # reenable tswMP hook
       showWelcomingMsg() if workup # wrap up `init` after the initial config dialog window is gone
     end
     return true

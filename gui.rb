@@ -120,7 +120,7 @@ def Static1_CheckMsg(msg)
       $movingStatic1 = false
     else
       return unless Static1_3D(false) # if you press ESC or RETN, the $hWndStatic1 window will be focused, and another WM_KEYUP message will be generated, and you will get in a loop, so need to make sure WM_*DOWN has happened before WM_*UP
-      case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION, *$regKeyName.compact)
+      case msgboxTxt(21, MB_YESNOCANCEL|MB_DEFBUTTON2|MB_ICONQUESTION, *$regKeyName)
       when IDYES
         quit()
       when IDNO

@@ -279,7 +279,7 @@ MAP_ADDR = 0xb8934 + BASE_ADDRESS
 MAP_TYPE = 'C121'
 
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
-  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE) if $_TSWSL or $_TSWBGM
+  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
   CloseHandle.call($hPrc || 0)
   $appTitle = nil unless $preExitProcessed # if quitting, no need to change current $appTitle
   if $console === true # hide console on TSW exit
@@ -287,7 +287,6 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   elsif $configDlg # hide dialog on TSW exit
     Mod.showDialog(false, false) # like above
   end
-  return unless $_TSWMP
   HookProcAPI.unhookK
   HookProcAPI.abandon(true)
   DeleteObject.call($hBMP || 0)
@@ -297,10 +296,10 @@ def preExit(msg=nil) # finalize
   return if $preExitProcessed # do not exec twice
   $preExitProcessed = true
   begin
-    showMsgTxtbox(-1) if $_TSWMP
-    SL.enableAutoSave(false) if $_TSWSL
-    SL.compatibilizeExtSL(false) if $_TSWSL
-    BGM.takeOverBGM(false) if $_TSWBGM # restore
+    showMsgTxtbox(-1)
+    SL.enableAutoSave(false)
+    SL.compatibilizeExtSL(false)
+    BGM.takeOverBGM(false) # restore
   rescue Exception
   end
   disposeRes()
@@ -308,8 +307,7 @@ def preExit(msg=nil) # finalize
   UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
   FreeConsole.call() if $_TSWKAI
-  DeleteObject.call($hGUIFont2 || 0) if $_TSWMOD
-  return unless $_TSWMP
+  DeleteObject.call($hGUIFont2 || 0)
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)
   DeleteObject.call($hGUIFont || 0)
@@ -329,28 +327,25 @@ def checkTSWsize()
 
   $MAP_LEFT = readMemoryDWORD(MAP_LEFT_ADDR)
   $MAP_TOP = readMemoryDWORD(MAP_TOP_ADDR)
-  checkTSWrects() if $_TSWMP # module tswMP is imported
+  checkTSWrects()
 end
 def initLang()
-  getRegKeyName()
-  getHookKeyName() if $_TSWMP
+  if $regKeyName
+    getRegKeyName()
+    getHookKeyName()
+  end
   if $isCHN
-    if $_TSWMP
-      alias :showMsg :showMsgW
-      alias :showMsgTxtbox :showMsgTxtboxW
-    end
+    alias :showMsg :showMsgW
+    alias :showMsgTxtbox :showMsgTxtboxW
     alias :msgboxTxt :msgboxTxtW
     alias :setTitle :setTitleW
   else
-    if $_TSWMP
-      alias :showMsg :showMsgA
-      alias :showMsgTxtbox :showMsgTxtboxA
-    end
+    alias :showMsg :showMsgA
+    alias :showMsgTxtbox :showMsgTxtboxA
     alias :msgboxTxt :msgboxTxtA
     alias :setTitle :setTitleA
   end
   setTitle($hWndStatic1, 20)
-  return unless $_TSWMOD
   setTitle($hWndDialog, 32, $pID)
   (0...MOD_TOTAL_OPTION_COUNT).each {|i| setTitle($hWndChkBoxes[i], 33+i)}
 end
@@ -359,14 +354,14 @@ def initSettings()
 rescue Exception
 end
 def updateSettings()
-  mp_m, mp_k = MP_MODIFIER, MP_HOTKEY if $_HOTKEYMP
-  con_m, con_k = CON_MODIFIER, CON_HOTKEY if $_HOTKEYCON
+  mp_m, mp_k = MP_MODIFIER, MP_HOTKEY
+  con_m, con_k = CON_MODIFIER, CON_HOTKEY
   initSettings()
-  if $_HOTKEYMP and (mp_m != MP_MODIFIER or mp_k != MP_HOTKEY) # hotkey changes
+  if mp_m != MP_MODIFIER or mp_k != MP_HOTKEY # hotkey changes
     UnregisterHotKey.call(0, 0)
     RegisterHotKey.call_r(0, 0, MP_MODIFIER, MP_HOTKEY)
   end
-  if $_HOTKEYCON and (con_m != CON_MODIFIER or con_k != CON_HOTKEY)
+  if con_m != CON_MODIFIER or con_k != CON_HOTKEY
     UnregisterHotKey.call(0, 1)
     RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
   end
@@ -491,7 +486,7 @@ def getKeyName(modifier, key)
 end
 def getRegKeyName()
   $keybdinput_struct[0] = "\0" # indicate this needs updating
-  $regKeyName[0] = getKeyName(MP_MODIFIER, MP_HOTKEY) if $_HOTKEYMP
-  $regKeyName[1] = getKeyName(CON_MODIFIER, CON_HOTKEY) if $_HOTKEYCON
+  $regKeyName[0] = getKeyName(MP_MODIFIER, MP_HOTKEY)
+  $regKeyName[1] = getKeyName(CON_MODIFIER, CON_HOTKEY)
   $keybdinput_struct[0] = "\xFF" if $keybdinput_struct.ord.zero? # failed (unlikely)
 end

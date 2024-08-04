@@ -122,8 +122,6 @@ end
 
 $time = 0
 $regKeyName = Array.new(2)
-$_HOTKEYMP = true
-$_HOTKEYCON = true
 initSettings()
 initLang()
 getRegKeyName()

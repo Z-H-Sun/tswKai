@@ -32,7 +32,6 @@ BGM_FADE_STEPS = 10 # fade out BGM in 10 steps; 1 means no fading out effect
 BGM_FADE_INTERVAL = 150 # each step takes 150 ms
 
 $BGMtakeOver = true
-$_TSWBGM = true # module tswBGM is imported
 
 module BGM
   MCI_CLOSE = 0x804

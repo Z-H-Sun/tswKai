@@ -191,7 +191,7 @@ class Console
       if tswActive
         IsWindow.call_r($hWnd)
         API.focusTSW()
-        HookProcAPI.hookK() if $_TSWMP # reenable tswMP hook
+        HookProcAPI.hookK() # reenable tswMP hook
       else
         SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
       end

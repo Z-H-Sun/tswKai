@@ -68,7 +68,6 @@ MP_HOTKEY = 118 # F7
 MP_KEY1 = VK_LWIN
 MP_KEY2 = VK_TAB # hotkeys for teleportation and using items
 $MPshowMapDmg = true # whether to enable enhanced damage display
-$_TSWMP = true # module tswMP is imported
 
 $x_pos = $y_pos = -1
 $hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack(LOGFONT_STRUCT))
