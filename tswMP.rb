@@ -127,7 +127,7 @@ module HookProcAPI
   def isInEvent()
     result = (isButtonFocused and !@flying)
     unless result
-      result = !(readMemoryDWORD(EVENT_SEQ_INDEX_ADDR).zero?)
+      result = (readMemoryDWORD(EVENT_SEQ_INDEX_ADDR) > 0)
     end
 
     if result

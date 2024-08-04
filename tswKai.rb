@@ -9,7 +9,7 @@ KEY_DISP_ADDR = 0x4bed8 + BASE_ADDRESS # TTSW10.keydisplay
 ITEM_DISP_ADDR = 0x4ccd8 + BASE_ADDRESS # TTSW10.itemdisp
 FUTURE_STATUS_FACTOR_ADDR = 0x5342a + BASE_ADDRESS # this value + 1 is the factor to multiply in the backside tower (note: different from MONSTER_STATUS_FACTOR_ADDR, which indicates the current factor)
 
-KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I',  'Z',
+KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'V', 'S', 'I', 'Z',
   '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
 
 CON_MODIFIER = 0 # hotkey and modifier for showing configs

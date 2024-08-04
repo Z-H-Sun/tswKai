@@ -279,8 +279,6 @@ MAP_ADDR = 0xb8934 + BASE_ADDRESS
 MAP_TYPE = 'C121'
 
 def disposeRes() # when switching to a new TSW process, hDC and hPrc will be regenerated, and the old ones should be disposed of
-  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
-  CloseHandle.call($hPrc || 0)
   $appTitle = nil unless $preExitProcessed # if quitting, no need to change current $appTitle
   if $console === true # hide console on TSW exit
     $console.show(false, false) # when this app exits, even if TSW is still running, no need to do any further treatments
@@ -291,6 +289,8 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   HookProcAPI.abandon(true)
   DeleteObject.call($hBMP || 0)
   DeleteDC.call($hMemDC || 0)
+  VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
+  CloseHandle.call($hPrc || 0)
 end
 def preExit(msg=nil) # finalize
   return if $preExitProcessed # do not exec twice

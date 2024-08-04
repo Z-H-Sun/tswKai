@@ -85,7 +85,7 @@
 #CONSUMABLES['key'][3..-2] = (0x32..0x39).to_a # Default: ['W'.ord, 'P'.ord, 'B'.ord, 'J'.ord, 'U'.ord, 'D'.ord, 'I'.ord, 'K'.ord]
 #CONSUMABLES['key'][-1] = VK_SPACE # Default: 'Q'.ord
 # Below shows the default definitions of `KAI_OPTIONS` and `CONSUMABLES['key']`; and you can also customize their values based on these lines:
-#KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'L', 'S', 'I', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
+#KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'V', 'S', 'I', 'Z', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E']
 #CONSUMABLES['key'] = ['H'.ord, 'N'.ord, [VK_LEFT,VK_DOWN, VK_RIGHT,VK_UP], 'W'.ord, 'P'.ord, 'B'.ord, 'J'.ord, 'U'.ord, 'D'.ord, 'I'.ord, 'K'.ord, 'Q'.ord]
 
 # Uncomment the following line to specify the path of all temp data and arbitrary data, disregarding TSW's own saving path
