@@ -602,7 +602,7 @@ BASE:803E3		mov ebp, [eax+2C]	; ebp = TImage.Width (32 or 40)
 		; patched bytes:
 BASE:803E6		shr ebp, 2	; distance w.r.t original position = width/4
 BASE:803E9		mov [esp], ebp	; [esp] = width/4 (then width/2, 3width/4, width)
-BASE:803EC		nop [eax+0]	; 3-byte nop
+BASE:803EC		nop [eax+0]	; 4-byte nop
 BASE:803F0	loc_monidou_loop_begin_new:
 			call loc_idou_sleep
 		; ----------

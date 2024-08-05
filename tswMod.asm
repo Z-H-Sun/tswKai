@@ -3,7 +3,8 @@
 
 BASE:00000	; Pre-defined functions and variables in TSW.exe
 
-BASE:00000	TSW_tile_pos_diff	:= dword ptr BASE:08C568	; pos=11Y+X; this is the difference of position (pos) of a tile with respect to the hero position
+BASE:00000	TSW_TTSW10_handle	:= dword ptr BASE:08C510
+		TSW_tile_pos_diff	:= dword ptr BASE:08C568	; pos=11Y+X; this is the difference of position (pos) of a tile with respect to the hero position
 		TSW_Zeno_HP	:= dword ptr BASE:089A00
 		TSW_Zeno_ATK	:= dword ptr BASE:089A04
 		TSW_Zeno_DEF	:= dword ptr BASE:089A08
@@ -24,6 +25,74 @@ BASE:00000	TSW_tile_pos_diff	:= dword ptr BASE:08C568	; pos=11Y+X; this is the d
 		; oddly enough, this calculation is not fully used: Its value will only be compared with hero's HP (if larger, than the number of rounds, and by extension, the number of animation frames) needs adjusting accordingly. Otherwise, this value is not at all involved in the calculations during the battle
 		TSW_battle_total_rounds	:= dword ptr BASE:08C56C
 		TSW_battle_enemy_HP	:= dword ptr BASE:08C5BC
+
+		MOD_FOCUS_HWND_ADDR	:= dword ptr BASE:089BF8	; HWND of the dialog/console window to set focus to
+
+
+		; Entry -1: Compatibilize TSW WndProc (will switch to dialog/console window if switched to or clicked on even when it is disabled)
+		; the following messages will be sent to WndProc even when the window is disabled: 1) WM_ACTIVATEAPP when you click its taskbar or use Alt-Tab or Win-Tab to try switching to this window (and the wParam will be TRUE when you mean to activate the window); 2) WM_SETCURSOR when there is any mouse event on the disabled window (and the wParam will be its hWnd and the lParam will have LOWORD being HTERROR(-2, because the disabled window won't respond) and HIWORD being the mouse msg)
+		; we will add the treatments of these msgs in TSW window's WndProc, which goes typically in the following chain:
+		; _Unit8.StdWndProc -> _Unit8.TApplication.WndProc -> _Unit8.TForm.WndProc -> Controls.TWinControl.WndProc (we will target this one) -> Controls.TControl.WndProc
+BASE:1549C	TWinControl.WndProc	proc near	; arg0=eax=TForm; arg1=edx=TMessage
+		; according to analysis of _Unit8.StdWndProc, [TMessage+00/04/08] are umsg/wparam/lparam respectively
+BASE:1549C		push ebx
+BASE:1549D		push esi
+BASE:1549E		push edi
+BASE:1549F		add esp, -10
+BASE:154A2		mov esi, edx
+BASE:154A4		mov ebx, eax
+BASE:154A6		mov eax, [esi]	; now eax is uMsg
+		; original bytes:
+;BASE:154A8		cmp eax, 0084	; this will be added to the end of our new function
+		; ...
+		; patched bytes:
+BASE:154A8		call loc_extra_wndproc
+		; ...
+		TWinControl.WndProc	endp
+
+		; there is 88-byte vacant space starting from 0x489ba8 through 0x489c00 (from which the space is reserved for future tswMP functions); the DWORD @ 0x489bfc is reserved by tswRev to store Kernel32.Sleep farproc
+BASE:89BA8	loc_extra_wndproc:	; so we are using 0x489ba8-f8 to write asm codes for extra TTSW10 WndProc processing; the DWORD @ 0x489bf8 is used to store the HWND of the dialog/console window to set focus to
+			mov ecx, [MOD_FOCUS_HWND_ADDR]
+BASE:89BAE		xor edx, edx	; now edx=0
+BASE:89BB0		cmp ecx, edx	; do nothing if MOD_FOCUS_HWND==NULL
+BASE:89BB2		je loc_extra_wndproc_ret1
+BASE:89BB4		cmp ebx, [TSW_TTSW10_handle]	; do nothing if the window is not TSW game window
+BASE:89BBA		jne loc_extra_wndproc_ret1
+
+BASE:89BBC	loc_extra_wndproc_condition1:
+			cmp eax, 1C	; WM_ACTIVATEAPP (28)
+BASE:89BBF		jne loc_extra_wndproc_condition2
+BASE:89BC1		cmp [esi+04], edx	; wParam!=FALSE
+BASE:89BC4		jne loc_extra_wndproc_setfocus
+
+BASE:89BC6	loc_extra_wndproc_condition2:
+			cmp eax, 20	; WM_SETCURSOR (32)
+BASE:89BC9		jne loc_extra_wndproc_ret1
+BASE:89BCB		mov eax, [esi+0A]	; ax=HIWORD(lPARAM)
+		; from now on, eax is changed and need to change back to [esi] before returning
+BASE:89BCE		sub ax, 0201	; ax==WM_LBUTTONDOWN (0x201)
+BASE:89BD2		je loc_extra_wndproc_setfocus
+BASE:89BD4		cmp al, 03	; ax==WM_RBUTTONDOWN (0x204) [there are no other mouse msg whose LOBYTE is 04]
+BASE:89BD6		jne loc_extra_wndproc_ret2
+
+BASE:89BD8	loc_extra_wndproc_setfocus:
+			push 13	; SWP_NOSIZE|SWP_NOMOVE|SWP_NOACTIVATE
+BASE:89BDA		push edx
+BASE:89BDB		push edx
+BASE:89BDC		push edx
+BASE:89BDD		push edx
+BASE:89BDE		push ecx	; HWND to put Z order behind
+BASE:89BDF		push [ebx+00C0]	; HWND of TSW game window
+
+BASE:89BE5		push ecx
+BASE:89BE6		call BASE:051AC	; user32.SetForegroundWindow
+BASE:89BEB		call BASE:051F4	; user32.SetWindowPos
+
+BASE:89BF0	loc_extra_wndproc_ret2:
+			mov eax, [esi]	; restore eax=[esi]=uMsg
+BASE:89BF2	loc_extra_wndproc_ret1:
+			cmp eax, 0084	; this is the patched line; add back
+BASE:89BF7		ret
 
 
 		; Entry 0: 49F Sorcerer show-up animation bug (this bug will always be patched)

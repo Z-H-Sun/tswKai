@@ -38,7 +38,7 @@ def init()
   ReleaseDC.call($hWnd, hDC)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
-  $console.init = true if $console # refresh console in case there is any change
+  $console.need_init = true if $console # refresh console in case there is any change
   SL.init
   BGM.init
   Mod.init
@@ -97,6 +97,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
           if $configDlg # dialog -> console
             next if $configDlg == 'init' # do not do this if it's shown during startup
             $configDlg = false
+            writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, 0) # hiding the dialog window below will implicitly switch focus to the TSW game window, so need to unset the HWND to set focus to (see Entry #-1 of tswMod.asm)
             ShowWindow.call($hWndDialog, SW_HIDE)
             KaiMain()
           else # nothing -> dialog

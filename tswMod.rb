@@ -125,6 +125,11 @@ def ChkBox_CheckMsg(index, msg)
 end
 
 module Mod
+  MOD_FOCUS_HWND_ADDR = 0x89bf8 + BASE_ADDRESS # there is 88-byte vacant space starting from 0x489ba8 through 0x489c00 (from which the space is reserved for future tswMP functions); the DWORD @ 0x489bfc is reserved by tswRev to store Kernel32.Sleep farproc; so we are using 0x489ba8-f8 to write asm codes for extra TTSW10 WndProc processing (see below); the DWORD @ 0x489bf8 is used to store the HWND of the dialog/console window to set focus to
+  MOD_PATCH_BYTES_0 = [ # offset, len, original bytes, patched bytes
+[0x89ba8, 84, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", "\x8B\x0D\xF8\x9B\x48\x00\x31\xD2\x39\xD1\x74\x3E\x3B\x1D\x10\xC5\x48\x00\x75\x36\x83\xF8\x1C\x75\x05\x39\x56\x04\x75\x12\x83\xF8\x20\x75\x27\x8B\x46\x0A\x66\x2D\x01\x02\x74\x04\x3C\x03\x75\x18\x6A\x13\x52\x52\x52\x52\x51\xFF\xB3\xC0\x00\x00\x00\x51\xE8\xC1\xB5\xF7\xFF\xE8\x04\xB6\xF7\xFF\x8B\x06\x3D\x84\x00\x00\x00\xC3\0\0\0\0"], # extra TTSW10 WndProc processing + 4-byte HWND of the dialog/console window to set focus to
+[0x154a8, 5, "\x3D\x84\0\0\0", "\xE8\xFB\x46\7\0"] # TWinControl.WndProc
+  ] # this list: extra function to add to compatibilize dialog/console window display (see Entry #-1 of tswMod.asm)
   MOD_PATCH_BYTES_1 = [ # offset, len, original bytes, patched bytes
 # 49F Zeno animation bug
 [0x637dd, 2, "\xFF\3", "\x90\x90"] # TTSW10.madoushi2
@@ -168,7 +173,7 @@ module Mod
 
   module_function
   def init
-    MOD_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)} # must-do patches
+    (MOD_PATCH_BYTES_0+MOD_PATCH_BYTES_1).each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)} # must-do and compatibilizing patches
     $hWndListBox = readMemoryDWORD(readMemoryDWORD($TTSW+OFFSET_LISTBOX2)+OFFSET_HWND)
     $RichEdit1 = readMemoryDWORD($TTSW+OFFSET_RICHEDIT1)
     $hWndRichEdit = readMemoryDWORD($RichEdit1+OFFSET_HWND)
@@ -195,7 +200,9 @@ module Mod
       x, y = xy.unpack('l2')
       SetWindowPos.call_r($hWndDialog, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
       EnableWindow.call($hWnd, 0) # disable TSW
+      writeMemoryDWORD(MOD_FOCUS_HWND_ADDR, $hWndDialog) # tell TSW to set focus to this window when switched to or clicked on (see Entry #-1 of tswMod.asm)
     else
+      writeMemoryDWORD(MOD_FOCUS_HWND_ADDR, 0) if tswActive # revert the above operation
       workup = ($configDlg == 'init')
       $configDlg = false
       EnableWindow.call($hWnd, 1) # re-enable TSW

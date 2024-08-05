@@ -86,7 +86,7 @@ class Console
   attr_reader :hConWin
   attr_reader :conWidth
   attr_reader :conHeight
-  attr_accessor :init
+  attr_accessor :need_init
   attr_accessor :active
   EMPTY_EVENT_ARRAY = [{}]
   BUFFER_EVENT_SIZE = 16
@@ -104,7 +104,7 @@ class Console
     @conSize = @conWidth*@conHeight
     @active = false
     @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
-    @init = true
+    @need_init = true
 
     system('') # do not delete this seemingly useless line, which is useful on Windows 10; otherwise, the frame of the console window will not display properly; not yet know what this does
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
@@ -139,6 +139,8 @@ class Console
     hConMenu = GetSystemMenu.call(@hConWin, 0)
     DeleteMenu.call(hConMenu, SC_CLOSE, 0) # disable close (For Windows XP and 7, graying out the close sysmenu of a console window by using EnableMenuItem can be counteracted by the system! DeleteMenu is safer)
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
+# note: this will be executed everytime the console window is shown, which can revert the effect of `SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)` in Line 192
+# also, I tried setting the owner window to $hWndDialogParent, but then the app will easily freeze, maybe because potential conflicts with the current message loop? So $hWndTApp is the next available convenient owner
     SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)
   end
@@ -184,17 +186,20 @@ class Console
       x, y = xy.unpack('l2')
       SetWindowPos.call_r(@hConWin, 0, x, y, 0, 0, SWP_NOSIZE|SWP_FRAMECHANGED)
       EnableWindow.call($hWnd, 0) # disable TSW
+      writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, @hConWin) # tell TSW to set focus to this window when switched to or clicked on (see Entry #-1 of tswMod.asm)
     else
+      writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, 0) if tswActive # revert the above operation
+      SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0) # apparently on Windows, it is not allowed to "steel focus" by `SetForegroundWindow` to self (the window will not be switched to but only flashed) although you can `SetForegroundWindow` to other windows. More specifically, the object of `SetForegroundWindow` should have a different owner window. Since previously, we set the owner window of the console window to be TSW's hWndTApp, we will not be able to successfully gain focus according to this theory; therefore, we should now detach the console window from hWndTApp
       @active = false
       EnableWindow.call($hWnd, 1) # re-enable TSW
       ShowWindow.call(@hConWin, SW_HIDE)
-      if tswActive
-        IsWindow.call_r($hWnd)
-        API.focusTSW()
-        HookProcAPI.hookK() # reenable tswMP hook
-      else
-        SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)
-      end
+      return true unless tswActive
+      IsWindow.call_r($hWnd)
+# previously was `API.focusTSW()`, now replaced by the two lines below
+      ShowWindow.call($hWndTApp, SW_SHOW)
+      SetForegroundWindow.call($hWnd)
+# but that wouldn't work properly, because the `GetLastActivePopup` call would return @hConWin, not $hWnd
+      HookProcAPI.hookK() # reenable tswMP hook
     end
     return true
   end

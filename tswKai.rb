@@ -182,8 +182,8 @@ def KaiMain()
 
   $console = Console.new if $console.nil?
   initCheaterInterface() if $console.switchLang()
-  if $console.init # chances are that KAI_OPTIONS have changed since options loaded last time
-    $console.init = false
+  if $console.need_init # chances are that KAI_OPTIONS have changed since options loaded last time
+    $console.need_init = false
     $_KAI_OPTIONS_STR_1 = KAI_OPTIONS[0, 15].join
     $_KAI_OPTIONS_STR_2 = KAI_OPTIONS[15, 15].join
     drawShortcutKeys()
