@@ -2,7 +2,7 @@
 // Likewise, no need to align stack on 16-byte boundaries (because this is not Linux; Windows use 4-byte boundaries instead), so added the 4-th "-m..." option: https://stackoverflow.com/a/43597693/11979352
 // Likewise, no need for procedure prolog and epilog (push ebp; mov ebp, esp; ...; leave), so added the following "-f..." option: https://stackoverflow.com/a/21620940/11979352
 // You MUST use a 32-bit compiler because only 32-bit DLL can be loaded by 32-bit TSW exe
-// gcc -std=gnu99 -Os -s -DNDEBUG -shared -Wl,--enable-auto-image-base,--enable-auto-import -mpush-args -mno-accumulate-outgoing-args -mno-stack-arg-probe -mpreferred-stack-boundary=2 -fomit-frame-pointer dmg.dll.def dmg.dll.c -o dmg.dll -lgdi32
+// gcc -std=gnu99 -Os -s -DNDEBUG -shared -Wl,--enable-auto-image-base,--enable-auto-import -mpush-args -mno-accumulate-outgoing-args -mno-stack-arg-probe -mpreferred-stack-boundary=2 -fomit-frame-pointer dmg.dll.def dmg.dll.c -o dmg.dll
 
 #include "TSW_memory.h"
 #define NOINLINE __attribute__((noinline))
@@ -10,6 +10,7 @@
 #define get_h(p) *(const HANDLE *const)(p) // same as above; but the type is instead HANDLE
 #define get_t(p, t) *(const t *const)(p) // same as above; but the type is user-defined `t`
 
+/*
 const COLORREF color_OK = RGB(0x22, 0xAA, 0x22);
 const COLORREF color_suspicious = RGB(0xC0, 0xA0, 0x60);
 const COLORREF color_no_go = RGB(0xFF, 0x22, 0x22);
@@ -20,6 +21,29 @@ const COLORREF color_foreground = RGB(0xFE, 0xFE, 0xFE);
 const LOGFONTA lfont_dmg = {16, 6, 0, 0, 700, // height, width, esc, orient, weight
     0, 0, 0, 0, 0, 0, 3, 0, // italic, underline, strike, charset, out, clip, quality, pitch
     "Tahoma"};
+*/
+const COLORREF *const p_color_OK         = (const COLORREF *const)0x4BA220;
+const COLORREF *const p_color_suspicious = (const COLORREF *const)0x4BA224;
+const COLORREF *const p_color_no_go      = (const COLORREF *const)0x4BA228;
+const COLORREF *const p_color_item       = (const COLORREF *const)0x4BA22C;
+const COLORREF *const p_color_polyline   = (const COLORREF *const)0x4BA230;
+const COLORREF *const p_color_background = (const COLORREF *const)0x4BA234;
+const COLORREF *const p_color_foreground = (const COLORREF *const)0x4BA238;
+const LOGFONTA *const p_lfont_dmg        = (const LOGFONTA *const)0x4BA1FC;
+
+const char *const ___gdi32      = (const char *const)0x4BBC5E; // "gdi32.dll"
+const char *const ___BeginPath  = (const char *const)0x4BA1DC; // "BeginPath"
+const char *const ___EndPath    = (const char *const)0x4BA1E8; // "EndPath"
+const char *const ___StrokePath = (const char *const)0x4BA1F0; // "StrokePath"
+DWORD *const __BeginPath  = (DWORD *const)0x4BA1D0;
+DWORD *const __EndPath    = (DWORD *const)0x4BA1D4;
+DWORD *const __StrokePath = (DWORD *const)0x4BA1D8;
+typedef _DeleteDC _BeginPath; // they are of same prototype and return type
+typedef _DeleteDC _EndPath;
+typedef _DeleteDC _StrokePath;
+_BeginPath**  p_BeginPath  = (_BeginPath**)__BeginPath;
+_EndPath**    p_EndPath    = (_EndPath**)__EndPath;
+_StrokePath** p_StrokePath = (_StrokePath**)__StrokePath;
 
 #define DWORD_M_DMG_CRI_ADDR (DWORD *const)0x489C00 // idle memory block from 0x489BA8 till 0x48A000
 #define BOOL_NEED_UPDATE_ADDR (BYTE *const)0x4BA1B6 // idle memory block from 0x4BA1B5 till 0x4BB000
@@ -245,14 +269,14 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
     hPen_old = SelectObject(hDC, hPen_stroke);
     hFont_old = SelectObject(hDC, hFont_dmg);
     if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
-        SetTextColor(hDC, color_no_go);
+        SetTextColor(hDC, *p_color_no_go);
         SetROP2(hDC, R2_WHITE);
     }
     else {
-        SetTextColor(hDC, color_foreground);
+        SetTextColor(hDC, *p_color_foreground);
         SetROP2(hDC, R2_COPYPEN);
     }
-    BeginPath(hDC); // TODO:
+    (*p_BeginPath)(hDC);
     lenInt_1 = itoa2(dmg, strInt_1);
     if (cri) { // for normal monsters, draw dmg (and cri, if applicable) at bottom left of cell
         ++x; y -= 15; // this is the top left corner of the drawing rect
@@ -261,8 +285,8 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
             lenInt_2 = itoa2(cri, strInt_2);
             TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
         }
-        EndPath(hDC); // TODO:
-        StrokePath(hDC); // TODO:
+        (*p_EndPath)(hDC);
+        (*p_StrokePath)(hDC);
         TextOutA(hDC, x, y, strInt_1, lenInt_1);
         if (cri != 0x7FFF)
             TextOutA(hDC, x, y-12, strInt_2, lenInt_2);
@@ -271,8 +295,8 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
         const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
         RECT cell = {x, y-TSW_tileSize, x+TSW_tileSize, y}; // current cell bounds
         DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
-        EndPath(hDC); // TODO:
-        StrokePath(hDC); // TODO:
+        (*p_EndPath)(hDC);
+        (*p_StrokePath)(hDC);
         DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
     }
 
@@ -368,11 +392,16 @@ draw:
 }
 
 extern void ini(void) { // initialize
-    LOGPEN lpen = {PS_SOLID, {3, 0}, color_background};
+    LOGPEN lpen = {PS_SOLID, {3, 0}, *p_color_background};
     hPen_stroke = CreatePenIndirect(&lpen);
-    lpen.lopnColor = color_polyline;
+    lpen.lopnColor = *p_color_polyline;
     hPen_polyline = CreatePenIndirect(&lpen);
-    hFont_dmg = CreateFontIndirectA(&lfont_dmg);
+    hFont_dmg = CreateFontIndirectA(p_lfont_dmg);
+
+    HMODULE hgdi32 = GetModuleHandleA(___gdi32);
+    *__BeginPath  = (DWORD)GetProcAddress(hgdi32, ___BeginPath);
+    *__EndPath    = (DWORD)GetProcAddress(hgdi32, ___EndPath);
+    *__StrokePath = (DWORD)GetProcAddress(hgdi32, ___StrokePath);
 
     const HANDLE TTSW10 = get_h(TTSW10_ADDR);
     const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);

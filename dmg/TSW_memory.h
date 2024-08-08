@@ -1,5 +1,6 @@
 // aliases (a trick from https://stackoverflow.com/a/17615531/11979352)
 // do not use the linked win32 api if already loaded in TSW.exe
+#define GetModuleHandleA __GetModuleHandleA
 #define LoadLibraryA __LoadLibraryA
 #define GetProcAddress __GetProcAddress
 #define MessageBoxA __MessageBoxA
@@ -78,6 +79,7 @@ _TCanvas_GetHandle* TCanvas_GetHandle = (_TCanvas_GetHandle*)0x41A950;
 _TBitmap_GetCanvas* TBitmap_GetCanvas = (_TBitmap_GetCanvas*)0x41DAD8;
 
 // win32api functions already loaded in TSW.exe
+#undef GetModuleHandleA
 #undef LoadLibraryA
 #undef GetProcAddress
 #undef MessageBoxA
@@ -96,6 +98,7 @@ _TBitmap_GetCanvas* TBitmap_GetCanvas = (_TBitmap_GetCanvas*)0x41DAD8;
 #undef SetROP2
 #undef SetTextColor
 #undef TextOutA
+typedef HMODULE WINAPI _GetModuleHandleA (LPCSTR lpModuleName);
 typedef HMODULE WINAPI _LoadLibraryA(LPCSTR lpLibFileName);
 typedef FARPROC WINAPI _GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
 typedef int WINAPI _MessageBoxA(HWND hWnd,LPCSTR lpText,LPCSTR lpCaption,UINT uType);
@@ -114,6 +117,7 @@ typedef int WINAPI _SetBkMode(HDC hdc,int mode);
 typedef int WINAPI _SetROP2(HDC hdc,int rop2);
 typedef COLORREF WINAPI _SetTextColor(HDC hdc,COLORREF color);
 typedef WINBOOL WINAPI _TextOutA(HDC hdc,int x,int y,LPCSTR lpString,int c);
+_GetModuleHandleA* GetModuleHandleA = (_GetModuleHandleA*)0x4012B0;
 _LoadLibraryA* LoadLibraryA = (_LoadLibraryA*)0x404BFC;
 _GetProcAddress* GetProcAddress = (_GetProcAddress*)0x404B84;
 _MessageBoxA* MessageBoxA = (_MessageBoxA*)0x401260;
