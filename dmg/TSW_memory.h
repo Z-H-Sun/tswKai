@@ -19,6 +19,9 @@
 #define SetROP2 __SetROP2
 #define SetTextColor __SetTextColor
 #define TextOutA __TextOutA
+#define GetStockObject __GetStockObject
+#define Polyline __Polyline
+#define PatBlt __PatBlt
 
 #define WINVER 0x0500 // minimum windows 2000
 #include <windows.h>
@@ -45,6 +48,7 @@
 #define TTSW10_GAMEMAP_LEFT_ADDR 0x48C578
 #define TTSW10_GAMEMAP_TOP_ADDR 0x48C57C
 #define TTSW10_EVENT_COUNT_ADDR 0x48C5AC
+#define TTSW10_GAMEMAP_NO_UPDATE_BITMAP 0x4B86B8
 
 #define TTSW10_IMAGE6_OFFSET 0x254
 #define TCONTROL_WIDTH_OFFSET 0x2C
@@ -98,6 +102,9 @@ _TBitmap_GetCanvas* TBitmap_GetCanvas = (_TBitmap_GetCanvas*)0x41DAD8;
 #undef SetROP2
 #undef SetTextColor
 #undef TextOutA
+#undef GetStockObject
+#undef PatBlt
+#undef Polyline
 typedef HMODULE WINAPI _GetModuleHandleA (LPCSTR lpModuleName);
 typedef HMODULE WINAPI _LoadLibraryA(LPCSTR lpLibFileName);
 typedef FARPROC WINAPI _GetProcAddress(HMODULE hModule, LPCSTR lpProcName);
@@ -117,6 +124,9 @@ typedef int WINAPI _SetBkMode(HDC hdc,int mode);
 typedef int WINAPI _SetROP2(HDC hdc,int rop2);
 typedef COLORREF WINAPI _SetTextColor(HDC hdc,COLORREF color);
 typedef WINBOOL WINAPI _TextOutA(HDC hdc,int x,int y,LPCSTR lpString,int c);
+typedef HGDIOBJ WINAPI _GetStockObject(int i);
+typedef WINBOOL WINAPI _PatBlt(HDC hdc,int x,int y,int w,int h,DWORD rop);
+typedef WINBOOL WINAPI _Polyline(HDC hdc,CONST POINT *apt,int cpt);
 _GetModuleHandleA* GetModuleHandleA = (_GetModuleHandleA*)0x4012B0;
 _LoadLibraryA* LoadLibraryA = (_LoadLibraryA*)0x404BFC;
 _GetProcAddress* GetProcAddress = (_GetProcAddress*)0x404B84;
@@ -136,3 +146,6 @@ _SetBkMode* SetBkMode = (_SetBkMode*)0x404DE4;
 _SetROP2* SetROP2 = (_SetROP2*)0x404DF4;
 _SetTextColor* SetTextColor = (_SetTextColor*)0x404E04;
 _TextOutA* TextOutA = (_TextOutA*)0x404E34;
+_GetStockObject* GetStockObject = (_GetStockObject*)0x404D44;
+_PatBlt* PatBlt = (_PatBlt*)0x404D8C;
+_Polyline* Polyline = (_Polyline*)0x404D9C;

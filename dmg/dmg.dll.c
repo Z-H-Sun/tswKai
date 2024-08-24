@@ -46,7 +46,7 @@ _EndPath**    p_EndPath    = (_EndPath**)__EndPath;
 _StrokePath** p_StrokePath = (_StrokePath**)__StrokePath;
 
 #define DWORD_M_DMG_CRI_ADDR (DWORD *const)0x489C00 // idle memory block from 0x489BA8 till 0x48A000
-#define BOOL_NEED_UPDATE_ADDR (BYTE *const)0x4BA1B6 // idle memory block from 0x4BA1B5 till 0x4BB000
+#define BYTE_NEED_UPDATE_ADDR (BYTE *const)0x4BA1B6 // idle memory block from 0x4BA1B5 till 0x4BB000
 #define HMEMDC_ADDR (HDC *const)0x4BA1B8
 #define HMEMBMP_1_ADDR (HBITMAP *const)0x4BA1BC
 #define HMEMBMP_2_ADDR (HBITMAP *const)0x4BA1C0
@@ -56,7 +56,7 @@ _StrokePath** p_StrokePath = (_StrokePath**)__StrokePath;
 UCHAR *const p_prev_i = (UCHAR *const)TTSW10_PREV_I;
 CHAR *const p_next_i = (CHAR*)TTSW10_NEXT_I;
 DWORD *const p_m_dmg_cri = DWORD_M_DMG_CRI_ADDR; // 121 DWORDs; this stores each tile's damage / critical value of the current floor
-BYTE *const p_need_update = BOOL_NEED_UPDATE_ADDR; /* the initial value is 1|2|16
+BYTE *const p_need_update = BYTE_NEED_UPDATE_ADDR; /* the initial value is 1|2|16
     Bit # (right-to-left) | Meaning
     0 | should update hMemBmp[0] or not
     1 | should update hMemBmp[1] or not
@@ -77,6 +77,133 @@ HFONT *const p_hFont_dmg = HFONT_DMG_ADDR;
 #define hPen_polyline (*p_hPen_polyline)
 #define hFont_dmg (*p_hFont_dmg)
 
+////////// for connectivity polyline function //////////
+HBRUSH *const TControl_default_brush = (HBRUSH *const) 0x48A6DC; // assigned as NULL_BRUSH in _Unit8.InitGraphics; will be replaced by DC_BRUSH
+BYTE *const p_no_update_bitmap = (BYTE *const)TTSW10_GAMEMAP_NO_UPDATE_BITMAP; // in TSW, this will be set as TRUE during battle or game over, so the player tile will not be redrawn; in tswMP, when drawing polyline, player will not change position, so this will also be set as TRUE
+#define no_update_bitmap (*p_no_update_bitmap)
+
+#define DPo 0xFA0089 // dest || pat
+#define BYTE_POLYLINE_STATE_ADDR (BYTE *const)0x489DE4 // DWORD m_dmg_cri[121] uses 484 bytes, thus vacant from here
+#define BYTE_POLYLINE_COUNT_ADDR (BYTE *const)0x489DE5
+BYTE *const p_polyline_state = BYTE_POLYLINE_STATE_ADDR; // 0th bit: need to draw polyline; 1st/2nd bit: have drawn polyline on hMemBmp[0]/hMemBmp[1] or not
+BYTE *const p_polyline_count = BYTE_POLYLINE_COUNT_ADDR; // 0-6th bit: up to 63 segments, i.e., 64 vertices; 7th bit: 0=OK(green); 1=suspicious(yellow); 2=no-go(red)
+DWORD *const __SetDCBrushColor = (DWORD *const)0x489DEC;
+const char *const ___SetDCBrushColor = (const char *const)0x489DF0; // "SetDCBrushColor"
+POINT *const p_polyline_vertices = (POINT *const)0x489E00; // up to 64 vertices, will use 64*8=0x200 bytes
+#define polyline_state (*p_polyline_state)
+#define polyline_count (*p_polyline_count)
+
+typedef _SetTextColor _SetDCBrushColor; // they are of same prototype and return type
+_SetDCBrushColor** p_SetDCBrushColor  = (_SetDCBrushColor**)__SetDCBrushColor;
+
+typedef struct {
+    INT32 x;
+    INT32 y;
+    INT32 w;
+    INT32 h;
+} SQUARE;
+
+NOINLINE static void REGCALL getHighlightSquare(SQUARE* s) {
+    const HANDLE TTSW10 = get_h(TTSW10_ADDR);
+    const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
+    s->w = TSW_tileSize;
+    s->h = TSW_tileSize;
+    const POINT xy_center = p_polyline_vertices[0];
+    const DWORD TSW_h_tileSize = TSW_tileSize >> 1;
+    s->x = xy_center.x - TSW_h_tileSize;
+    s->y = xy_center.y - TSW_h_tileSize;
+}
+
+NOINLINE static void REGCALL drawPolylineOnDC(const HDC hDC) { // draw only polyline
+    UCHAR seg_count = polyline_count & 0x3F; // 0-63; this is the number of line segments; +1 = the number of vertices
+    if (!seg_count)
+        return;
+    SetROP2(hDC, R2_XORPEN);
+    const HPEN hPen_old = SelectObject(hDC, hPen_polyline);
+    Polyline(hDC, p_polyline_vertices, seg_count+1);
+    SelectObject(hDC, hPen_old);
+}
+
+NOINLINE static void REGCALL drawConnectivityOnDC(const HDC hDC) { // draw polyline and highlight destination tile
+    const UCHAR dest_type = polyline_count >> 6; // 0/1/2 = OK/suspicious/no-go
+    (*p_SetDCBrushColor)(hDC, p_color_OK[dest_type]);
+    SQUARE s; getHighlightSquare(&s);
+    const HBRUSH hBr_old = SelectObject(hDC, *TControl_default_brush);
+    PatBlt(hDC, s.x, s.y, s.w, s.h, DPo);
+    SelectObject(hDC, hBr_old);
+    drawPolylineOnDC(hDC);
+}
+
+NOINLINE static HDC REGCALL drawConnectivityOnBitmap(const HANDLE TSW_cur_mBitmap) { // draw polyline and highlight on TTSW10_GAMEMAP_BITMAP_i
+    const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
+    const BYTE test_bit = (TSW_cur_frame + 1 << 1); // (i+1)-th (i=0/1) bit
+    const HDC TSW_cur_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    if ((polyline_state & test_bit)) // (i+1)-th (i=0/1) bit already set
+        return TSW_cur_mBitmap_hDC;
+
+    if (!(polyline_state & 6)) { // both 1st and 2nd bit not set
+        const DWORD TSW_mapLeft = get_p(TTSW10_GAMEMAP_LEFT_ADDR), TSW_mapTop = get_p(TTSW10_GAMEMAP_TOP_ADDR);
+        UCHAR seg_count = polyline_count & 0x3F;
+        for (UCHAR i = 0; i <= seg_count; ++i) { // for form canvas, the origin is (TSW_mapLeft, TSW_mapTop); for bitmap, the origin is (0, 0), so coordinates should be recalculated
+            p_polyline_vertices[i].x -= TSW_mapLeft;
+            p_polyline_vertices[i].y -= TSW_mapTop;
+        }
+    }
+    polyline_state |= test_bit;
+
+    SQUARE s; getHighlightSquare(&s);
+    SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
+    BitBlt(hMemDC, 0, 440, s.w, s.h, TSW_cur_mBitmap_hDC, s.x, s.y, SRCCOPY); // backup the tile cell that will be highlighted at (0, 440), which is definitely outside the map area
+    drawConnectivityOnDC(TSW_cur_mBitmap_hDC);
+    return TSW_cur_mBitmap_hDC;
+}
+
+extern void REGCALL dpl(HANDLE TTSW10) { // draw polyline
+    no_update_bitmap = TRUE;
+    polyline_state = 1;
+    const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
+    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
+    drawConnectivityOnDC(TTSW10_TCanvas_hDC);
+}
+
+extern void REGCALL epl(HANDLE TTSW10) { // erase polyline
+    const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
+    const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
+    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
+    const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
+    for (int i = 0; i < 2; ++i) {
+        const HDC TSW_cur_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
+        drawPolylineOnDC(TSW_cur_mBitmap_hDC); // xor twice = eliminate the polyline
+
+        SQUARE s; getHighlightSquare(&s);
+        SelectObject(hMemDC, hMemBmp[i]);
+        BitBlt(TSW_cur_mBitmap_hDC, s.x, s.y, s.w, s.h, hMemDC, 0, 440, SRCCOPY); // restore the tile cell without highlight
+
+        if (i == TSW_cur_frame)
+            BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), s.w*11u, s.w*11u, TSW_cur_mBitmap_hDC, 0, 0, SRCCOPY); // redraw TSW game window canvas without polyline or highlight
+    }
+    no_update_bitmap = FALSE;
+    polyline_state = 0;
+}
+
+/* Demo usage for drawing polyline: F1=draw; F9=erase
+   This will highlight (1,1) tile on map and draw an L-shape polyline
+489DE5:
+db 2
+489DF0:
+db 'SetDCBrushColor', 0
+489E00:
+dd #240, #90 // mapLeft=180; mapTop=30;
+dd #240, #130 // tileSize=40;
+dd #270, #130 // central point coordinates for (1,1)--(1,2)--(2,2)
+
+47D2D8: // F1
+jmp dmg.dpl
+463874: // F9
+jmp dmg.epl
+*/
+////////// ---------------------------------- //////////
+/*
 #define msgboxDWORD10(h,i) msgboxDWORD(h,i,10) // use 10-base
 NOINLINE static void REGCALL msgboxDWORD(const HANDLE TTSW10, const DWORD i, const int base) { // for debug use; show value of int `i`
     const HWND TTSW10_hWnd = get_t((DWORD)TTSW10+TCONTROL_HWND_OFFSET, HWND);
@@ -84,6 +211,7 @@ NOINLINE static void REGCALL msgboxDWORD(const HANDLE TTSW10, const DWORD i, con
     itoa(i, st, base);
     MessageBoxA(TTSW10_hWnd, st, "Debug Output", MB_ICONINFORMATION | MB_SETFOREGROUND);
 }
+*/
 
 NOINLINE static int REGCALL itoa2(WORD i, char* a){ // return value is `len`; output string is (char*)a
     if (i == 0xFFFF) { // infinity
@@ -125,7 +253,7 @@ NOINLINE static char REGCALL getMonsterID(const UCHAR tileID) { // tileID -> mon
 }
 
 #define norm44(x,f) (x-1)/f+1 // this will divide x by 44 and ceil [NOTE: to minimize the risk of INT32 overflow of `x` (though unlikely), this is unsigned division, so need to rule out the case when x==0]
-NOINLINE static DWORD REGCALL getMonsterDmgCri(const char monsterID, const BOOL isStrikeFirst) { // HIWORD=cri (0-32766; 0x7FFF=no show); LOWORD=dmg (0-65534; 0xFFFF=???); if the most significant bit is 1 (i.e., cri < 0), it means that the dmg is greater or equal to hero's HP
+NOINLINE static DWORD REGCALL getMonsterDmgCri(const UCHAR monsterID, const BOOL isStrikeFirst) { // HIWORD=cri (0-32766; 0x7FFF=no show); LOWORD=dmg (0-65534; 0xFFFF=???); if the most significant bit is 1 (i.e., cri < 0), it means that the dmg is greater or equal to hero's HP
     const ITEM TSW_hero_items = get_t(TTSW10_HERO_ITEM_ADDR, ITEM);
     const HADG TSW_hero_HADG = get_t(TTSW10_HERO_STATUS_ADDR, HADG);
     const HADG *const TSW_enemy_HADG = (const HADG *const)TTSW10_ENEMY_STATUS_ADDR; // 33 monsters
@@ -164,7 +292,7 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(const char monsterID, const BOOL 
             cri = 0x7FFF; // no show
         else {
             if (turnsCount) {
-                int tmp = (mHP-1) / turnsCount + mDEF;
+                UINT tmp = (mHP-1) / turnsCount + mDEF;
                 if (hATKDouble)
                     tmp >>= 1;
                 cri = norm44(tmp + 1 - hATK, factor);
@@ -309,8 +437,14 @@ extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, co
     const UCHAR TSW_tileSize = (UCHAR)get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
     const DWORD TSW_mapSize = 11u * TSW_tileSize;
     const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
-    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
-    HDC TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    HDC TSW_mBitmap_hDC;
+
+    ////////// for connectivity polyline function //////////
+    if (polyline_state) {
+        TSW_mBitmap_hDC = drawConnectivityOnBitmap(TSW_cur_mBitmap);
+        goto draw;
+    }
+    ////////// ---------------------------------- //////////
 
     if ((need_update & 16) && !(((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero)) // if 4th bit is set, show no overlay if without OrbOfHero
         goto no_overlay;
@@ -323,7 +457,9 @@ no_overlay:
         } else
             need_update &= (BYTE)(~8|4);
     }
-    else if (need_update & 4) { // if 2nd bit is set, do not update until event is over
+
+    TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    if (need_update & 4) { // if 2nd bit is set, do not update until event is over
         if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0)
             goto draw;
         else
@@ -388,6 +524,7 @@ no_overlay:
     }
 
 draw:
+    const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
     BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY); // instead of using TSW_mapLeft / TSW_mapTop in argv; no need to push on stack
 }
 
@@ -403,6 +540,11 @@ extern void ini(void) { // initialize
     *__EndPath    = (DWORD)GetProcAddress(hgdi32, ___EndPath);
     *__StrokePath = (DWORD)GetProcAddress(hgdi32, ___StrokePath);
 
+    ////////// for connectivity polyline function //////////
+    *TControl_default_brush = GetStockObject(DC_BRUSH);
+    *__SetDCBrushColor = (DWORD)GetProcAddress(hgdi32, ___SetDCBrushColor);
+    ////////// ---------------------------------- //////////
+
     const HANDLE TTSW10 = get_h(TTSW10_ADDR);
     const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
     const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
@@ -410,7 +552,7 @@ extern void ini(void) { // initialize
     const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
     HDC TSW_mBitmap_hDC;
     for (int i = 0; i < 2; ++i) { // for the second loop, will be TTSW10_GAMEMAP_BITMAP_2_ADDR
-        hMemBmp[i] = CreateCompatibleBitmap(TTSW10_TCanvas_hDC, 440, 440);
+        hMemBmp[i] = CreateCompatibleBitmap(TTSW10_TCanvas_hDC, 440, 480); // the extra 40 pixels in height can be useful to store some temp image
         SelectObject(hMemDC, hMemBmp[i]);
         TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
         BitBlt(hMemDC, 0, 0, 440, 440, TSW_mBitmap_hDC, 0, 0, SRCCOPY);

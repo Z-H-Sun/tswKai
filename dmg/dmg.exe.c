@@ -209,16 +209,16 @@ TTSW10_GameQuit1Click: // F9
 484B14:
 TTSW10_TSW10close:
   call TTSW10_GameQuit1Click // free dmg drawing-related GDI obj
-  mov ebx, 48C514 // TTSW10_GAMEMAP_BITMAP_1_ADDR
+  mov ebx, TTSW10_GAMEMAP_BITMAP_1_ADDR // TTSW10_GAMEMAP_BITMAP_1_ADDR
   mov eax, [ebx]
   call TObject_Free
   mov eax, [ebx+04] // TTSW10_GAMEMAP_BITMAP_2_ADDR
   call TObject_Free
-  mov eax, [ebx+08] // TTSW10_TEMP_BITMAP_1_ADDR
+  mov eax, [ebx+08] // TTSW10_TEMP_BITMAP_1_ADDR (used in TTSW10_idou/monidou)
   call TObject_Free
   mov eax, [ebx+0C] // TTSW10_TEMP_BITMAP_2_ADDR
   call TObject_Free
-  mov eax, [ebx+10]
+  mov eax, [ebx+10] // TTSW10_TEMP_BITMAP_3_ADDR (all three used in TTSW10_kasanegaki)
   call TObject_Free
   nop
 
@@ -368,10 +368,10 @@ sub_backup_tile_TCustomImageList_Draw:
 
 //////////////////// Handle Dmg Overlay When Moving on Stairs ////////////////////
 442F1D: // part of TTSW10_kaidanwork
-cmp byte ptr [DLL_IsInit], 0
-je +6
-call [DLL_cmp_addr] // need to update map damage calculation before drawing
-jmp 442F61 // the original code sets the Timer2 interval to 2ms/6ms/10ms for high/middle/low-speed modes for showing stair animation; however, the theoretical minimal interval supported by the Windows `SetTimer` API is 10ms, so there is no use setting the interval less than 10ms. Therefore, the useless code can be skipped and can directly jump to the part where the timer interval is set to 10ms
+  cmp byte ptr [DLL_IsInit], 0
+  je +6
+  call [DLL_cmp_addr] // need to update map damage calculation before drawing
+  jmp 442F61 // the original code sets the Timer2 interval to 2ms/6ms/10ms for high/middle/low-speed modes for showing stair animation; however, the theoretical minimal interval supported by the Windows `SetTimer` API is 10ms, so there is no use setting the interval less than 10ms. Therefore, the useless code can be skipped and can directly jump to the part where the timer interval is set to 10ms
 
 // everything below is part of TTSW10_stackwork where an event sequence like (21, 1, j) is processed; for more details on the event sequence, see tswBGM.asm
 // (21, 0, j) shows the j-th "sword-and-staff" tile; (21, 1, j) hides that "sword-and-staff" tile and shows the actual tile on the next map; since the tile shows/hides in a spiral sequence, the actual map index `i` is different from `j` and is obtained by ((*byte*)0x489B1F)[j]
