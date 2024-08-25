@@ -46,7 +46,9 @@ _EndPath**    p_EndPath    = (_EndPath**)__EndPath;
 _StrokePath** p_StrokePath = (_StrokePath**)__StrokePath;
 
 #define DWORD_M_DMG_CRI_ADDR (DWORD *const)0x489C00 // idle memory block from 0x489BA8 till 0x48A000
-#define BYTE_NEED_UPDATE_ADDR (BYTE *const)0x4BA1B6 // idle memory block from 0x4BA1B5 till 0x4BB000
+#define BYTE_DLL_INIT_ADDR (BYTE *const)0x4BA1B5 // idle memory block from 0x4BA1B5 till 0x4BB000
+#define BYTE_NEED_UPDATE_ADDR (BYTE *const)0x4BA1B6
+#define BYTE_ALWAYS_SHOW_OVERLAY_ADDR (BYTE *const)0x4BA1B7
 #define HMEMDC_ADDR (HDC *const)0x4BA1B8
 #define HMEMBMP_1_ADDR (HBITMAP *const)0x4BA1BC
 #define HMEMBMP_2_ADDR (HBITMAP *const)0x4BA1C0
@@ -56,13 +58,15 @@ _StrokePath** p_StrokePath = (_StrokePath**)__StrokePath;
 UCHAR *const p_prev_i = (UCHAR *const)TTSW10_PREV_I;
 CHAR *const p_next_i = (CHAR*)TTSW10_NEXT_I;
 DWORD *const p_m_dmg_cri = DWORD_M_DMG_CRI_ADDR; // 121 DWORDs; this stores each tile's damage / critical value of the current floor
-BYTE *const p_need_update = BYTE_NEED_UPDATE_ADDR; /* the initial value is 1|2|16
+BYTE *const p_dll_init = BYTE_DLL_INIT_ADDR;
+BYTE *const p_need_update = BYTE_NEED_UPDATE_ADDR; /* the initial value is 1|2
     Bit # (right-to-left) | Meaning
     0 | should update hMemBmp[0] or not
     1 | should update hMemBmp[1] or not
     2 | do not update until all events are over (to prevent TSW's redrawing from erasing our drawing)
     3 | do not show dmg overlay until all events are over (useful when gameover)
-    4 | do not show dmg overlay without OrbOfHero */
+    4 | restored original game map bitmaps or not */
+BYTE *const p_always_show_overlay = BYTE_ALWAYS_SHOW_OVERLAY_ADDR; // whether to always show dmg overlay, even without OrbOfHero
 HDC *const p_hMemDC = HMEMDC_ADDR;
 HBITMAP *const p_hMemBmp = HMEMBMP_1_ADDR; // 2 HBITMAPs; 2 game map bitmaps because there are 2 frames
 HPEN *const p_hPen_stroke = HPEN_STROKE_ADDR, *p_hPen_polyline = HPEN_POLYLINE_ADDR;
@@ -70,6 +74,7 @@ HFONT *const p_hFont_dmg = HFONT_DMG_ADDR;
 #define prev_i (*p_prev_i)
 #define next_i (*p_next_i)
 #define m_dmg_cri p_m_dmg_cri
+#define dll_init (*p_dll_init)
 #define need_update (*p_need_update)
 #define hMemDC (*p_hMemDC)
 #define hMemBmp p_hMemBmp
@@ -168,19 +173,22 @@ extern void REGCALL dpl(HANDLE TTSW10) { // draw polyline
 
 extern void REGCALL epl(HANDLE TTSW10) { // erase polyline
     const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
+    const DWORD TSW_tileSize = get_p(get_p((DWORD)TTSW10+TTSW10_IMAGE6_OFFSET)+TCONTROL_WIDTH_OFFSET);
     const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
     const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
     const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
     for (int i = 0; i < 2; ++i) {
         const HDC TSW_cur_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
-        drawPolylineOnDC(TSW_cur_mBitmap_hDC); // xor twice = eliminate the polyline
+        const BYTE test_bit = (TSW_cur_frame + 1 << 1); // (i+1)-th (i=0/1) bit
+        if (polyline_state & test_bit) { // (i+1)-th (i=0/1) bit set
+            drawPolylineOnDC(TSW_cur_mBitmap_hDC); // xor twice = eliminate the polyline
 
-        SQUARE s; getHighlightSquare(&s);
-        SelectObject(hMemDC, hMemBmp[i]);
-        BitBlt(TSW_cur_mBitmap_hDC, s.x, s.y, s.w, s.h, hMemDC, 0, 440, SRCCOPY); // restore the tile cell without highlight
-
+            SQUARE s; getHighlightSquare(&s);
+            SelectObject(hMemDC, hMemBmp[i]);
+            BitBlt(TSW_cur_mBitmap_hDC, s.x, s.y, s.w, s.h, hMemDC, 0, 440, SRCCOPY); // restore the tile cell without highlight
+        }
         if (i == TSW_cur_frame)
-            BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), s.w*11u, s.w*11u, TSW_cur_mBitmap_hDC, 0, 0, SRCCOPY); // redraw TSW game window canvas without polyline or highlight
+            BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), TSW_tileSize*11u, TSW_tileSize*11u, TSW_cur_mBitmap_hDC, 0, 0, SRCCOPY); // redraw TSW game window canvas without polyline or highlight
     }
     no_update_bitmap = FALSE;
     polyline_state = 0;
@@ -189,7 +197,7 @@ extern void REGCALL epl(HANDLE TTSW10) { // erase polyline
 /* Demo usage for drawing polyline: F1=draw; F9=erase
    This will highlight (1,1) tile on map and draw an L-shape polyline
 489DE5:
-db 2
+db 42 // (1<<6)|2, meaning using yellow highlight color and have 2 polyline segments
 489DF0:
 db 'SetDCBrushColor', 0
 489E00:
@@ -310,6 +318,16 @@ NOINLINE static DWORD REGCALL getMonsterDmgCri(const UCHAR monsterID, const BOOL
     return MAKELONG(dmg, cri);
 }
 
+NOINLINE static void restoreGameBitmaps(void) {
+    const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
+    HDC TSW_mBitmap_hDC;
+    for (int i = 0; i < 2; ++i) { // for the second loop, will be TTSW10_GAMEMAP_BITMAP_2_ADDR
+        SelectObject(hMemDC, hMemBmp[i]);
+        TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
+        BitBlt(TSW_mBitmap_hDC, 0, 0, 440, 440, hMemDC, 0, 0, SRCCOPY); // switch back the original game map without dmg / cri overlay
+    }
+}
+
 extern void cmp(void) { // calculate the damage / critical value for the current whole map
     const STATUS TSW_hero_status = get_t(TTSW10_HERO_STATUS_ADDR, STATUS);
     const UCHAR floor = (const UCHAR)TSW_hero_status.floor;
@@ -385,6 +403,7 @@ extern void cmp(void) { // calculate the damage / critical value for the current
 
 extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw the damage / critical value for a specific tile `i` at a given `xy` coordinate (with (x, y) being the bottom left corner of the current tile cell)
     DWORD x = (DWORD)LOWORD(xy), y = (DWORD)HIWORD(xy);
+    const BOOL bypassSelectObject = i >> 7; // most significant bit; the main purpose of this check is to avoid redundant SelectObject calls when `sub_dtl` is called in a loop, e.g., in `sub_dmp` (for i in range(0, 121)), but in that case, there should be extra SelectObject calls that wrap around the for loop
     const DWORD dmgCri = m_dmg_cri[i & 0x7F];
     const WORD dmg = LOWORD(dmgCri), cri=HIWORD(dmgCri) & 0x7FFF;
     HPEN hPen_old; HFONT hFont_old;
@@ -393,9 +412,11 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
 
     if (dmgCri == (DWORD)(-2)) // no draw
         return;
-    SetBkMode(hDC, TRANSPARENT);
-    hPen_old = SelectObject(hDC, hPen_stroke);
-    hFont_old = SelectObject(hDC, hFont_dmg);
+    if (!bypassSelectObject) {
+        SetBkMode(hDC, TRANSPARENT);
+        hPen_old = SelectObject(hDC, hPen_stroke);
+        hFont_old = SelectObject(hDC, hFont_dmg);
+    }
     if ((INT32)dmgCri < 0) { // most significant bit set; inadequate HP
         SetTextColor(hDC, *p_color_no_go);
         SetROP2(hDC, R2_WHITE);
@@ -427,9 +448,10 @@ extern void REGCALL dtl(const HDC hDC, const char i, const DWORD xy) { // draw t
         (*p_StrokePath)(hDC);
         DrawTextA(hDC, strInt_1, lenInt_1, &cell, DT_CENTER | DT_VCENTER | DT_SINGLELINE); // only draw dmg in the middle of cell
     }
-
-    SelectObject(hDC, hPen_old);
-    SelectObject(hDC, hFont_old);
+    if (!bypassSelectObject) {
+        SelectObject(hDC, hPen_old);
+        SelectObject(hDC, hFont_old);
+    }
 }
 
 extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, const DWORD TSW_mapTop, const HANDLE TSW_cur_mBitmap) { // draw the damage / critical value for the current whole map
@@ -446,19 +468,21 @@ extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, co
     }
     ////////// ---------------------------------- //////////
 
-    if ((need_update & 16) && !(((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero)) // if 4th bit is set, show no overlay if without OrbOfHero
+    TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
+    if (!(*p_always_show_overlay) && (((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero != 1)) // unless (*p_always_show_overlay) is set, show no overlay if without OrbOfHero
         goto no_overlay;
     if (need_update & 8) { // if 3rd bit is set, show no overlay until event is over
         if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0) {
 no_overlay:
-            SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
-            TSW_mBitmap_hDC = hMemDC;
+            if (!(need_update & 16)) { // if 4th bit is not set, restore original game map bitmaps
+                restoreGameBitmaps();
+                need_update |= (16|3); // once this no_overlay status is cleared, need to update dmg overlay anyways
+            }
             goto draw;
         } else
-            need_update &= (BYTE)(~8|4);
+            need_update &= (BYTE)(~(8|4));
     }
 
-    TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
     if (need_update & 4) { // if 2nd bit is set, do not update until event is over
         if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0)
             goto draw;
@@ -468,16 +492,22 @@ no_overlay:
 
     cmp();
     if (need_update & (TSW_cur_frame+1)) { // `TSW_cur_frame`: i=0, 1; if i-th bit (right-to-left) is set
-        need_update &= (18-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0; keep the 4th bit but discard 2nd and 3rd bits
+        need_update &= (2-TSW_cur_frame); // `TSW_cur_frame`: i=0, 1; set i-th bit (right-to-left) to be 0; discard 2nd, 3rd, and 4th bits
 
         SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
         BitBlt(TSW_mBitmap_hDC, 0, 0, TSW_mapSize, TSW_mapSize, hMemDC, 0, 0, SRCCOPY);
 
+        HPEN hPen_old; HFONT hFont_old;
+        SetBkMode(TSW_mBitmap_hDC, TRANSPARENT); // save unnecessary SelectObject calls by moving them outside the loop
+        hPen_old = SelectObject(TSW_mBitmap_hDC, hPen_stroke);
+        hFont_old = SelectObject(TSW_mBitmap_hDC, hFont_dmg);
         for (UCHAR i = 0; i < 121; ++i) {
             WORD x = i % 11u * TSW_tileSize;
             WORD y = (i / 11u + 1) * TSW_tileSize;
-            dtl(TSW_mBitmap_hDC, i, MAKELONG(x, y));
+            dtl(TSW_mBitmap_hDC, i|0x80, MAKELONG(x, y)); // i|0x80: indicate that no need to call SelectObject in `dtl`; see comments above
         }
+        SelectObject(TSW_mBitmap_hDC, hPen_old); // put back old Pen and Font objects after the loop is done; see comments above
+        SelectObject(TSW_mBitmap_hDC, hFont_old);
     } else if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) <= 0) { // even if the map dmg/cri values haven't changed, it is possible that the drawings will be erased by TSW's redrawing, in which case dmg/cri should be redrawn (should wait until the end of event (animation might redraw the tile and erase our drawing))
         const STATUS TSW_hero_status = get_t(TTSW10_HERO_STATUS_ADDR, STATUS);
         const UCHAR cur_ix = TSW_hero_status.x, cur_iy = TSW_hero_status.y, cur_i = cur_ix + cur_iy*11;
@@ -517,8 +547,8 @@ no_overlay:
             WORD x = (UCHAR)next_i % 11u * TSW_tileSize;
             WORD y = ((UCHAR)next_i / 11u + 1) * TSW_tileSize;
             DWORD xy = MAKELONG(x, y);
-            dtl(TSW_mBitmap_hDC, next_i, MAKELONG(x, y));
-            dtl(TSW_mBitmap2_hDC, next_i, MAKELONG(x, y));
+            dtl(TSW_mBitmap_hDC, next_i, xy);
+            dtl(TSW_mBitmap2_hDC, next_i, xy);
             next_i = cur_i;
         }
     }
@@ -528,7 +558,7 @@ draw:
     BitBlt(TTSW10_TCanvas_hDC, get_p(TTSW10_GAMEMAP_LEFT_ADDR), get_p(TTSW10_GAMEMAP_TOP_ADDR), TSW_mapSize, TSW_mapSize, TSW_mBitmap_hDC, 0, 0, SRCCOPY); // instead of using TSW_mapLeft / TSW_mapTop in argv; no need to push on stack
 }
 
-extern void ini(void) { // initialize
+extern void REGCALL ini(HANDLE TTSW10) { // initialize
     LOGPEN lpen = {PS_SOLID, {3, 0}, *p_color_background};
     hPen_stroke = CreatePenIndirect(&lpen);
     lpen.lopnColor = *p_color_polyline;
@@ -545,7 +575,6 @@ extern void ini(void) { // initialize
     *__SetDCBrushColor = (DWORD)GetProcAddress(hgdi32, ___SetDCBrushColor);
     ////////// ---------------------------------- //////////
 
-    const HANDLE TTSW10 = get_h(TTSW10_ADDR);
     const HANDLE TTSW10_TCanvas = get_h((DWORD)TTSW10+TFORM_TCANVAS_OFFSET);
     const HDC TTSW10_TCanvas_hDC = TCanvas_GetHandle(TTSW10_TCanvas);
     hMemDC = CreateCompatibleDC(TTSW10_TCanvas_hDC);
@@ -557,22 +586,28 @@ extern void ini(void) { // initialize
         TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
         BitBlt(hMemDC, 0, 0, 440, 440, TSW_mBitmap_hDC, 0, 0, SRCCOPY);
     }
-    need_update = 19; // always update upon init; do not show if without OrbOfHero
+    need_update |= 3; // always update upon init; do not show if without OrbOfHero
+    dll_init = TRUE;
 }
+
 extern void fin(void) { // finalize
-    const HANDLE *const pTBitmap = (const HANDLE *const)TTSW10_GAMEMAP_BITMAP_1_ADDR;
-    HDC TSW_mBitmap_hDC;
-    for (int i = 0; i < 2; ++i) { // for the second loop, will be TTSW10_GAMEMAP_BITMAP_2_ADDR
-        SelectObject(hMemDC, hMemBmp[i]);
-        TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(pTBitmap[i]));
-        BitBlt(TSW_mBitmap_hDC, 0, 0, 440, 440, hMemDC, 0, 0, SRCCOPY); // switch back the original game map without dmg / cri overlay
-        // TODO: BitBlt above only needs to be done when pressing F9 but not when TSW quits
-        // Maybe add one parameter `BOOL need_change_back_game_bitmap` for this function and add an `if` judgement here?
-        DeleteObject(hMemBmp[i]);
-    }
+    if (!dll_init)
+        return;
+
+    dll_init = FALSE;
+    restoreGameBitmaps();
+    // TODO: BitBlt above only needs to be done when pressing F9 but not when TSW quits
+
+    HBITMAP hStkBmp = CreateCompatibleBitmap(hMemDC, 0, 0); // this retrieves the 1x1 monochromic "stock bitmap" (see https://devblogs.microsoft.com/oldnewthing/20100416-00/?p=14313)
+    // equivalently, one can call GetStockObject(PRIV_STOCK_BITMAP) (PRIV_STOCK_BITMAP is a private constant with a value of 19 since Windows 2000), typically =0x85000F
+    // equivalently, one can get it from TBitmap, e.g., [48C514], by [TBitmapCanvas+0x38], where TBitmapCanvas=[TBitmap+0x14] (or call 41DAD8) (see TBitmapCanvas.CreateHandle or TBitmapCanvas.FreeContext)
+    SelectObject(hMemDC, hStkBmp); // put back the original monochromic 1x1 "stock bitmap"
+    // although this is unnecessary as discussed here (see https://github.com/users/Z-H-Sun/projects/2?pane=issue&itemId=55490542), but just to be cautious
+
+    DeleteObject(hMemBmp[0]);
+    DeleteObject(hMemBmp[1]);
     DeleteObject(hPen_stroke);
     DeleteObject(hPen_polyline);
     DeleteObject(hFont_dmg);
-    // TODO: Though unlikely, what if hPen and hFont are still using (selected in a DC)?
     DeleteDC(hMemDC);
 }
