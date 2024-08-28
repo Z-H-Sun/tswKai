@@ -563,7 +563,7 @@ BASE:4C132		mov eax, [BASE:89BFC]	; vacant dword pointer; used to store [KERNEL3
 BASE:4C137		test eax, eax	; if KERNEL32.Sleep is already loaded...
 BASE:4C139		jne loc_idou_sleep_call	; ...then no need to reload; call directly
 BASE:4C13B		push offset BASE:BB5FC	; 'kernel32.dll'
-BASE:4C140		call BASE:04BFC	; kernel32.LoadLibraryA
+BASE:4C140		call BASE:012B0	; kernel32.GetModuleHandleA
 BASE:4C145		push offset BASE:4C158	; ('Sleep' see below)
 BASE:4C14A		push eax
 BASE:4C14B		call BASE:04B84	; kernel32.GetProcAddress
@@ -1235,10 +1235,10 @@ BASE:60C6F	; original bytes:
 			jmp loc_formkeydown_arrowkeydown	; BASE:60D78; see below
 
 BASE:60C74	loc_interval1:
-			db 78, 78, 96, E1	; 120, 120, 150, 225; the initial waiting interval when you press an arrow key for the first time (for SuperFast, High, Middle, Low speed modes, respectively, same below)
+			db 78, 87, 96, E1	; 120, 135, 150, 225; the initial waiting interval when you press an arrow key for the first time (for SuperFast, High, Middle, Low speed modes, respectively, same below)
 		; these values must be different from those for interval0; see comments in BASE:617D6
 BASE:60C78	loc_interval2:
-			db 00, 0A, 64, AF	; 0(+50), 10(+50), 100(+50), 175(+50); the key repeat interval, interval2, is this number + 50
+			db 00, 14, 64, AF	; 0(+50), 20(+50), 100(+50), 175(+50); the key repeat interval, interval2, is this number + 50
 BASE:60C7C	loc_interval0:
 			db 4B, 4B, 96, E1	; 75(+50), 75(+50), 150(+50), 225(+50), the original Timer3.Interval, interval0, is this number + 50, which will be restored after the arrow key is released. Because 275 > 255 (the maximum value for UCHAR), so I have to decrease each value by 50 to store them and will add 50 back later
 BASE:60C80	loc_BitBtnXClick_addr:
@@ -1447,7 +1447,6 @@ BASE:6187D		jmp [ecx*4+loc_BitBtnXClick_addr]	; TTSW10.BitBtnXClick
 		; ...
 
 		TTSW10.timer3ontimer	endp
-
 
 ;============================================================
 		; Rev11: Place TSW game window to a better location on the screen
