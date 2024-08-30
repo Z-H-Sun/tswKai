@@ -1,0 +1,8 @@
+EXPORTS
+    ini = ini@4
+    fin
+    cmp
+    dtl = dtl@12
+    dmp = dmp@16
+    dpl = dpl@4
+    epl = epl@4
