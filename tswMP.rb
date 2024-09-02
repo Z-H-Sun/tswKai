@@ -29,6 +29,7 @@ SetBkColor = API.new('SetBkColor', 'LL', 'I', 'gdi32')
 SetBkMode = API.new('SetBkMode', 'LI', 'I', 'gdi32')
 SetROP2 = API.new('SetROP2', 'LI', 'I', 'gdi32')
 
+HC_ACTION = 0
 DC_BRUSH = 18
 DT_CENTER = 1
 DT_VCENTER = 4
@@ -100,7 +101,7 @@ module HookProcAPI
   @flying = nil # currently using OrbOfFly; active
   @error = nil # exception within hook callback function
   @lastArrow = 0 # which arrowkey pressed previously? -1: none; 0: left; 1: right
-  @lastDraw = nil # highlight and connecting polyline drawn before
+  @lastDraw = false # highlight and connecting polyline drawn before
 
   module_function
   def handleHookExceptions() # exception should not be raised until callback returned
@@ -134,7 +135,7 @@ module HookProcAPI
       return true if @lastIsInEvent
       @lastIsInEvent = true # if @lastIsInEvent is false
       $x_pos = $y_pos = -1 # reset pos
-      initHDC # it is possible that hDC is not assigned yet
+      initHDC unless $hDC # it is possible that hDC is not assigned yet
       showMsg(1, 0)
     elsif @lastIsInEvent # result is false and @lastIsInEvent is true
       if @hmhook # just waited an event over; redraw items bar and map damage
@@ -144,7 +145,7 @@ module HookProcAPI
         recalcStatus
         drawItemsBar # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `itemlive`) may clear the drawing here
         @lastIsInEvent = false
-        _msHook('init', WM_MOUSEMOVE, 0) # continue teleportation
+        _msHook(nil, WM_MOUSEMOVE, 0) # continue teleportation
       else
         @lastIsInEvent = false
         InvalidateRect.call($hWnd, $msgRect, 0) # clear message bar
@@ -153,7 +154,7 @@ module HookProcAPI
     return result
   end
   def initHDC()
-    $hDC = GetDC.call_r($hWnd) unless $hDC
+    $hDC = GetDC.call_r($hWnd)
     SelectObject.call_r($hDC, $hBr) # hDC returned by GetDC above will, every time, reset to default DC parameters, so need to set them accordingly
     SelectObject.call_r($hDC, $hPen)
     SetROP2.call_r($hDC, R2_XORPEN)
@@ -220,32 +221,43 @@ module HookProcAPI
     SelectObject.call_r($hDC, $hSysFont)
   end
   def drawDmg(x, y, dmg, cri, danger)
-    x = $MAP_LEFT+$TILE_SIZE*x + 1
-    y = $MAP_TOP+$TILE_SIZE*(y+1) - 15
-    dmg_u = Str.utf8toWChar(dmg)
-    dmg_s = Str.strlen()
     if danger
       SetTextColor.call_r($hDC, HIGHLIGHT_COLOR[2])
       SetROP2.call_r($hDC, R2_WHITE)
     end
     BeginPath.call_r($hDC)
-    TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
-    TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
+    if cri == false # magic attack
+      x = $MAP_LEFT+$TILE_SIZE*x
+      y = $MAP_TOP+$TILE_SIZE*y
+      rect = [x, y, x+$TILE_SIZE, y+$TILE_SIZE].pack('l4')
+      DrawText.call_r($hDC, dmg, -1, rect, DT_CENTERBOTH)
+    else
+      x = $MAP_LEFT+$TILE_SIZE*x + 1
+      y = $MAP_TOP+$TILE_SIZE*(y+1) - 15
+      dmg_u = Str.utf8toWChar(dmg)
+      dmg_s = Str.strlen()
+      TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
+      TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
+    end
     EndPath.call_r($hDC)
     StrokePath.call_r($hDC)
 # StrokeAndFillPath won't work well here because the inside of the path will also be framed (The pen will draw along the center of the frame. Why is there PS_INSIDEFRAME but no PS_OUTSIDE_FRAME? GDI+ can solve this very easily by pen.SetAlignment), making the texts difficult to read.
 # So FillPath or another TextOut must be called afterwards to overlay on top of the inside stroke
 # SaveDC and RestoreDC can be used to solve the issue that StrokePath or FillPath will discard the active path afterwards (not used here)
 # refer to: https://github.com/tpn/windows-graphics-programming-src/blob/master/Chapt_15/Text/TextDemo.cpp#L1858
-    TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
-    TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
+    if cri == false
+      DrawText.call_r($hDC, dmg, -1, rect, DT_CENTERBOTH)
+    else
+      TextOut.call_r($hDC, x, y-12, cri, cri.size) if cri
+      TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
+    end
     if danger
       SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
       SetROP2.call_r($hDC, R2_COPYPEN)
     end
   end
   def drawItemsBar()
-    @lastDraw = nil
+    @lastDraw = false
     @itemAvail = []
     SetBkMode.call_r($hDC, 2) # opaque
     for i in 0..11 # check what items you have
@@ -274,7 +286,7 @@ module HookProcAPI
   def _msHook(nCode, wParam, lParam)
     block = false # block input?
     finally do
-      break if nCode.to_i < 0 # do not process
+      break if nCode != HC_ACTION and !nCode.nil? # do not process
       break if @lastIsInEvent
       case wParam
       when WM_LBUTTONDOWN, WM_RBUTTONDOWN # mouse click; teleportation
@@ -312,7 +324,7 @@ module HookProcAPI
 
         checkTSWsize()
 
-        @lastDraw = nil
+        @lastDraw = false
         unless cheat or @access.zero? # need to move 1 step
           callFunc(operation) # move to the destination and trigger the event
           break if isInEvent()
@@ -347,33 +359,33 @@ module HookProcAPI
       y_pos = ((y - $MAP_TOP) / $TILE_SIZE).floor
 
       break if x_pos == $x_pos and y_pos == $y_pos # same pos
-      if nCode != 'init' then break if isInEvent end # don't check this on init
+      if !nCode.nil? then break if isInEvent end # don't check this on init
 
       if @lastDraw # undo the last drawing
-        if (r = Connectivity.route) then Polyline.call_r($hDC, r.pack('l*'), r.size >> 1) end # the trick is to XOR twice to restore the previous pixels
-        BitBlt.call_r($hDC, @lastDraw[0], @lastDraw[1], $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) # read bitmap from memory DC
-        @lastDraw = nil
+        r = Connectivity.route
+        s = r.size >> 1
+        Polyline.call_r($hDC, r.pack('l*'), s) if s > 1 # the trick is to XOR twice to restore the previous pixels
+        BitBlt.call_r($hDC, r[0]-($TILE_SIZE >> 1), r[1]-($TILE_SIZE >> 1), $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) if !s.zero? # read bitmap from memory DC (this `if` statement should be always true, but just be cautious to avoid error)
+        @lastDraw = false
       end
 
       if x_pos < 0 or x_pos > 10 or y_pos < 0 or y_pos > 10 # outside
         if @itemAvail.empty? then showMsg(1, 2) else showMsg(3, 4) end
         $x_pos = $y_pos = -1 # cancel preview
-        @lastDraw = nil
+        @lastDraw = false
         break
       end
 
       $x_pos = x_pos; $y_pos = y_pos
-      x_left = $MAP_LEFT + $TILE_SIZE*x_pos
-      y_top = $MAP_TOP + $TILE_SIZE*y_pos
 
 # it is possible that when [WIN] key is released (and thus `unhookM` is called), `_msHook` is still running; in this case, do not do the following things:
       @access = Connectivity.main(x_pos, y_pos)
       break unless @hmhook
       if @access
-        color = HIGHLIGHT_COLOR[@access.zero? ? 0 : 1]
+        colorIndex = @access.zero? ? 0 : 1
         showMsg(4, 1, x_pos, y_pos, @itemAvail.empty? ? $str::STRINGS[-1] : $str::STRINGS[6])
       else
-        color = HIGHLIGHT_COLOR[2]
+        colorIndex = 2
         if @itemAvail.empty?
           showMsg(1, 3, x_pos, y_pos)
         else
@@ -382,11 +394,15 @@ module HookProcAPI
       end
 
       break unless @hmhook
+      r = Connectivity.route
+      s = r.size >> 1
+      x_left = r[0] - ($TILE_SIZE >> 1)
+      y_top = r[1] - ($TILE_SIZE >> 1)
       BitBlt.call_r($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
-      if (r = Connectivity.route) then Polyline.call_r($hDC, r.pack('l*'), r.size >> 1) end
-      SetDCBrushColor.call_r($hDC, color)
+      SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
       PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
-      @lastDraw = [x_left, y_top]
+      Polyline.call_r($hDC, r.pack('l*'), s) if s > 1
+      @lastDraw = true
 
       id = Connectivity.destTile
       break unless @hmhook and Monsters.heroOrb and (m = Monsters.getMonsterID(id))
@@ -400,18 +416,18 @@ module HookProcAPI
       showMsgTxtbox(14, *Monsters.detail((m == 18 && id != 104), *data))
       EnableWindow.call($hWndText, 1) # now you can use mouse to select / scroll status bar textbox and view more info (I've made changes to the TSW.exe executable such that once the text changes, TEdit8 will be disabled again: TEdit8: OnChange = DisTEdit8 = mov eax, [eax+1c8]; call 413544)
     end
-    return 1 if block or nCode == 'init' # upon pressing [WIN] without mouse move
+    return 1 if block or nCode.nil? # upon pressing [WIN] without mouse move
     return CallNextHookEx.call(@hmhook, nCode, wParam, lParam)
   # no need to "rescue" here since the exceptions could be handled in _keyHook
   end
   def _keyHook(nCode, wParam, lParam)
-    # 'LLL': If the prototype is set as 'LLP', the size of the pointer could not be correctly assigned
+    # 'ILL': If the prototype is set as 'LLP', the size of the pointer could not be correctly assigned
     # Therefore, the address of the pointer is retrieved instead, and RtlMoveMemory is used to get the pointer data
     RtlMoveMemory.call($buf, lParam, 20)
     key = $buf.unpack('L')[0]
     block = false # block input?
     finally do
-      break if nCode < 0 # do not process
+      break if nCode != HC_ACTION # do not process
       if key == MP_KEY1 or key == MP_KEY2
         if key == VK_ESCAPE then break if isSLActive end
         alphabet = false # alphabet key pressed?
@@ -482,12 +498,12 @@ module HookProcAPI
           end
         elsif !@winDown # only trigger at the first time
           @winDown = true
-          initHDC
+          initHDC unless $hDC # this statement is always valid, but just to be cautious and check if $hDC already initialized
           checkTSWsize
           recalcStatus
           drawItemsBar
           hookM
-          _msHook('init', WM_MOUSEMOVE, 0) # do this subroutine once even without mouse move
+          _msHook(nil, WM_MOUSEMOVE, 0) # do this subroutine once even without mouse move
         end
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
@@ -501,8 +517,8 @@ module HookProcAPI
     PostMessage.call(0, WM_APP, 0, 0)
     return CallNextHookEx.call(@hkhook, nCode, wParam, lParam)
   end
-  MouseProc = API::Callback.new('LLL', 'L', &method(:_msHook))
-  KeyboardProc = API::Callback.new('LLL', 'L', &method(:_keyHook))
+  MouseProc = API::Callback.new('ILL', 'L', &method(:_msHook))
+  KeyboardProc = API::Callback.new('ILL', 'L', &method(:_keyHook))
 
   def hookK
     return false if @hkhook

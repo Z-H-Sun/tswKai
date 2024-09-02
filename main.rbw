@@ -44,7 +44,7 @@ def init()
   Mod.init
   HookProcAPI.hookK
 
-  showWelcomingMsg() if $configDlg != 'init' # if `$CONonTSWstartup` and `$configDlg == 'init'`, will be handled elsewhere after the dialog window is gone
+  showWelcomingMsg() if $configDlg != 0 # if `$CONonTSWstartup` and `$configDlg == 0`, will be handled elsewhere after the dialog window is gone
   return true
 end
 def showWelcomingMsg()
@@ -95,7 +95,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       when 1
         if state == 1
           if $configDlg # dialog -> console
-            next if $configDlg == 'init' # do not do this if it's shown during startup
+            next if $configDlg == 0 # do not do this if it's shown during startup
             $configDlg = false
             writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, 0) # hiding the dialog window below will implicitly switch focus to the TSW game window, so need to unset the HWND to set focus to (see Entry #-1 of tswMod.asm)
             ShowWindow.call($hWndDialog, SW_HIDE)

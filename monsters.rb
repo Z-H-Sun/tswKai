@@ -87,12 +87,13 @@ module Monsters
         dmg = @magAttacks[i]
         if dmg.nil? # unlikely, but let's add this new item into database
           sign = $mapTiles[i] <=> 0
-          $mapTiles[i] = 6; getMagDmg(i); $mapTiles[i] *= sign
+          $mapTiles[i] = 1 # this was 6 instead of 1 before. Because this scenario can only be caused by an unknown bug; let's be cautious and make this tile reachable but inpassible (1=yellow door)
+          getMagDmg(i); $mapTiles[i] *= sign
         else
           y, x = i.divmod(11)
-          HookProcAPI.drawDmg(x, y, normalize(dmg).to_s, nil, dmg >= @heroHP)
+          HookProcAPI.drawDmg(x, y, normalize(dmg).to_s, false, dmg >= @heroHP) # cri=false --> magic attack
         end
-      when 6
+      when 1..7
         getMagDmg(i) if init and @check_mag
       else
         getMonDmg(i) if @heroOrb
@@ -125,7 +126,7 @@ module Monsters
       dmg1 += dmg2*@statusFactor
     end
     @magAttacks[i] = dmg1
-    HookProcAPI.drawDmg(x, y, normalize(dmg1).to_s, nil, dmg1 >= @heroHP)
+    HookProcAPI.drawDmg(x, y, normalize(dmg1).to_s, false, dmg1 >= @heroHP) # cri=false --> magic attack
   end
   def getMonDmg(i)
     mID = getMonsterID($mapTiles[i].abs)
