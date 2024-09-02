@@ -4,7 +4,7 @@
 module Connectivity
   @queue = []
   @ancestor = Array.new(121) # for each position, record its parent position (where it is moved from)
-  @route = nil
+  @route = []
   @destTile = 0
   class << self
     attr_reader :route
@@ -13,7 +13,8 @@ module Connectivity
 # note: in order to detect magic attacks (mark these floor tiles as impassible), need to call `Monsters.checkMap` beforehand
   module_function
   def main(tx, ty) # end point: (tx, ty)
-    @route = nil # clear last route
+    @route.clear # clear last route
+    @route.push(tx*$TILE_SIZE+$MAP_LEFT+$TILE_SIZE/2, ty*$TILE_SIZE+$MAP_TOP+$TILE_SIZE/2)
     t_index = 11*ty + tx
     @destTile = $mapTiles[t_index]
     return nil if @destTile > 0 # inaccessible
@@ -28,7 +29,6 @@ module Connectivity
       access = @ancestor[t_index] - t_index # in this case, should first go to somewhere 1 step away from destination
     end
 
-    @route = [tx*$TILE_SIZE+$MAP_LEFT+$TILE_SIZE/2, ty*$TILE_SIZE+$MAP_TOP+$TILE_SIZE/2]
     index = @ancestor[t_index]
     loop do
       y, x = index.divmod(11)

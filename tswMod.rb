@@ -180,7 +180,7 @@ module Mod
     (0...MOD_PATCH_OPTION_COUNT).each {|i| patch(i, $CONmodStatus[i] ? 1 : 0) unless $CONmodStatus[i].nil?}
     return unless $CONonTSWstartup
     return if showDialog(true).nil? # fail due to existence of child window
-    $configDlg = 'init' # need to wrap up after the dialog window is gone
+    $configDlg = 0 # need to wrap up after the dialog window is gone
   end
   def showDialog(active, tswActive=true) # active=true/false : show/hide config window; tswActive: if TSW is still running, determining whether to do further operations
     return false if !(active ^ $configDlg) # i.e., `$config` has the same Boolean state with `active`
@@ -203,7 +203,7 @@ module Mod
       writeMemoryDWORD(MOD_FOCUS_HWND_ADDR, $hWndDialog) # tell TSW to set focus to this window when switched to or clicked on (see Entry #-1 of tswMod.asm)
     else
       writeMemoryDWORD(MOD_FOCUS_HWND_ADDR, 0) if tswActive # revert the above operation
-      workup = ($configDlg == 'init')
+      workup = ($configDlg == 0)
       $configDlg = false
       EnableWindow.call($hWnd, 1) # re-enable TSW
       ShowWindow.call($hWndDialog, SW_HIDE)
