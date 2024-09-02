@@ -1,6 +1,11 @@
 #!/usr/bin/env ruby
 # Author: Z.Sun
 
+DPL_ADDR = 0xbac68 + BASE_ADDRESS
+EPL_ADDR = 0xbad0c + BASE_ADDRESS
+POLYLINE_COUNT_ADDR = 0x89de5 + BASE_ADDRESS
+POLYLINE_VERTICES_ADDR = 0x89e00 + BASE_ADDRESS
+
 module Connectivity
   @queue = []
   @ancestor = Array.new(121) # for each position, record its parent position (where it is moved from)

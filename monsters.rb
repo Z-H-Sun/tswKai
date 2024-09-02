@@ -83,7 +83,7 @@ module Monsters
     for i in 0...121
       case $mapTiles[i].abs
       when 255
-        break unless @heroOrb
+        break if $MPnewMode or !@heroOrb # no need for further calculation under such cases
         dmg = @magAttacks[i]
         if dmg.nil? # unlikely, but let's add this new item into database
           sign = $mapTiles[i] <=> 0
@@ -109,7 +109,7 @@ module Monsters
     dmg1 = 0
     if (left == 16 && right == 16) || (up == 16 && down == 16) # flanked by sorcerers
       $mapTiles[i] = 255
-      return unless @heroOrb
+      return if $MPnewMode or !@heroOrb # no need for further calculation under such cases
       dmg1 = @heroHP + 1 >> 1
     end
     dmg2 = 0
@@ -122,7 +122,7 @@ module Monsters
       return if dmg1.zero?
     else
       $mapTiles[i] = 255
-      return unless @heroOrb
+      return if $MPnewMode or !@heroOrb # no need for further calculation under such cases
       dmg1 += dmg2*@statusFactor
     end
     @magAttacks[i] = dmg1
@@ -132,9 +132,11 @@ module Monsters
     mID = getMonsterID($mapTiles[i].abs)
     return unless mID
 
-    y, x = i.divmod(11)
     res = @monsters[mID]
     if !res then res = getStatus(mID); @monsters[mID] = res end
+    return if $MPnewMode # further calculation is only needed in legacy mode
+
+    y, x = i.divmod(11)
     dmg = res[0]
     if dmg == $str::STRINGS[-2]
       danger = true

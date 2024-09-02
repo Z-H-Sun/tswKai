@@ -102,6 +102,7 @@ def ChkBox_CheckMsg(index, msg)
     else
       s = $MPshowMapDmg = 1
     end
+    MPExt.changeState if $MPnewMode
     SendMessagePtr.call(hWnd, BM_SETCHECK, s, 0)
   when MOD_PATCH_OPTION_COUNT+1
     $SLautosave = !$SLautosave

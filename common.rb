@@ -300,6 +300,7 @@ def preExit(msg=nil) # finalize
     SL.enableAutoSave(false)
     SL.compatibilizeExtSL(false)
     BGM.takeOverBGM(false) # restore
+    MPExt.finalize()
     Mod::MOD_PATCH_BYTES_0.reverse_each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[2], i[1], 0)} # restore in reverse order, i.e., restore WndProc first and then erase added function
   rescue Exception
   end

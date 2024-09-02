@@ -63,12 +63,14 @@ CONSUMABLES = {'position' => [0, 1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13],
 
 require 'connectivity'
 require 'monsters'
+require 'tswMPExt'
 
 MP_MODIFIER = 0 # hotkey and modifier for quit and keyboard re-hook
 MP_HOTKEY = 118 # F7
 MP_KEY1 = VK_LWIN
 MP_KEY2 = VK_TAB # hotkeys for teleportation and using items
 $MPshowMapDmg = true # whether to enable enhanced damage display
+$MPnewMode = true # show damage display all the time, not just when WIN/TAB is being held down
 
 $x_pos = $y_pos = -1
 $hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack(LOGFONT_STRUCT))
@@ -211,6 +213,10 @@ module HookProcAPI
     callFunc(TIMER1_ADDR) # elicit TIMER1TIMER
     callFunc(TIMER1_ADDR) # twice is necessary for battle events
     callFunc(TIMER1_ADDR) # thrice is necessary for dialog events (removal of richedit control) and refreshing hero xp position (disappear; ??; reappear)
+    if $MPnewMode
+      Monsters.checkMap(init)
+      return
+    end
     WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\xc3", 1, 0) # TIMER1TIMER ret (disable; freeze)
     SelectObject.call_r($hDC, $hGUIFont)
     SelectObject.call_r($hDC, $hPen2)
@@ -319,7 +325,11 @@ module HookProcAPI
         writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[6] << 2), x)
         writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[7] << 2), y)
 
-        WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
+        if $MPnewMode
+          callFunc(EPL_ADDR) if @lastDraw # undo the last drawing
+        else
+          WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
+        end
         callFunc(REFRESH_XYPOS_ADDR) # TTSW10.mhyouji (only refresh braveman position; do not refresh whole map)
 
         checkTSWsize()
@@ -362,10 +372,14 @@ module HookProcAPI
       if !nCode.nil? then break if isInEvent end # don't check this on init
 
       if @lastDraw # undo the last drawing
-        r = Connectivity.route
-        s = r.size >> 1
-        Polyline.call_r($hDC, r.pack('l*'), s) if s > 1 # the trick is to XOR twice to restore the previous pixels
-        BitBlt.call_r($hDC, r[0]-($TILE_SIZE >> 1), r[1]-($TILE_SIZE >> 1), $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) if !s.zero? # read bitmap from memory DC (this `if` statement should be always true, but just be cautious to avoid error)
+        if $MPnewMode
+          callFunc(EPL_ADDR)
+        else
+          r = Connectivity.route
+          s = r.size >> 1
+          Polyline.call_r($hDC, r.pack('l*'), s) if s > 1 # the trick is to XOR twice to restore the previous pixels
+          BitBlt.call_r($hDC, r[0]-($TILE_SIZE >> 1), r[1]-($TILE_SIZE >> 1), $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) if !s.zero? # read bitmap from memory DC (this `if` statement should be always true, but just be cautious to avoid error)
+        end
         @lastDraw = false
       end
 
@@ -396,12 +410,19 @@ module HookProcAPI
       break unless @hmhook
       r = Connectivity.route
       s = r.size >> 1
-      x_left = r[0] - ($TILE_SIZE >> 1)
-      y_top = r[1] - ($TILE_SIZE >> 1)
-      BitBlt.call_r($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
-      SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
-      PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
-      Polyline.call_r($hDC, r.pack('l*'), s) if s > 1
+      if $MPnewMode
+        s = 1 if s > 63 # unlikely, if the polyline contains >= 64 vertices, there will be no enough room to hold the data in memory, in which case the polyline will simply not drawn to avoid error
+        WriteProcessMemory.call_r($hPrc, POLYLINE_COUNT_ADDR, ((s-1) | (colorIndex << 6)).chr, 1, 0)
+        WriteProcessMemory.call_r($hPrc, POLYLINE_VERTICES_ADDR, r.pack('l*'), s << 3, 0)
+        callFunc(DPL_ADDR)
+      else
+        x_left = r[0] - ($TILE_SIZE >> 1)
+        y_top = r[1] - ($TILE_SIZE >> 1)
+        BitBlt.call_r($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
+        SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
+        PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
+        Polyline.call_r($hDC, r.pack('l*'), s) if s > 1
+      end
       @lastDraw = true
 
       id = Connectivity.destTile
@@ -547,6 +568,7 @@ module HookProcAPI
 
     ClipCursor.call(nil) # do not confine cursor range
     return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
+    callFunc(EPL_ADDR) if @lastDraw and $MPnewMode # undo the last drawing
     $x_pos = $y_pos = -1
     InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar

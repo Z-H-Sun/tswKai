@@ -10,6 +10,10 @@
 #$MPshowMapDmg = false # Default: true
 # Uncomment the following line to always turn on the enhanced damage display even if you don't own the orb of hero
 #$MPshowMapDmg = 1
+# Uncomment the following line to use the legacy mode of damage display, in which case the damage display will be shown only when the hotkey (by default WIN or TAB) is being held down
+#$MPnewMode = false # Default: true
+# Uncomment the following line to show on-map damage display even after this app exits
+#$MPnewMode = 1
 # Uncomment the following line to turn off auto saving temp data (snapshots)
 #$SLautosave = false # Default: true
 # Uncomment the following line to turn off the BGM enhancement function

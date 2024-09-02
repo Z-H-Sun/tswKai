@@ -42,6 +42,7 @@ def init()
   SL.init
   BGM.init
   Mod.init
+  MPExt.init
   HookProcAPI.hookK
 
   showWelcomingMsg() if $configDlg != 0 # if `$CONonTSWstartup` and `$configDlg == 0`, will be handled elsewhere after the dialog window is gone
