@@ -17,8 +17,8 @@ module MPExt
     MP_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[2], i[1], 0)}
 
     callFunc(@_sub_fin) # this is just to guarantee no GDI leak, in case the previous run of tswKai3 failed to clean up on exit
-    if $MPshowMapDmg and $MPnewMode
-      WriteProcessMemory.call_r($hPrc, @_always_show_overlay, $MPshowMapDmg == 1 ? "\1" : "\0", 1, 0)
+    if $MPnewMode
+      changeState()
       callFunc(@_sub_ini)
     else
       WriteProcessMemory.call_r($hPrc, @_tswMP_overlay_enabled, "\0", 1, 0)
@@ -27,16 +27,9 @@ module MPExt
     MP_PATCH_BYTES_2.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[2], i[1], 0)}
   end
   def changeState
-    if !$MPshowMapDmg # s=1 (checked) --> s=0 (unchecked)
-      WriteProcessMemory.call_r($hPrc, @_always_show_overlay, "\0", 1, 0)
-      callFunc(@_sub_res)
-    elsif $MPshowMapDmg == 1 # s=2 (intermediate) --> s=1 (checked)
-      WriteProcessMemory.call_r($hPrc, @_always_show_overlay, "\1", 1, 0)
-    else # s=0 (unchecked) --> s=2 (intermediate)
-      callFunc(@_sub_ini)
-    end
+    WriteProcessMemory.call_r($hPrc, @_always_show_overlay, $MPshowMapDmg ? ($MPshowMapDmg == 1 ? "\1" : "\0") : "\xFF", 1, 0)
   end
   def finalize
-    callFunc(@_sub_res) if $MPshowMapDmg and ($MPnewMode == true) # do nothing if $MPnewMode==1
+    callFunc(@_sub_res) if ($MPnewMode == true) # do nothing if $MPnewMode==1
   end
 end

@@ -26,14 +26,16 @@ sub_dmp:	; eax=[IN] TTSW10_TCanvas; edx=[not used] TSW_map_left; ecx=[not used] 
 	mov edi, eax	; edi=TSW_mBitmap_hDC
 
 	mov esi, 4BA1B6	; p_need_update
-	cmp byte ptr [esi+1], 1	; always_show_overlay
-	jz +1F
+	cmp byte ptr [esi+1], 0	; always_show_overlay
+	je +04
+	js +0B	; loc_dmg_no_overlay
+	jmp +1B
 
 	cmp [4B86CC], 1	; player has OrbOfHero or not
-	je +16
-	no_overlay:
+	je +12
+	loc_dmg_no_overlay:
 	test byte ptr [esi], 10
-	jnz loc_dmp_draw
+	jnz +08	; jmp loc_dmp_draw
 	call sub_restoreGameBitmaps
 	or byte ptr [esi], 13
 	jmp loc_dmp_draw
@@ -41,7 +43,7 @@ sub_dmp:	; eax=[IN] TTSW10_TCanvas; edx=[not used] TSW_map_left; ecx=[not used] 
 	test byte ptr [esi], 08
 	jz +0C
 	cmp [48C5AC], 0	; TSW_event_count
-	jg no_overlay
+	jg loc_dmg_no_overlay
 	and byte ptr [esi], F3
 
 	test byte ptr [esi], 04
@@ -120,21 +122,29 @@ sub_dmp:	; eax=[IN] TTSW10_TCanvas; edx=[not used] TSW_map_left; ecx=[not used] 
 
 	loc_dmg_update_player_tile:
 	cmp [48C5AC], 0
-	jg loc_dmp_draw
-	mov ecx, [4B86A0]	; cur_ix
-	mov eax, [4B86A4]	; cur_iy
-	imul ebx, eax, #11
-	add ebx, ecx	; ebx=cur_i
-	inc eax
-	mul byte ptr [esp]	; (iy+1)*tileSize
-	shl eax, 10	; HIWORD(eax)=y
-	mov al, cl
-	mul byte ptr [esp]	; LOWORD(eax)=ix*tileSize
-	mov ecx, eax	; xy
-	mov edx, ebx	; i
-	mov eax, edi	; TSW_mBitmap_hDC
-	call sub_dtl
+	jg -0E	; jmp loc_dmp_draw
+	mov al, [esp]	; TSW_tileSize
+	push loc_dmg_update_prev_i	; execute `loc_dmg_update_cur_i` below and `ret` to `loc_dmg_update_prev_i` when finished
 
+	; 4BA43C:
+	loc_dmg_update_cur_i:	; eax=[IN]DWORD tileSize; edi=[IN]HANDLE TSW_mBitmap_hDC; return ebx=DWORD cur_i [Note: ebx will be changed in this subroutine]
+	; this subroutine will be used by `loc_drawConnectivityOnBitmap_dtl` below [this has not yet been implemented in 'dmg.dll.c']
+	mov ecx, eax	; ecx=tileSize
+	mov eax, [4B86A4]	; cur_iy
+	imul edx, eax, #11
+	inc eax
+	mul cl	; (iy+1)*tileSize
+	shl eax, 10	; HIWORD(eax)=y
+	mov al, [4B86A0]	; cur_ix
+	add dl, al	; edx=i=cur_i
+	mul cl	; LOWORD(eax)=ix*tileSize
+	mov ecx, eax	; xy
+	mov ebx, edx	; ebx=cur_i
+	mov eax, edi	; TSW_mBitmap_hDC
+	jmp sub_dtl
+
+	; 4BA460:
+	loc_dmg_update_prev_i:
 	mov eax, [48C514]
 	mov edx, [48C518]
 	cmp eax, [esp+1C]	; TSW_cur_mBitmap
@@ -177,18 +187,18 @@ sub_dmp:	; eax=[IN] TTSW10_TCanvas; edx=[not used] TSW_map_left; ecx=[not used] 
 	jae +5F	; loc_dmp_draw
 	sub ebx, eax	; cur_i-next_i
 	mov edx, [4B86A0]	; cur_ix
-	dec ebx
-	jne +4	; cur_i-next_i==1
-	test edx, edx
+	dec ebx	; cur_i-next_i==1
+	jne +4
+	test edx, edx	; cur_ix != 0
 	jne +13
 	inc ebx
-	inc ebx
-	jne +5	; next_i-cur_i==1
-	cmp edx, #10
+	inc ebx	; next_i-cur_i==1
+	jne +5
+	cmp edx, #10	; cur_ix != 10
 	jne +0A
-	cmp ebx, #11
+	cmp ebx, #12	; cur_i-next_i==11 // ebx=cur_i+1
 	je +5
-	cmp ebx, #-11
+	cmp ebx, #-10	; next_i-cur_i==11 // ebx=cur_i+1
 	jne +3D	; loc_dmp_draw
 
 	imul edx, [4B8698], #123
@@ -233,9 +243,9 @@ sub_dmp:	; eax=[IN] TTSW10_TCanvas; edx=[not used] TSW_map_left; ecx=[not used] 
 	pop edi
 	pop ebp
 	ret 4
-	nop
 
 
+; 4BA558:
 sub_ini:	; eax=[IN]HANDLE TTSW10
 	push edi
 	push esi
@@ -324,6 +334,7 @@ sub_ini:	; eax=[IN]HANDLE TTSW10
 	ret
 
 
+; 4BA668:
 sub_res:	; void sub_res(void)
 ; sub_res is called when the damage overlay function is no longer needed
 ; sub_fin is called when TSW quits
@@ -333,6 +344,7 @@ sub_res:	; void sub_res(void)
 	push loc_fin_no_check	; will continue to execute `sub_restoreGameBitmaps` below and then `ret` to this address, i.e., disposing of all GDI objects
 
 
+; 4BA674:
 sub_restoreGameBitmaps:	; void sub_restoreGameBitmaps(void)
 	push ebx
 	xor ebx, ebx
@@ -363,6 +375,7 @@ sub_restoreGameBitmaps:	; void sub_restoreGameBitmaps(void)
 	ret
 
 
+; 4BA6BC:
 sub_fin:	; void sub_fin(void)
 	cmp byte ptr [4BA1B5], 0
 	je +31	; loc_fin_ret
@@ -392,6 +405,7 @@ sub_fin:	; void sub_fin(void)
 	nop
 
 
+; 4BA6F8:
 sub_itoa2:	; ax=[IN]WORD i; edx=[IN/OUT]char* a; return int len
 	xor ecx, ecx	; now ecx=0
 	cmp ax, FFFF
@@ -435,6 +449,7 @@ sub_itoa2:	; ax=[IN]WORD i; edx=[IN/OUT]char* a; return int len
 	db 0f, 1f, 00	; 3-byte nop
 
 
+; 4BA744:
 sub_getMonsterID:	; al=[IN]UCHAR tileID; return char ID
 	mov dl, -2
 	cmp al, #08
@@ -473,6 +488,7 @@ sub_getMonsterID:	; al=[IN]UCHAR tileID; return char ID
 	xchg ax, ax	; 2-byte nop
 
 
+; 4BA77C:
 sub_getMonsterDmgCri:	; al=[IN]BYTE monsterID; edx=[IN]BOOL isStrikeFirst=0/1; return DWORD: HIWORD=cri LOWORD=dmg
 	push ebp
 	push edi
@@ -594,6 +610,7 @@ sub_getMonsterDmgCri:	; al=[IN]BYTE monsterID; edx=[IN]BOOL isStrikeFirst=0/1; r
 	ret
 
 
+; 4BA88C:
 sub_dtl:	; eax=[IN]HDC hDC; dl=[IN]char i; ecx=[IN]DWORD xy
 	push ebp
 	mov ebp, edx
@@ -756,6 +773,7 @@ sub_dtl:	; eax=[IN]HDC hDC; dl=[IN]char i; ecx=[IN]DWORD xy
 	ret
 
 
+; 4BAA04:
 sub_cmp:	; void cmp(void)
 	push esi
 	push ebx
@@ -926,6 +944,7 @@ sub_cmp:	; void cmp(void)
 	xchg ax, ax	; 2-byte nop
 
 
+; 4BABA4:
 sub_getHighlightSquare:	; eax=[OUT]int square[4] {x, y, w, h}
 	mov edx, [48C510]
 	mov edx, [edx+0254]
@@ -944,23 +963,27 @@ sub_getHighlightSquare:	; eax=[OUT]int square[4] {x, y, w, h}
 	db 0f, 1f, 00	; 3-byte nop
 
 
-sub_drawConnectivityOnBitmap:	; eax=HANDLE TSW_cur_mBitmap; return edi=HDC TSW_mBitmap_hDC
+; 4BABD4:
+sub_drawConnectivityOnBitmap:	; eax=[IN]HANDLE TSW_cur_mBitmap; [ebp+8]=[IN]DWORD TSW_tileSize; return edi=HDC TSW_mBitmap_hDC
 ; in this subroutine, ebx/esi/edi/ebp values will change, because in the caller subroutine, these registers are vacant up to this point (this has not been implemented in 'dmg.dll.c')
 	call 41DAD8
 	call 41A950
 	mov edi, eax	; TSW_mBitmap_hDC
 	movzx ebp, byte ptr [48C5D2]	; TSW_cur_frame
-	lea ebx, [ebp+ebp+2]	; test_bit
-	mov al, [489DE4]	; polyline_state
-	test al, bl
+	lea edx, [ebp+ebp+2]	; test_bit
+	mov ecx, 489DE4	; p_polyline_state
+	mov al, [ecx]	; polyline_state
+	test al, dl
 	jnz loc_drawConnectivityOnBitmap_ret
+	or [ecx], dl
 	test al, 6
-	jnz +28
+	jnz +24
 
-	mov edx, [48C578]	; TSW_map_left
-	mov ecx, [48C57C]	; TSW_map_top
+	mov edx, 48C578	; pointer of TSW_map_left
+	mov ecx, [edx+4]	; TSW_map_top
+	mov edx, [edx]	; TSW_map_left
 	mov esi, 489E00	; p_polyline_vertices
-	mov al, [489DE5]
+	mov al, [esi-1B]	; polyline_count
 	and eax, 3F	; seg_count
 	lea eax, [eax*8+esi]
 	loc_drawConnectivityOnBitmap_loop:
@@ -970,7 +993,6 @@ sub_drawConnectivityOnBitmap:	; eax=HANDLE TSW_cur_mBitmap; return edi=HDC TSW_m
 	cmp eax, esi
 	jae loc_drawConnectivityOnBitmap_loop
 
-	or [489DE4], bl
 	push 00CC0020	; rop @ BitBlt
 	push ecx	; y1 @ BitBlt; need to be populated later
 	push ecx	; x1 @ BitBlt; need to be populated later
@@ -984,17 +1006,24 @@ sub_drawConnectivityOnBitmap:	; eax=HANDLE TSW_cur_mBitmap; return edi=HDC TSW_m
 	mov [esp+10], edx	; y1 @ BitBlt
 	push #440	; y @ BitBlt
 	push 0	; x @ BitBlt
-	mov eax, [4BA1B8]	; hMemDC
+	mov ebx, 4BA1B8
+	mov eax, [ebx]	; hMemDC
 	push eax	; hdc @ BitBlt
-	push [4BA1BC+ebp*4]	; h @ SelectObject = hMemBmp[TSW_cur_frame]
+	push [ebp*4+ebx+4]	; h @ SelectObject = hMemBmp[TSW_cur_frame]
 	push eax	; hdc @ SelectObject
 	call 404DCC	; SelectObject
 	call 404C5C	; BitBlt
+
+	mov eax, [esp+4]	; TSW_tileSize
+	call loc_drawConnectivityOnBitmap_dtl	; run out of space here; need to implement checks for `always_show_overlay` as well as `dtl` for cur_i; see below
+	; this has not yet been implemented in 'dmg.dll.c'
+
 	mov eax, edi
-	jmp +1F	; sub_drawConnectivityOnDC
-	db 0f, 1f, 00	; 3-byte nop
+	jmp +1D	; sub_drawConnectivityOnDC
+	nop
 
 
+; 4BAC68:
 sub_dpl:	; eax=[IN]HANDLE TTSW10
 	mov byte ptr [4B86B8], 1
 	mov byte ptr [489DE4], 1
@@ -1004,6 +1033,7 @@ sub_dpl:	; eax=[IN]HANDLE TTSW10
 	; will continue to execute `sub_drawConnectivityOnDC` below
 
 
+; 4BAC84:
 sub_drawConnectivityOnDC:	; eax=[IN]HDC hDC
 	push ebx
 	mov ebx, eax
@@ -1038,6 +1068,7 @@ sub_drawConnectivityOnDC:	; eax=[IN]HDC hDC
 	; will continue to execute `sub_drawPolylineOnDC` below
 
 
+; 4BACD0:
 sub_drawPolylineOnDC:	; eax=[IN]HDC hDC
 	mov dl, [489DE5]
 	and dl, 3F
@@ -1069,6 +1100,7 @@ sub_drawPolylineOnDC:	; eax=[IN]HDC hDC
 	nop
 
 
+; 4BAD0C:
 sub_epl:	; eax=[IN]HANDLE TTSW10
 	push ebp
 	push edi
@@ -1131,4 +1163,15 @@ sub_epl:	; eax=[IN]HANDLE TTSW10
 	pop esi
 	pop edi
 	pop ebp
+	loc_drawConnectivityOnBitmap_dtl_ret:	; this will be used for quick return by `loc_drawConnectivityOnBitmap_dtl` below
 	ret
+
+
+; 4BADBC:
+loc_drawConnectivityOnBitmap_dtl:
+	cmp byte ptr [ebx-1], 0	; always_show_overlay
+	js loc_drawConnectivityOnBitmap_dtl_ret
+	jne +9
+	cmp [4B86CC], 1	; player has OrbOfHero or not
+	jne loc_drawConnectivityOnBitmap_dtl_ret
+	jmp loc_dmg_update_cur_i

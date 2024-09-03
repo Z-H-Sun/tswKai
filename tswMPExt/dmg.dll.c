@@ -2,7 +2,7 @@
 // Likewise, no need to align stack on 16-byte boundaries (because this is not Linux; Windows use 4-byte boundaries instead), so added the 4-th "-m..." option: https://stackoverflow.com/a/43597693/11979352
 // Likewise, no need for procedure prolog and epilog (push ebp; mov ebp, esp; ...; leave), so added the following "-f..." option: https://stackoverflow.com/a/21620940/11979352
 // You MUST use a 32-bit compiler because only 32-bit DLL can be loaded by 32-bit TSW exe
-// gcc -std=gnu99 -Os -s -DNDEBUG -shared -Wl,--enable-auto-image-base,--enable-auto-import -mpush-args -mno-accumulate-outgoing-args -mno-stack-arg-probe -mpreferred-stack-boundary=2 -fomit-frame-pointer dmg.dll.def dmg.dll.c -o dmg.dll
+// gcc -std=gnu99 -Os -g -shared -Wl,--enable-auto-image-base,--enable-auto-import -mpush-args -mno-accumulate-outgoing-args -mno-stack-arg-probe -mpreferred-stack-boundary=2 -fomit-frame-pointer dmg.dll.def dmg.dll.c -o dmg.dll
 
 #include "TSW_memory.h"
 #define NOINLINE __attribute__((noinline))
@@ -66,7 +66,7 @@ BYTE *const p_need_update = BYTE_NEED_UPDATE_ADDR; /* the initial value is 1|2
     2 | do not update until all events are over (to prevent TSW's redrawing from erasing our drawing)
     3 | do not show dmg overlay until all events are over (useful when gameover)
     4 | restored original game map bitmaps or not */
-BYTE *const p_always_show_overlay = BYTE_ALWAYS_SHOW_OVERLAY_ADDR; // whether to always show dmg overlay, even without OrbOfHero
+char *const p_always_show_overlay = BYTE_ALWAYS_SHOW_OVERLAY_ADDR; // whether to always show/hide dmg overlay, regardless of OrbOfHero; 1=always show; -1=always hide; 0=depending on OrbOfHero
 HDC *const p_hMemDC = HMEMDC_ADDR;
 HBITMAP *const p_hMemBmp = HMEMBMP_1_ADDR; // 2 HBITMAPs; 2 game map bitmaps because there are 2 frames
 HPEN *const p_hPen_stroke = HPEN_STROKE_ADDR, *p_hPen_polyline = HPEN_POLYLINE_ADDR;
@@ -76,6 +76,7 @@ HFONT *const p_hFont_dmg = HFONT_DMG_ADDR;
 #define m_dmg_cri p_m_dmg_cri
 #define dll_init (*p_dll_init)
 #define need_update (*p_need_update)
+#define always_show_overlay (*p_always_show_overlay)
 #define hMemDC (*p_hMemDC)
 #define hMemBmp p_hMemBmp
 #define hPen_stroke (*p_hPen_stroke)
@@ -139,7 +140,7 @@ NOINLINE static void REGCALL drawConnectivityOnDC(const HDC hDC) { // draw polyl
     drawPolylineOnDC(hDC);
 }
 
-NOINLINE static HDC REGCALL drawConnectivityOnBitmap(const HANDLE TSW_cur_mBitmap) { // draw polyline and highlight on TTSW10_GAMEMAP_BITMAP_i
+NOINLINE static HDC REGCALL drawConnectivityOnBitmap(const HANDLE TSW_cur_mBitmap, const UCHAR TSW_tileSize) { // draw polyline and highlight on TTSW10_GAMEMAP_BITMAP_i
     const BYTE TSW_cur_frame = (BYTE)get_p(TTSW10_GAMEMAP_FRAME_ADDR);
     const BYTE test_bit = (TSW_cur_frame + 1 << 1); // (i+1)-th (i=0/1) bit
     const HDC TSW_cur_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
@@ -159,6 +160,15 @@ NOINLINE static HDC REGCALL drawConnectivityOnBitmap(const HANDLE TSW_cur_mBitma
     SQUARE s; getHighlightSquare(&s);
     SelectObject(hMemDC, hMemBmp[TSW_cur_frame]);
     BitBlt(hMemDC, 0, 440, s.w, s.h, TSW_cur_mBitmap_hDC, s.x, s.y, SRCCOPY); // backup the tile cell that will be highlighted at (0, 440), which is definitely outside the map area
+
+    if ((always_show_overlay < 0) ||
+        ((always_show_overlay != 0) && (((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero != 1))) {
+        const STATUS TSW_hero_status = get_t(TTSW10_HERO_STATUS_ADDR, STATUS);
+        const UCHAR cur_ix = TSW_hero_status.x, cur_iy = TSW_hero_status.y, cur_i = cur_ix + cur_iy*11;
+        WORD x = cur_ix*TSW_tileSize, y = (cur_iy+1)*TSW_tileSize;
+        dtl(TSW_cur_mBitmap_hDC, cur_i, MAKELONG(x, y)); // if the player is currently on a tile that has a damage, then need to update the dmg overlay bitmap; otherwise, the dmg will be erased by TSW's own redrawing
+    }
+
     drawConnectivityOnDC(TSW_cur_mBitmap_hDC);
     return TSW_cur_mBitmap_hDC;
 }
@@ -463,13 +473,14 @@ extern void REGCALL dmp(const HANDLE TTSW10_TCanvas, const DWORD TSW_mapLeft, co
 
     ////////// for connectivity polyline function //////////
     if (polyline_state) {
-        TSW_mBitmap_hDC = drawConnectivityOnBitmap(TSW_cur_mBitmap);
+        TSW_mBitmap_hDC = drawConnectivityOnBitmap(TSW_cur_mBitmap, TSW_tileSize);
         goto draw;
     }
     ////////// ---------------------------------- //////////
 
     TSW_mBitmap_hDC = TCanvas_GetHandle(TBitmap_GetCanvas(TSW_cur_mBitmap));
-    if (!(*p_always_show_overlay) && (((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero != 1)) // unless (*p_always_show_overlay) is set, show no overlay if without OrbOfHero
+    if ((always_show_overlay < 0) ||
+        ((always_show_overlay != 0) && (((ITEM*)TTSW10_HERO_ITEM_ADDR)->orbHero != 1)))
         goto no_overlay;
     if (need_update & 8) { // if 3rd bit is set, show no overlay until event is over
         if ((int)get_p(TTSW10_EVENT_COUNT_ADDR) > 0) {

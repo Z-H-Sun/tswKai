@@ -306,11 +306,12 @@ sub_draw_map:
 442F28:
 sub_check_need_overlay:	; when `tswMP_overlay_enabled`, `ret` to continue normal operation either if `always_show_overlay` or `TTSW10_HERO_ORB_OF_HERO_ADDR`; otherwise, stop the current caller function and `ret` to caller's caller
 	cmp byte ptr [tswMP_overlay_enabled], 0
-	je +12	; loc_check_need_overlay_false
+	je +14	; loc_check_need_overlay_false
 	cmp byte ptr [always_show_overlay], 0
-	jne +0C	;loc_check_need_overlay_true
+	js +0B	; loc_check_need_overlay_false
+	jne +0C	; loc_check_need_overlay_true
 	cmp byte ptr [TTSW10_HERO_ORB_OF_HERO_ADDR], 1
-	je +03	;loc_check_need_overlay_true
+	je +03	; loc_check_need_overlay_true
 
 	loc_check_need_overlay_false:	; `ret` to caller's caller (stop the current caller function)
 	add esp, 4	; pop the return address; do not execute the remaining commands in the caller function and jump back to caller's caller
