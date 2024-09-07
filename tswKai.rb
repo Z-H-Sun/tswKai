@@ -50,7 +50,7 @@ def cheaterMain()
   end
   return nil if c == -1 # ENTER/SPACE/ESC
   if c <= 14 # status or sword/shield
-    i, x, y, w, r, p = c, 0, c, 33, 13, 23
+    i, x, y, w, r, p = c, 0, c, 33, 13, 24
   else # item
     i, x, y, w, r, p = c-1, 36, c-15, 23, 49, 57
   end
@@ -60,37 +60,39 @@ def cheaterMain()
   $console.cursor(p, y)
   $console.show_cursor(true)
   case i
-  when 0..3, 8..11
-    $console.print_posA(r, y, '[0,2^31): ')
-    v = $console.get_num(10)
-    v = 0x7FFFFFFF unless v < 0 or (v >> 31).zero?
+  when 0..3, 8..10
+    $console.print_posA(r, y, '[0, 10^9): ')
+    v = $console.get_num(9)
     a = i > 3 ? KEY_DISP_ADDR : DISP_ADDR
   when 4..5
-    $console.print_posA(r, y, '[0,50]:')
+    $console.print_posA(r, y, '[0, 50]:   ')
     v = $console.get_num(2)
     v = 50 if v > 50
     a = REFRESH_XYPOS_ADDR
   when 6..7
-    $console.print_posA(r, y, '[0, A]:')
+    $console.print_posA(r, y, '[0, A]:    ')
     v = $console.choice('0123456789A')
-    a = REFRESH_XYPOS_ADDR
+    a = ERASE_AND_DRAW_HERO_ADDR
   when 12..13
-    $console.print_posA(r, y, '[0, 5]:')
+    $console.print_posA(r, y, '[0, 5]:    ')
     v = $console.choice('012345')
     a = ITEM_DISP_ADDR
   when 21
     $console.print_posA(r, y, '[0,99]: ')
     v = $console.get_num(2)
     a = ITEM_DISP_ADDR
+  when 11
+    $console.print_posA(r, y, '[0, 9999]: ')
+    v = $console.get_num(4)
   else
     if c == 14 # back tower factor
-      $console.print_posA(r, y, '[2,2^31): ')
-      v = $console.get_num(10)
+      $console.print_posA(r, y, '[2, 9999]: ')
+      v = $console.get_num(4)
       unless v < 0 # not ESC; note here, v should -= 1
-        if v < 2 then v = 1 elsif (v >> 31).zero? then v -= 1 else v = 0x7FFFFFFE end
+        if v < 2 then v = 1 else v -= 1 end
       end
     else
-      $console.print_posA(r, y, '[0, 1]:  ')
+      $console.print_posA(r, y, '[0, 1]: ')
       v = $console.choice('01')
       a = ITEM_DISP_ADDR
     end
@@ -110,11 +112,16 @@ def cheaterMain()
   end
 
   writeMemoryDWORD(i < 12 ? STATUS_ADDR+(STATUS_INDEX[i] << 2) : ITEM_ADDR+(ITEM_INDEX[i-12] << 2), v)
-  return true if i == 5 or i == 11 # highest floor / altar visits
+  if i == 5 or i == 11 # highest floor / altar visits
+    return true
+  elsif i == 6 or i == 7 # X / Y position
+    writeMemoryDWORD(LAST_I_ADDR, $heroStatus[STATUS_INDEX[6]] + $heroStatus[STATUS_INDEX[7]]*11) # previous position of player (11*old_y+old_x); this is also used to tell `ERASE_AND_DRAW_HERO_ADDR` which tile to redraw (i.e., erase previous hero overlay)
+  end
 
   callFunc(a) # refresh status display
-  callFunc(ITEM_LIVE_ADDR) if i > 13 # enable mouse click for choosing items
-  if i == 13 # shield
+  if i > 13 # enable mouse click for choosing items
+    callFunc(ITEM_LIVE_ADDR)
+  elsif i == 13 # shield
     if v == 5
       return true unless readMemoryDWORD(SACREDSHIELD_ADDR).zero?
       $console.print_posA(32, 13, v)
@@ -127,6 +134,7 @@ def cheaterMain()
       writeMemoryDWORD(SACREDSHIELD_ADDR, 0)
     end
   elsif i == 4 # floor
+    callFunc(DRAW_HERO_ADDR) # redraw hero overlay immediately; otherwise, there will be a short period of time with no hero overlay
     callFunc(DISP_ADDR)
     bgmID = readMemoryDWORD(BGM_ID_ADDR)
     return true if bgmID.zero? # disabled BGM

@@ -103,7 +103,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             KaiMain()
           else # nothing -> dialog
             HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
-            HookProcAPI.abandon(true)
+            HookProcAPI.abandon()
             showMsgTxtbox(-1)
             Mod.showDialog(true)
           end

@@ -93,7 +93,7 @@ module Monsters
           y, x = i.divmod(11)
           HookProcAPI.drawDmg(x, y, normalize(dmg).to_s, false, dmg >= @heroHP) # cri=false --> magic attack
         end
-      when 1..7
+      when 1..7, 29..60 # doors/road/items
         getMagDmg(i) if init and @check_mag
       else
         getMonDmg(i) if @heroOrb

@@ -174,8 +174,13 @@ module HookProcAPI
     ReleaseDC.call($hWnd, $hDC)
     $hDC = nil # hDC already released; no longer valid
   end
-  def abandon(force=true)
-    unhookM(force)
+  def abandon()
+    if @flying
+      callFunc_noRaise(CONSUMABLES['event_addr'][2][4]) # click OK if using OrbOfFlight (if TSW has already quitted, ignore error)
+      unhookM(true)
+    else
+      unhookM(false)
+    end
     disposeHDC
     @lastIsInEvent = false
     @flying = nil
@@ -453,11 +458,18 @@ module HookProcAPI
   def _keyHook(nCode, wParam, lParam)
     # 'ILL': If the prototype is set as 'LLP', the size of the pointer could not be correctly assigned
     # Therefore, the address of the pointer is retrieved instead, and RtlMoveMemory is used to get the pointer data
-    RtlMoveMemory.call($buf, lParam, 20)
-    key = $buf.unpack('L')[0]
     block = false # block input?
     finally do
       break if nCode != HC_ACTION # do not process
+
+      hWnd = GetForegroundWindow.call
+      if hWnd != $hWnd # TSW is not active
+        abandon() if @winDown or @flying
+        break
+      end
+
+      RtlMoveMemory.call($buf, lParam, 20)
+      key = $buf.unpack('L')[0]
       if key == MP_KEY1 or key == MP_KEY2
         if key == VK_ESCAPE then break if isSLActive end
         alphabet = false # alphabet key pressed?
@@ -466,17 +478,17 @@ module HookProcAPI
         break unless @winDown and wParam == WM_KEYDOWN
 
         if (alphabet = CONSUMABLES['key'].index(key)) # which item chosen?
-          break unless @itemAvail.include?(alphabet) # you must have that item
+          unless @itemAvail.include?(alphabet) # you must have that item
+            abandon(); break
+          end
         elsif (arrow = CONSUMABLES['key'][2].index(key)) # up/downstairs?
           unless @itemAvail.include?(2) # you must have orb of flight
-            block = true if GetForegroundWindow.call == $hWnd # do not respond to arrow keys which may cause conflicts (because events can be triggered)
-            break
+            block = true # do not respond to arrow keys which may cause conflicts (because events can be triggered)
+            abandon(); break
           end
-        else break
+        else abandon(); break # if any non-functional key is pressed (same above), cancel this operation immediately; this is to avoid potential conflicts in certain scenarios (e.g., when you press Enter after talking to an NPC (in this case, because another key is pressed, the previous hotkey won't generate any more KeyDown events); switching to a different window; etc.)
         end
       end
-      hWnd = GetForegroundWindow.call
-      if hWnd != $hWnd then abandon(false); break end # TSW is not active
 
       block = true
       if wParam == WM_KEYDOWN
@@ -537,8 +549,7 @@ module HookProcAPI
         end
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
-        callFunc(CONSUMABLES['event_addr'][2][4]) if @flying # click OK
-        abandon
+        abandon()
       end
     end
     return 1 if block # block input
@@ -576,8 +587,14 @@ module HookProcAPI
     @hmhook = nil
 
     ClipCursor.call(nil) # do not confine cursor range
-    return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
-    callFunc(EPL_ADDR) if @lastDraw and $MPnewMode # undo the last drawing
+    if $MPnewMode
+      if @lastDraw
+        return true unless callFunc_noRaise(EPL_ADDR) # undo the last drawing
+      end
+    else
+      return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
+    end
+    # if TSW has already quitted, the above WriteProcessMemory/callFunc_noRaise call return 0/false, then no need to do anything below
     $x_pos = $y_pos = -1
     InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar
