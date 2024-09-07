@@ -54,6 +54,7 @@ OFFSET_MEMO123 = [0x3c8, 0x3cc, 0x3d0] # HP/ATK/DEF
 TIMER1_ADDR = 0x43120 + BASE_ADDRESS
 TIMER2_ADDR = 0x5265c + BASE_ADDRESS
 MOVE_ADDR = [0x84c58+BASE_ADDRESS, 0x84c04+BASE_ADDRESS, 0x84bb0+BASE_ADDRESS, 0x84b5c+BASE_ADDRESS] # down/right/left/up
+LAST_I_ADDR = 0x48c580
 EVENT_SEQ_INDEX_ADDR = 0x8c5ac + BASE_ADDRESS
 POINTER_ANSI_STR_ADDR = 0x8c5d4 + BASE_ADDRESS
 ORB_FLIGHT_RULE_MSG_ID = 0x14 # you must be near the stairs to fly
@@ -213,9 +214,7 @@ module HookProcAPI
     Connectivity.floodfill($heroStatus[STATUS_INDEX[6]], $heroStatus[STATUS_INDEX[7]]) # x, y
   end
   def drawMapDmg(init)
-    callFunc(TIMER1_ADDR) # elicit TIMER1TIMER
-    callFunc(TIMER1_ADDR) # twice is necessary for battle events
-    callFunc(TIMER1_ADDR) # thrice is necessary for dialog events (removal of richedit control) and refreshing hero xp position (disappear; ??; reappear)
+    callFunc(DRAW_HERO_2_ADDR) # update game map drawing after an event is over
     if $MPnewMode
       Monsters.checkMap(init)
       return
@@ -325,15 +324,22 @@ module HookProcAPI
           showMsgTxtbox(-1)
         end
         EnableWindow.call($hWndText, 0)
-        writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[6] << 2), x)
-        writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[7] << 2), y)
 
         if $MPnewMode
           callFunc(EPL_ADDR) if @lastDraw # undo the last drawing
         else
           WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
         end
-        callFunc(REFRESH_XYPOS_ADDR) # TTSW10.mhyouji (only refresh braveman position; do not refresh whole map)
+
+        writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[6] << 2), x)
+        writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[7] << 2), y)
+
+        if (facing = Connectivity.facing) then writeMemoryDWORD(HERO_FACE_ADDR, facing) end # update player's facing direction
+
+        writeMemoryDWORD(LAST_I_ADDR, $heroStatus[STATUS_INDEX[6]] + $heroStatus[STATUS_INDEX[7]]*11) # previous position of player (11*old_y+old_x); this is also used to tell `ERASE_AND_DRAW_HERO_ADDR` which tile to redraw (i.e., erase previous hero overlay)
+        callFunc(ERASE_AND_DRAW_HERO_ADDR) # redraw hero overlay on the game map
+        $heroStatus[STATUS_INDEX[6]] = x # update old_x and old_y
+        $heroStatus[STATUS_INDEX[7]] = y
 
         checkTSWsize()
 

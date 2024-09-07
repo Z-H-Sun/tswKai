@@ -60,7 +60,7 @@
 489DF0:
   db 'SetDCBrushColor', 0
 4BA1B5:
-  tswMP_overlay_enabled: ; byte
+  tswMPExt_enabled: ; byte
   db 0
 4BA1B6:
   need_update: ; byte
@@ -134,7 +134,7 @@ sub_backup_tile_TCanvas_Draw:
 	mov esi, [ebp+8]	; TBitmap (src)
 
 	xor edx, edx	; now edx=0
-	cmp byte ptr [tswMP_overlay_enabled], dl
+	cmp byte ptr [tswMPExt_enabled], dl
 	je +54	; loc_backup_tile_TCanvas_Draw_fin
 
 	mov ecx, hMemBmp_1
@@ -173,7 +173,7 @@ sub_backup_tile_TCanvas_Draw:
 
 sub_backup_tile_TCustomImageList_Draw:
 	xor edx, edx	; now edx=0
-	cmp byte ptr [tswMP_overlay_enabled], dl
+	cmp byte ptr [tswMPExt_enabled], dl
 	je +41	; loc_backup_tile_TCustomImageList_Draw_fin
 
 	mov ecx, hMemBmp_1
@@ -207,7 +207,7 @@ sub_backup_tile_TCustomImageList_Draw:
 
 
 sub_draw_map:
-	cmp byte ptr [tswMP_overlay_enabled], 0
+	cmp byte ptr [tswMPExt_enabled], 0
 	jne sub_dmp
 	jmp TCanvas_Draw
 	xchg ax, ax	; 2-byte nop
@@ -244,7 +244,7 @@ sub_draw_map:
 
 
 ;;;;;;;;;; Handle Dmg Redrawing upon Events ;;;;;;;;;;
-442C4A:	; part of TTSW10_mhyouji; need to `or byte ptr [need_update], 3` (refresh map dmg display)
+442C4A:	; part of TTSW10_mhyouji [hyouji=rōmaji of 表示; display; monster display]; need to `or byte ptr [need_update], 3` (refresh map dmg display)
 	inc eax	; eax was 0
 	mov esi, eax	; saved 2 bytes w.r.t. `mov esi, 00000001`
 	jmp +2	; execute `or byte ptr [need_update], 3`
@@ -279,7 +279,7 @@ sub_draw_map:
 	xchg ax, ax	; 2-byte nop
 
 
-44A54A:	; part of TTSW10_taisen; need to `or byte ptr [need_update], 4` (defer dmg drawing update; no need to refresh map dmg during battle)
+44A54A:	; part of TTSW10_taisen [taisen=rōmaji of 対戦; battle]; need to `or byte ptr [need_update], 4` (defer dmg drawing update; no need to refresh map dmg during battle)
 	mov edx, TTSW10_TEMP_i_1_ADDR	; difference of tile index b/w the 2nd and 1st frame (usually 1, but not for Dragon or Octopus)
 	mov eax, [edx]
 	sub eax, 00C6	; don't know what's the doing here, but we can save a bit space here to insert our code, `or byte ptr [need_update], 4`
@@ -288,7 +288,7 @@ sub_draw_map:
 	or byte ptr [need_update], 4
 
 
-449E66:	; part of TTSW10_zyouout (gameover when [48C5A4]==9); need to `or byte ptr [need_update], 8` (hide dmg display)
+449E66:	; part of TTSW10_zyouout [zyou=rōmaji of 情, shorthand for 情報; message; message dialog out] (gameover when [48C5A4]==9); need to `or byte ptr [need_update], 8` (hide dmg display)
 	xor ebx, ebx
 	mov dword ptr [edx+ecx*2], ebx
 	or byte ptr [need_update], 8
@@ -297,15 +297,15 @@ sub_draw_map:
 
 
 ;;;;;;;;;; Handle Dmg Overlay When Moving on Stairs ;;;;;;;;;;
-442F1D:	; part of TTSW10_kaidanwork
+442F1D:	; part of TTSW10_kaidanwork [kaidan=rōmaji of 階段; stairs]
 	push 442F61	; the address to return to when the second `ret` is executed below
 	; the original code sets the Timer2 interval to 2ms/6ms/10ms for high/middle/low-speed modes for showing stair animation; however, the theoretical minimal interval supported by the Windows `SetTimer` API is 10ms, so there is no use setting the interval less than 10ms. Therefore, the useless code can be skipped and can directly jump to the part where the timer interval is set to 10ms
 	push sub_cmp	; the address to return to when the first `ret` is executed below
 	; need to update map damage calculation before drawing
 	nop	; will continue to execute `sub_check_need_overlay` below
 442F28:
-sub_check_need_overlay:	; when `tswMP_overlay_enabled`, `ret` to continue normal operation either if `always_show_overlay` or `TTSW10_HERO_ORB_OF_HERO_ADDR`; otherwise, stop the current caller function and `ret` to caller's caller
-	cmp byte ptr [tswMP_overlay_enabled], 0
+sub_check_need_overlay:	; when `tswMPExt_enabled`, `ret` to continue normal operation either if `always_show_overlay` or `TTSW10_HERO_ORB_OF_HERO_ADDR`; otherwise, stop the current caller function and `ret` to caller's caller
+	cmp byte ptr [tswMPExt_enabled], 0
 	je +14	; loc_check_need_overlay_false
 	cmp byte ptr [always_show_overlay], 0
 	js +0B	; loc_check_need_overlay_false
@@ -389,14 +389,14 @@ loc_stackwork_stair1_end:
 
 
 ;;;;;;;;;; Handle Dmg Overlay of Moving Monters ;;;;;;;;;;
-; everything below is part of TTSW10_monidou
+; everything below is part of TTSW10_monidou [idou=rōmaji of 移動; movement; movement of monster]
 48074B:
 	mov eax, [TTSW10_GAMEMAP_BITMAP_1_ADDR]
 	cmovnz eax, [TTSW10_GAMEMAP_BITMAP_2_ADDR]
 	call TBitmap_GetCanvas
 	push eax	; store TBitmapCanvas
 
-	push [TTSW10_TEMP_BITMAP_1_ADDR]	; it is now of 40x80 or 80x40 dimension
+	push [TTSW10_TEMP_BITMAP_1_ADDR]	; it is now of 40x80 or 80x40 dimension (in 800x500 window; or 64x32 / 32x64 in 640x400 window)
 	mov edx, [TTSW10_TEMP_x_1_ADDR]
 	mov ecx, [TTSW10_TEMP_y_1_ADDR]
 	call TCanvas_Draw	; draw moved monster onto [TTSW10_GAMEMAP_BITMAP_i_ADDR]
@@ -481,13 +481,13 @@ loc_TTSW10_monidou_finalize:
 ;;;;;;;;;; Quick Demo w/o tswMP ;;;;;;;;;;
 47D2D8:
 TTSW10_Help2Click:	; usage: press F1 to enable dmg overlay function
-	cmp byte ptr [tswMP_overlay_enabled], 0
+	cmp byte ptr [tswMPExt_enabled], 0
 	je sub_ini
 	ret
 
 
 463874:
 TTSW10_GameQuit1Click:	; usage: press F9 to disable dmg overlay function
-	cmp byte ptr [tswMP_overlay_enabled], 0
+	cmp byte ptr [tswMPExt_enabled], 0
 	jne sub_res
 	ret

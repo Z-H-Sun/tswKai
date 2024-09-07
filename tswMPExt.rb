@@ -5,8 +5,17 @@
 
 require 'tswMPDat' # given the huge size of opcodes, it is stored in binary format in this separate file
 
+DRAW_HERO_ADDR = 0x4808b4
+DRAW_HERO_2_ADDR = 0x480908
+ERASE_AND_DRAW_HERO_ADDR = 0x480834
+
+DPL_ADDR = 0x4bac68
+EPL_ADDR = 0x4bad0c
+POLYLINE_COUNT_ADDR = 0x489de5
+POLYLINE_VERTICES_ADDR = 0x489e00
+
 module MPExt
-  @_tswMP_overlay_enabled = 0x4ba1b5
+  @_tswMPExt_enabled = 0x4ba1b5
   @_always_show_overlay = 0x4ba1b7
   @_sub_ini = 0x4ba558
   @_sub_res = 0x4ba668
@@ -21,10 +30,11 @@ module MPExt
       changeState()
       callFunc(@_sub_ini)
     else
-      WriteProcessMemory.call_r($hPrc, @_tswMP_overlay_enabled, "\0", 1, 0)
+      WriteProcessMemory.call_r($hPrc, @_tswMPExt_enabled, "\0", 1, 0)
     end
 
     MP_PATCH_BYTES_2.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[2], i[1], 0)}
+    MP_PATCH_BYTES_3.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[2], i[1], 0)}
   end
   def changeState
     WriteProcessMemory.call_r($hPrc, @_always_show_overlay, $MPshowMapDmg ? ($MPshowMapDmg == 1 ? "\1" : "\0") : "\xFF", 1, 0)

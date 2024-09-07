@@ -1175,3 +1175,4 @@ loc_drawConnectivityOnBitmap_dtl:
 	cmp [4B86CC], 1	; player has OrbOfHero or not
 	jne loc_drawConnectivityOnBitmap_dtl_ret
 	jmp loc_dmg_update_cur_i
+	xchg ax, ax	; 2-byte nop

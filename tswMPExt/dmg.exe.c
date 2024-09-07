@@ -375,7 +375,7 @@ sub_backup_tile_TCustomImageList_Draw:
 	// need to update map damage calculation before drawing
 	// will continue to execute `sub_check_need_overlay` below
 442F28:
-sub_check_need_overlay:	// when `tswMP_overlay_enabled`, `ret` to continue normal operation either if `always_show_overlay` or `TTSW10_HERO_ORB_OF_HERO_ADDR`; otherwise, stop the current caller function and `ret` to caller's caller
+sub_check_need_overlay:	// when `DLL_IsInit`, `ret` to continue normal operation either if `always_show_overlay` or `TTSW10_HERO_ORB_OF_HERO_ADDR`; otherwise, stop the current caller function and `ret` to caller's caller
 	cmp byte ptr [DLL_IsInit], 0
 	je +14	// loc_check_need_overlay_false
 	cmp byte ptr [always_show_overlay], 0
