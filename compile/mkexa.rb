@@ -11,7 +11,8 @@ ZLIB_COMPRESS_LEVEL = 9 # 0 means no compression; otherwise 1-9 (higher = smalle
 FILEINPUTPATH = '../' # change rb path here
 FILEOUTPUT = 'tswKai3.exa' # change output archive filename here
 FILELIST = Dir.chdir('../') {|i| Dir['main.rbw'] + Dir['*.rb'] } # main.rbw must be placed first
-# %w(main.rbw common.rb connectivity.rb console.rb gui.rb monsters.rb strings.rb stringsGBK.rb tswBGM.rb tswKai.rb tswMP.rb tswMod.rb tswModStatic.rb tswSL.rb)
+# %w(main.rbw common.rb connectivity.rb console.rb gui.rb monsters.rb strings.rb stringsGBK.rb tswBGM.rb tswKai.rb tswMP.rb tswMPDat.rb tswMPExt.rb tswMod.rb tswModStatic.rb tswSL.rb)
+FILELIST.delete 'tswRev.rb' # tswRev is not needed in tswKai3.exe
 
 PATCH_FILE_IGNORE = [] # no need to patch these files file
 PATCH_PATTERN = {/^\s*require.+win32.api.*$/ => '', # need to remove this `require` as win32/api has been hard-compiled in our executable
