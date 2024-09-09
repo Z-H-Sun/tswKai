@@ -3,6 +3,19 @@
 # Author: Z.Sun
 # asm codes: tswMPExt_*.asm
 
+module Math
+  module_function
+  unless defined?(cbrt) # low version Math.cbrt support (Ruby <= 1.9.0.1)
+    def cbrt(x) # in this script, we will make sure that the argument x always >= 0, so no need to consider about cases when x < 0
+    # if x >= 0
+        return x**0.3333333333333333
+    # else # pow(x,1.0/3) will return a complex number (or even NaN in Ruby 1.8) when x<0
+    #   return -(-x)**0.3333333333333333
+    # end
+    end
+  end
+end
+
 require 'tswMPDat' # given the huge size of opcodes, it is stored in binary format in this separate file
 
 DRAW_HERO_ADDR = 0x4808b4

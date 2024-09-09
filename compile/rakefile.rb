@@ -92,7 +92,7 @@ task :default => '../vendor/exerb-mingw' do
   end
   e_path = '../vendor/exerb-mingw/src/exerb'
   cp 'config.h', e_path
-  sh 'sed -i \'s/^\s*Init_ExerbRuntime/void Init_api();\nInit_api();Init_ExerbRuntime/g\' '+e_path+'/exerb.c' # patch exerb.c to initialize win32/api extension
+  sh 'sed -i \'s/^\s*Init_ExerbRuntime/void Init_api();\nInit_api();Def_Cbrt();Init_ExerbRuntime/g\' '+e_path+'/exerb.c' # patch exerb.c to initialize win32/api extension as well as add Math.cbrt method
   $WRITE_EXA = true # see `mkexa.rb`; explicitly ask to output .exa file
   load('mkexa.rb', wrap=true)
   sh "windres resource.rc res.o"
