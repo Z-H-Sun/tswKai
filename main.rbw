@@ -33,12 +33,13 @@ def init()
   checkTSWsize()
   hDC = GetDC.call_r($hWnd)
   $hMemDC = CreateCompatibleDC.call_r(hDC)
-  $hBMP = CreateCompatibleBitmap.call_r(hDC, 40, 40)
+  $hBMP = CreateCompatibleBitmap.call_r(hDC, 40, 80) # 40*80 memory bitmap; the top 40*40 region is for tswExt icon (see next line); the bottom 40*40 region is for legacy mode of tswMP, to store the tile image at the current cursor position (see tswMP.rb)
+  SetDIBits.call_r(hDC, $hBMP, 0, 40, Ext::EXT_BMP[1], Ext::EXT_BMP[0], 0)
   $hBMP0 = SelectObject.call_r($hMemDC, $hBMP)
   ReleaseDC.call($hWnd, hDC)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
-  $console.need_init = true if $console # refresh console in case there is any change
+  Kai.need_update # refresh Kai console interface in case there is any change
   SL.init
   BGM.init
   Mod.init
@@ -100,7 +101,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             $configDlg = false
             writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, 0) # hiding the dialog window below will implicitly switch focus to the TSW game window, so need to unset the HWND to set focus to (see Entry #-1 of tswMod.asm)
             ShowWindow.call($hWndDialog, SW_HIDE)
-            KaiMain()
+            Kai.main()
           else # nothing -> dialog
             HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
             HookProcAPI.abandon()
@@ -113,8 +114,16 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       end
       next
     elsif msgType == WM_APP
-      if msg[2].zero? then HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
-      else $_TSWKAI = false; quit() end # or signal from console by `SetConsoleCtrlHandler` (especially, don't call `FreeConsole` (by unsetting $_TSWKAI), or it will freeze!)
+      case msg[2]
+      when 0
+        HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
+      when Ext::EXT_WPARAM
+        HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
+        Ext.main()
+      else # signal from console by `SetConsoleCtrlHandler`
+        $console.need_free = false # don't call `FreeConsole` (by unsetting `$console.need_free`; in this case, `$console` is definitely not `nil`), or it will freeze!
+        quit()
+      end
     end
 
     TranslateMessage.call($buf)

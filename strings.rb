@@ -145,6 +145,11 @@ will hibernate until another TSW game is run; choosing
 "Cancel" will end this app.',
 'Can\'t run the specified TSW executable, as another TSW
 process has already been running (pID = %d).',
+'',
+
+APP_NAME+' Extensions - pID=%p', # 50
+["[ ] Raise HP by paying gold to the highest altar visited", "[ ] Raise ATK by paying gold to the highest altar visited", "[ ] Raise DEF by paying gold to the highest altar visited", "[ ] Sell yellow keys to the 28F merchant to earn gold", "[ ] Clear accessible zero-damage monsters on this floor", "[ ] Clear all temporary data and reset snapshot count"],
+['Description:', 'Press a Numeric / Arrow Key to select an item shown above, ', ' or press ESC / SPACE / ENTER to return to TSW.'],
 
 'Inf', # -2
 '.' # -1
@@ -286,6 +291,12 @@ APP_NAME+' 设置（动态）- pID=%p',
 按“取消”则将退出本程序。',
 '无法启动当前魔塔程序，因为另一个魔塔进程已正在
 运行中 (pID = %d)。',
+'',
+
+APP_NAME+' 扩展功能 - pID=%p', # 50
+["[ ] 供奉金币，提升数次生命力（使用目前所到访过的最高祭坛）", "[ ] 供奉金币，提升数次攻击力（使用目前所到访过的最高祭坛）", "[ ] 供奉金币，提升数次防御力（使用目前所到访过的最高祭坛）", "[ ] 向28层商人卖出指定数量的黄钥匙，赚取金币", "[ ] 清除当前楼层中可直接到达的所有零伤害怪物", "[ ] 清除所有临时存档，并重置临时存档节点编号"],
+['说明：', '按 方向键 或 对应数字键 选定一个上方所列的项目；', '或按 ESC、  空格 或 回车 键以直接返回游戏。'],
+
 
 '∞', # -2
 '。' # -1

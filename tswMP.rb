@@ -3,16 +3,19 @@
 # Author: Z.Sun
 # main repo: https://github.com/Z-H-Sun/tswMP.git
 
-UpdateWindow = API.new('UpdateWindow', 'L', 'L', 'user32')
-FillRect = API.new('FillRect', 'LSL', 'L', 'user32')
-DrawText = API.new('DrawTextA', 'LSIPL', 'L', 'user32')
-DrawTextW = API.new('DrawTextW', 'LSIPL', 'L', 'user32')
-TextOut = API.new('TextOutA', 'LLLSL', 'L', 'gdi32')
-TextOutW = API.new('TextOutW', 'LLLSL', 'L', 'gdi32')
-Polyline = API.new('Polyline', 'LSI', 'L', 'gdi32')
-PatBlt = API.new('PatBlt', 'LLLLLL', 'L', 'gdi32')
-BitBlt = API.new('BitBlt', 'LLLLLLLLL', 'L', 'gdi32')
-InvalidateRect = API.new('InvalidateRect', 'LPL', 'L', 'user32')
+UpdateWindow = API.new('UpdateWindow', 'L', 'I', 'user32')
+FillRect = API.new('FillRect', 'LSL', 'I', 'user32')
+DrawText = API.new('DrawTextA', 'LSIPI', 'I', 'user32')
+DrawTextW = API.new('DrawTextW', 'LSIPI', 'I', 'user32')
+TextOut = API.new('TextOutA', 'LIISI', 'I', 'gdi32')
+TextOutW = API.new('TextOutW', 'LIISI', 'I', 'gdi32')
+Polyline = API.new('Polyline', 'LSI', 'I', 'gdi32')
+PatBlt = API.new('PatBlt', 'LIIIII', 'I', 'gdi32')
+BitBlt = API.new('BitBlt', 'LIIIILIII', 'I', 'gdi32')
+StretchBlt = API.new('StretchBlt', 'LIIIILIIIII', 'I', 'gdi32')
+SetStretchBltMode = API.new('SetStretchBltMode', 'LI', 'I', 'gdi32')
+SetDIBits = API.new('SetDIBits', 'LLIIPPI', 'I', 'gdi32')
+InvalidateRect = API.new('InvalidateRect', 'LPI', 'I', 'user32')
 GetFocus = API.new('GetFocus', 'V', 'L', 'user32')
 GetCursorPos = API.new('GetCursorPos', 'P', 'L', 'user32')
 ScreenToClient = API.new('ScreenToClient', 'LP', 'L', 'user32')
@@ -23,9 +26,9 @@ CreatePen = API.new('CreatePen', 'IIL', 'L', 'gdi32')
 GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 DeleteObject = API.new('DeleteObject', 'L', 'L', 'gdi32')
 SelectObject = API.new('SelectObject', 'LL', 'L', 'gdi32')
-SetDCBrushColor = API.new('SetDCBrushColor', 'LL', 'I', 'gdi32')
-SetTextColor = API.new('SetTextColor', 'LL', 'I', 'gdi32')
-SetBkColor = API.new('SetBkColor', 'LL', 'I', 'gdi32')
+SetDCBrushColor = API.new('SetDCBrushColor', 'LI', 'I', 'gdi32')
+SetTextColor = API.new('SetTextColor', 'LI', 'I', 'gdi32')
+SetBkColor = API.new('SetBkColor', 'LI', 'I', 'gdi32')
 SetBkMode = API.new('SetBkMode', 'LI', 'I', 'gdi32')
 SetROP2 = API.new('SetROP2', 'LI', 'I', 'gdi32')
 
@@ -39,11 +42,13 @@ DT_CENTERBOTH = DT_CENTER | DT_VCENTER | DT_SINGLELINE
 NONANTIALIASED_QUALITY = 3
 SYSTEM_FONT = 13
 
+COLORONCOLOR = 3
 R2_XORPEN = 7
 R2_COPYPEN = 13
 R2_WHITE = 16
 # Ternary Raster Operations
 RASTER_S = 0xCC0020
+RASTER_SPo = 0xFC008A
 RASTER_DPo = 0xFA0089
 RASTER_DPx = 0x5A0049
 
@@ -166,6 +171,7 @@ module HookProcAPI
     SetBkColor.call_r($hDC, HIGHLIGHT_COLOR[-2])
     SetBkMode.call_r($hDC, 1) # transparent
     SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
+    SetStretchBltMode.call_r($hDC, COLORONCOLOR)
   end
   def disposeHDC()
     @winDown = false
@@ -273,6 +279,7 @@ module HookProcAPI
     @lastDraw = false
     @itemAvail = []
     SetBkMode.call_r($hDC, 2) # opaque
+    SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
     for i in 0..11 # check what items you have
       j = CONSUMABLES['position'][i]
       count = $heroItems[ITEM_INDEX[2+j]] # note the first 2 are sword and shield
@@ -291,10 +298,16 @@ module HookProcAPI
         kName = Str.utf8toWChar(getKeyName(0, CONSUMABLES['key'][i]))
         TextOutW.call_r($hDC, x, y, kName, Str.strlen())
       end
-      SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
       PatBlt.call_r($hDC, x, y, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
     end
     SetBkMode.call_r($hDC, 1) # transparent
+
+  # start drawing the last cell (for tswExt)
+    x = $ITEMSBAR_LEFT + ($TILE_SIZE << 1)
+    y = $ITEMSBAR_TOP + ($TILE_SIZE << 2)
+    StretchBlt.call_r($hDC, x, y, $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, 40, 40, RASTER_SPo)
+    kName = Str.utf8toWChar(getKeyName(0, EXT_KEY))
+    TextOutW.call_r($hDC, x, y, kName, Str.strlen())
   end
   def _msHook(nCode, wParam, lParam)
     block = false # block input?
@@ -392,7 +405,7 @@ module HookProcAPI
           r = Connectivity.route
           s = r.size >> 1
           Polyline.call_r($hDC, r.pack('l*'), s) if s > 1 # the trick is to XOR twice to restore the previous pixels
-          BitBlt.call_r($hDC, r[0]-($TILE_SIZE >> 1), r[1]-($TILE_SIZE >> 1), $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 0, RASTER_S) if !s.zero? # read bitmap from memory DC (this `if` statement should be always true, but just be cautious to avoid error)
+          BitBlt.call_r($hDC, r[0]-($TILE_SIZE >> 1), r[1]-($TILE_SIZE >> 1), $TILE_SIZE, $TILE_SIZE, $hMemDC, 0, 40, RASTER_S) if !s.zero? # read bitmap from memory DC (this `if` statement should be always true, but just be cautious to avoid error)
         end
         @lastDraw = false
       end
@@ -432,7 +445,7 @@ module HookProcAPI
       else
         x_left = r[0] - ($TILE_SIZE >> 1)
         y_top = r[1] - ($TILE_SIZE >> 1)
-        BitBlt.call_r($hMemDC, 0, 0, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
+        BitBlt.call_r($hMemDC, 0, 40, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
         SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
         PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
         Polyline.call_r($hDC, r.pack('l*'), s) if s > 1
@@ -486,6 +499,11 @@ module HookProcAPI
             block = true # do not respond to arrow keys which may cause conflicts (because events can be triggered)
             abandon(); break
           end
+        elsif key == EXT_KEY
+          disposeHDC # de-active; restore
+          unhookM
+          PostMessage.call(0, WM_APP, Ext::EXT_WPARAM, 0) # this msg will be handled in main.rbw, and tswExt console interface will show up. This action must be postponed and should not be done within the hook callback function to avoid significant system performance degradation
+          block = true; break
         else abandon(); break # if any non-functional key is pressed (same above), cancel this operation immediately; this is to avoid potential conflicts in certain scenarios (e.g., when you press Enter after talking to an NPC (in this case, because another key is pressed, the previous hotkey won't generate any more KeyDown events); switching to a different window; etc.)
         end
       end

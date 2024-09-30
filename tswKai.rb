@@ -14,7 +14,16 @@ KAI_OPTIONS = ['L', 'O', 'N', 'G', 'F', 'H', 'X', 'Y', 'K', 'U', 'R', 'V', 'S', 
 
 CON_MODIFIER = 0 # hotkey and modifier for showing configs
 CON_HOTKEY = 119 # F8
-$_TSWKAI = true # module tswKai is imported
+
+module Kai
+  @need_init = true # if true, need to redraw the whole console interface
+  @need_update = true # if true, need to redraw the shortcut keys
+  @curInd = 0 # current item index
+  @nxtInd = nil # next item index (nil=not currently selected)
+
+  module_function
+  def need_init; @need_init = @need_update = true; end
+  def need_update; @need_update = true; end
 
 def reeval()
   ReadProcessMemory.call_r($hPrc, STATUS_ADDR, $buf, STATUS_LEN << 2, 0)
@@ -37,15 +46,15 @@ def reeval()
   $console.print_posA(22, 14, '%11d', factor+1) # back tower factor
 end
 
-def cheaterMain()
+def KaiMain()
   reeval
   $console.show_cursor(false)
-  if $nxtInd # pressed arrow key to navigate to a different item
-    c = $nxtInd
-    $nxtInd = nil
+  if @nxtInd # pressed arrow key to navigate to a different item
+    c = @nxtInd
+    @nxtInd = nil
   else # normal cases
     $console.print_pos(0, 15, $str::STRINGS[19][0]) # tooltip #1
-    c = $curInd = $console.choice(KAI_OPTIONS)
+    c = @curInd = $console.choice(KAI_OPTIONS, false)
     reeval
   end
   return nil if c == -1 # ENTER/SPACE/ESC
@@ -68,14 +77,14 @@ def cheaterMain()
     $console.print_posA(r, y, '[0, 50]:   ')
     v = $console.get_num(2)
     v = 50 if v > 50
-    a = REFRESH_XYPOS_ADDR
+    a = REFRESH_MAP_TILES_ADDR
   when 6..7
     $console.print_posA(r, y, '[0, A]:    ')
-    v = $console.choice('0123456789A')
+    v = $console.choice_num(0, 10)
     a = ERASE_AND_DRAW_HERO_ADDR
   when 12..13
     $console.print_posA(r, y, '[0, 5]:    ')
-    v = $console.choice('012345')
+    v = $console.choice_num(0, 5)
     a = ITEM_DISP_ADDR
   when 21
     $console.print_posA(r, y, '[0,99]: ')
@@ -93,7 +102,7 @@ def cheaterMain()
       end
     else
       $console.print_posA(r, y, '[0, 1]: ')
-      v = $console.choice('01')
+      v = $console.choice_num(0, 1)
       a = ITEM_DISP_ADDR
     end
   end
@@ -153,23 +162,23 @@ rescue TSWKaiError => e
     if c # an item already highlighted, then go to a different item
       case e.arrow
       when VK_UP
-        if c == 0 then $curInd = 29 else $curInd -= 1 end
+        if c == 0 then @curInd = 29 else @curInd -= 1 end
       when VK_DOWN
-        if c == 29 then $curInd = 0 else $curInd += 1 end
+        if c == 29 then @curInd = 0 else @curInd += 1 end
       when VK_LEFT
-        if c > 14 then $curInd -= 15 elsif c == 0 then $curInd = 29 else $curInd +=14 end
+        if c > 14 then @curInd -= 15 elsif c == 0 then @curInd = 29 else @curInd +=14 end
       when VK_RIGHT
-        if c < 15 then $curInd += 15 elsif c == 29 then $curInd = 0 else $curInd -=14 end
+        if c < 15 then @curInd += 15 elsif c == 29 then @curInd = 0 else @curInd -=14 end
       end
     end # otherwise, highlight the last chosen item
-    $nxtInd = $curInd
+    @nxtInd = @curInd
     return true
   end
   drawShortcutKeys() # restore display of shortcut keys
   return ! e.is_a?(TSWQuitedError) # stop if TSW has quitted
 end
 
-def initCheaterInterface() # print table headers
+def initInterface() # print table headers
   $console.resize() # in case the windows size is changed
   $console.cls()
   $str::LONGNAMES[0, 15].each_with_index {|x, i| $console.print_pos(0, i, x)} # \r\n does not seem to be properly treated as line breaks using `WriteConsoleOutputCharacter`, so have to do this line by line
@@ -184,23 +193,28 @@ def drawShortcutKeys(style=STYLE_B_YELLOW_U)
   $console.p_rect(49, 0, 1, 15, $_KAI_OPTIONS_STR_2, style)
 end
 
-def KaiMain()
-  $curInd = 0 # current item index
-  $nxtInd = nil # next item index (nil=not currently selected)
+def main()
+  @curInd = 0
+  @nxtInd = nil
 
   $console = Console.new if $console.nil?
-  initCheaterInterface() if $console.switchLang()
-  if $console.need_init # chances are that KAI_OPTIONS have changed since options loaded last time
-    $console.need_init = false
+  Ext.need_init() # since the console is used here in tswKai, the interface of tswExt needs redrawing in the future
+  if $console.switchLang() or @need_init # if language has been changed, or the console interface has been used in tswExt module, need to redraw the whole interface
+    @need_init = false
+    initInterface()
+  end
+  if @need_update # chances are that KAI_OPTIONS have changed since options loaded last time
+    @need_update = false
     $_KAI_OPTIONS_STR_1 = KAI_OPTIONS[0, 15].join
     $_KAI_OPTIONS_STR_2 = KAI_OPTIONS[15, 15].join
     drawShortcutKeys()
   end
 
-  $console.setConWinProp()
+  $console.setConWinProp(true)
   return if $console.show(true).nil? # fail
   res = nil
-  loop { break unless (res=cheaterMain) }
+  loop { break unless (res=KaiMain()) }
   $console.show(false) if res.nil? # ESC pressed
   # otherwise, if res==false (TSW quitted), the remainder will be processed in the main loop
+end
 end

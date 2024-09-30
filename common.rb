@@ -264,7 +264,7 @@ MAP_TOP_ADDR = 0x8c57c + BASE_ADDRESS
 MIDSPEED_MENUID = 33 # The idea is to hijack the midspeed menu
 MIDSPEED_ADDR = 0x7f46d + BASE_ADDRESS # so once click event of that menu item is triggered, arbitrary code can be executed
 MIDSPEED_ORIG = 0x6F # original bytecode (call TTSW10.speedmiddle@0x47f4e0)
-REFRESH_XYPOS_ADDR = 0x42c38 + BASE_ADDRESS # TTSW10.mhyouji
+REFRESH_MAP_TILES_ADDR = 0x42c38 + BASE_ADDRESS # TTSW10.mhyouji
 ITEM_LIVE_ADDR = 0x50880 + BASE_ADDRESS # TTSW10.itemlive
 SACREDSHIELD_ADDR = 0xb872c + BASE_ADDRESS
 STATUS_ADDR = 0xb8688 + BASE_ADDRESS
@@ -311,7 +311,7 @@ def preExit(msg=nil) # finalize
   msgboxTxt(msg) if msg
   UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
-  FreeConsole.call() if $_TSWKAI
+  FreeConsole.call() if $console && $console.need_free
   DeleteObject.call($hGUIFont2 || 0)
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)

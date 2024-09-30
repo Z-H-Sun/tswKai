@@ -82,6 +82,9 @@
 # The second line changes the key for setting the back-side tower status factor to 'J'
 #KAI_OPTIONS[12..13] = ['W', 'S'] # Default: ['S', 'I']
 #KAI_OPTIONS[14] = 'J' # Default: 'Z'
+# You can change the shortcut key for showing the Extensions interface when pressing the WIN or TAB hotkey
+# For example, uncomment the following line to modify the key to be F1 (Default: Enter)
+#EXT_KEY = 112 # Default: VK_RETURN
 # You can change the shortcut key for using each item when pressing the WIN or TAB hotkey
 # For example, the three lines below changes the keys for all items except the orb of flight to 0-9 and Space, sequentially
 # Do not change the key for orb of flight (CONSUMABLES['key'][2])

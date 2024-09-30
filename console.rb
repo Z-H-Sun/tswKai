@@ -86,12 +86,14 @@ class Console
   attr_reader :hConWin
   attr_reader :conWidth
   attr_reader :conHeight
-  attr_accessor :need_init
+  attr_accessor :need_free
   attr_accessor :active
   EMPTY_EVENT_ARRAY = [{}]
   BUFFER_EVENT_SIZE = 16
   BUFFER_SIZE = 20*BUFFER_EVENT_SIZE # enough in this application
-  def initialize(conWidth=60, conHeight=16)
+  CONSOLE_WIDTH = 60
+  CONSOLE_HEIGHT = 16
+  def initialize(conWidth=CONSOLE_WIDTH, conHeight=CONSOLE_HEIGHT)
     if (@hConWin = GetConsoleWindow.call).zero?
       AllocConsole.call_r
       @hConWin = GetConsoleWindow.call
@@ -104,7 +106,7 @@ class Console
     @conSize = @conWidth*@conHeight
     @active = false
     @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
-    @need_init = true
+    @need_free = true
 
     system('') # do not delete this seemingly useless line, which is useful on Windows 10; otherwise, the frame of the console window will not display properly; not yet know what this does
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
@@ -131,8 +133,8 @@ class Console
     @lastIsCHN = isCHN
     return true # need to reload interface
   end
-  def setConWinProp()
-    title($str::STRINGS[30], $pID)
+  def setConWinProp(isKai)
+    title($str::STRINGS[isKai ? 30 : 50], $pID)
     ShowScrollBar.call_r(@hConWin, SB_BOTH, 0) # sometimes, even if window size == buffer size, scroll bars will unexpectedly show up, blocking part of texts, which is very annoying
     stl = GetWindowLong.call(@hConWin, GWL_STYLE)
     exstl = GetWindowLong.call(@hConWin, GWL_EXSTYLE)
@@ -158,6 +160,7 @@ class Console
     return if coord.zero? # for legacy console, this call (as well as SetConsoleWindowInfo/SetConsoleScreenBufferSize) may fail in the full screen mode, and GetLastError will return ERROR_FULLSCREEN_MODE, but there's nothing we can do about it
     max_s_w = coord & 0xFFFF
     max_s_h = coord >> 16 & 0xFFFF
+    @conWidth = w; @conHeight = h # update class variables
 
     if (w < w_w) or (h < w_h) # If the desired window size is smaller than the current window size, we have to resize the current window first. (The buffer size cannot be smaller than the window size)
       max_w = [w, b_w, max_s_w].min
@@ -236,10 +239,9 @@ class Console
     FillConsoleOutputAttribute.call_r(@hConOut, STYLE_NORMAL, @conSize, 0, $bufDWORD) if clearAttr
     cursor(0, 0)
   end
-  def cls_pos(x, y, len, clearAttr=true)
-    FillConsoleOutputCharacter.call_r(@hConOut, VK_SPACE, len, packS2(x, y), $bufDWORD)
+  def cls_pos(x, y, len, clearAttr=true, char=VK_SPACE)
+    FillConsoleOutputCharacter.call_r(@hConOut, char, len, packS2(x, y), $bufDWORD)
     FillConsoleOutputAttribute.call_r(@hConOut, STYLE_NORMAL, len, packS2(x, y), $bufDWORD) if clearAttr
-    cursor(0, 0)
   end
   def cursor(x, y)
     SetConsoleCursorPosition.call_r(@hConOut, packS2(x, y))
@@ -274,22 +276,39 @@ class Console
   def pause(prompt=nil)
     self.print(prompt) if prompt
     show_cursor(true)
-    while !(get_input[0]['char'])
+    while !(c=get_input[0]['char'])
     end
+    return c
   end
-  def choice(choices, allowESC=true) # String or Array; should be all capitalized
+  def choice(choices, beepOnEnd=true, allowESC=true) # String or Array; should be all capitalized
     i = -1
     loop do
       c = get_input[0]['char']
       next if c.nil?
-      if allowESC and (c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE)
-        i = -1; break
-      end
+      return -1 if allowESC and (c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE)
       i = choices.index(c.chr.upcase)
       break unless i.nil?
       beep(MB_ICONERROR)
     end
-    beep(); return i
+    beep() if beepOnEnd
+    return i
+  end
+  def choice_num(start, last) # allow numberic input between `start` and `last` (included) (if `last` >= 10, will allow input of 'Aa'-'Ff')
+    i = -1
+    loop do
+      c = get_input[0]['char']
+      next if c.nil?
+      return -1 if c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE
+      i = c-0x30
+      if last > 9
+        if i > 48 then i -= 39 # 'a', 'b', ...
+        elsif i > 16 then i -= 7 end # 'A', 'B', ...
+      end
+      break if i>=start and i<=last
+      beep(MB_ICONERROR)
+    end
+    beep()
+    return i
   end
   def get_num(digits) # TODO: support of arrow key
     digitCount = 0
@@ -305,7 +324,7 @@ class Console
         count = c['repeat']
         case ord
         when VK_ESCAPE # esc
-          beep(); return -1
+          return -1
         when 0x30..0x39 # num
           count = digits - digitCount if count > digits - digitCount
           char *= count if count > 1
@@ -322,8 +341,8 @@ class Console
           digitCount -= count
           str = str[0, digitCount]
         when VK_RETURN, VK_SPACE # space/enter
-          beep()
           return -1 if str.empty? # empty input; cancel
+          beep()
           return str.to_i
         else
           beep(MB_ICONERROR)
