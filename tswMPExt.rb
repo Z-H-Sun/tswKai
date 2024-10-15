@@ -48,6 +48,7 @@ module Ext
     end
     return nil if c == -1 # ENTER/SPACE/ESC
 
+    $console.SE.selection()
     c += 1
     for i in 1..EXT_OPTIONS_LEN
       if i == c
@@ -113,6 +114,7 @@ module Ext
     $console.setConWinProp(false)
     return if $console.show(true).nil? # fail
 
+    $console.SE.selection()
     res = nil
     loop { break unless (res=ExtMain()) }
     $console.show(false) if res.nil? # ESC pressed

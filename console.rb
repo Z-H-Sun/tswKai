@@ -3,6 +3,8 @@
 # Author: Z.Sun
 # ref: https://github.com/luislavena/win32console
 
+$CONenableSoundEffect = true
+
 MF_GRAYED = 1
 SC_CLOSE = 0xF060
 STD_INPUT_HANDLE = -10
@@ -81,11 +83,105 @@ class Console
     end
   end
 
+  class SoundEffect
+    MidiOutOpen = API.new('midiOutOpen', 'PILLI', 'I', 'winmm')
+    MidiOutSetVolume = API.new('midiOutSetVolume', 'LI', 'I', 'winmm')
+    MidiOutShortMsg = API.new('midiOutShortMsg', 'LI', 'I', 'winmm')
+    MidiOutReset = API.new('midiOutReset', 'L', 'I', 'winmm')
+    MidiOutClose = API.new('midiOutClose', 'L', 'I', 'winmm')
+
+    CALLBACK_NULL = 0
+    # https://midi.org/summary-of-midi-1-0-messages
+    MIDI_STATUS_NOTE_OFF = 0b1000
+    MIDI_STATUS_NOTE_ON = 0b1001
+    MIDI_STATUS_CONTROL_CHANGE = 0b1011
+    MIDI_STATUS_PROGRAM_CHANGE = 0b1100
+    # https://midi.org/midi-1-0-control-change-messages
+    MIDI_CONTROL_CHANNEL_VOLUME = 7 # this sets the MSB (coarse adjustment); the controller number for volume LSB (fine adjustment) is 39, but is usually ignored (as 128 different values for volume, 0-0x7F, is enough; 128^2 choices are really unnecessary)
+    MIDI_CONTROL_ALL_SOUNDS_OFF = 120
+    # https://web.archive.org/web/20230716043455/https://www.midi.org/specifications-old/item/gm-level-1-sound-set
+    # https://en.wikipedia.org/wiki/General_MIDI
+    MIDI_PROGRAM_SEASHORE = 122
+    MIDI_PROGRAM_BREATHNOISE = 121
+    MIDI_PROGRAM_GUNSHOT = 127
+    MIDI_PITCH_TAMBOURINE = 54
+    MIDI_PITCH_CRASHCYMBAL2 = 57
+    MIDI_PITCH_SHORTGUIRO = 73
+
+    MIDI_DEVICE_ID = 0 # typically, Windows default MIDI synth (Microsoft GS Wavetable Synth)
+    MIDI_GLOBAL_VOLUME = -1  # 0xFFFF means largest possible volume for left/right channel; MAKELONG(0xFFFF, 0xFFFF) = 0xFFFFFFFF = (DWORD)-1
+    MIDI_CHANNEL_VOLUME = 0x7F # 0-0x7F for each MIDI channel
+    @hMIDIout = nil
+    def initialize()
+      return unless MidiOutOpen.call($buf, MIDI_DEVICE_ID, 0, 0, CALLBACK_NULL).zero? # MMSYSERR_NOERROR = 0; otherwise, failed
+      @hMIDIout = $buf.unpack(HANDLE_STRUCT)[0]
+
+      # maximize volume
+      MidiOutSetVolume.call(@hMIDIout, MIDI_GLOBAL_VOLUME)
+      sendMIDImsg(0, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_CHANNEL_VOLUME, MIDI_CHANNEL_VOLUME)
+      sendMIDImsg(0, MIDI_STATUS_PROGRAM_CHANGE, MIDI_PROGRAM_BREATHNOISE)
+      sendMIDImsg(1, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_CHANNEL_VOLUME, MIDI_CHANNEL_VOLUME)
+      sendMIDImsg(1, MIDI_STATUS_PROGRAM_CHANGE, MIDI_PROGRAM_GUNSHOT)
+      sendMIDImsg(2, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_CHANNEL_VOLUME, MIDI_CHANNEL_VOLUME)
+      sendMIDImsg(2, MIDI_STATUS_PROGRAM_CHANGE, MIDI_PROGRAM_SEASHORE)
+    end
+    def dispose()
+      return unless @hMIDIout
+      MidiOutReset.call(@hMIDIout)
+      MidiOutClose.call(@hMIDIout)
+    end
+
+    def selection() # selection sound effect (mimic using "breath noise")
+      return unless @hMIDIout and $CONenableSoundEffect
+      sendMIDImsg(0, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF) # mute previous SE
+      sendMIDImsg(0, MIDI_STATUS_NOTE_ON, 0x60, 0x7F) # byte1=pitch; byte2=volume
+      sendMIDImsg(0, MIDI_STATUS_NOTE_ON, 0x40, 0x7F)
+      sendMIDImsg(0, MIDI_STATUS_NOTE_ON, 0x20, 0x7F)
+    end
+    def cancellation() # cancellation sound effect (mimic using "short guiro")
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_SHORTGUIRO, 0x6A) if @hMIDIout and $CONenableSoundEffect # channel 9 is reserved for percussion instruments
+    end
+    def explosion() # explosion sound effect (mimic using "gun shot")
+      return unless @hMIDIout and $CONenableSoundEffect
+      sendMIDImsg(1, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF)
+      sendMIDImsg(1, MIDI_STATUS_NOTE_ON, 0x35, 0x48)
+      sendMIDImsg(1, MIDI_STATUS_NOTE_ON, 0x30, 0x64)
+      sendMIDImsg(1, MIDI_STATUS_NOTE_ON, 0x20, 0x7F)
+    ensure
+      sleep(2)
+    end
+    def deletion() # deletion sound effect (mimic using "sea shore")
+      return sleep(2) unless @hMIDIout and $CONenableSoundEffect
+      sendMIDImsg(2, MIDI_STATUS_NOTE_ON, 0x60, 0x7F); sleep(1)
+      sendMIDImsg(2, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF); sleep(1)
+    end
+    def transaction() # transaction sound effect (mimic using "tambourine")
+      return sleep(2) unless @hMIDIout and $CONenableSoundEffect
+      sendMIDImsg(9, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.15)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.10)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.05)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.05)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.05)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_CRASHCYMBAL2, 0x60)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.03)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.02)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.01)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(1.5)
+    end
+
+    private
+    def sendMIDImsg(channel, status, byte1, byte2=0)
+      MidiOutShortMsg.call(@hMIDIout, channel | (status << 4) | (byte1 << 8) | (byte2 << 16))
+    end
+  end
+
   attr_reader :hConIn
   attr_reader :hConOut
   attr_reader :hConWin
   attr_reader :conWidth
   attr_reader :conHeight
+  attr_reader :SE
   attr_accessor :need_free
   attr_accessor :active
   EMPTY_EVENT_ARRAY = [{}]
@@ -112,6 +208,7 @@ class Console
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
     SetConsoleCtrlHandler.call_r(nil, 1) # depress Ctrl-C [Ideally, Ctrl-Break and Close signals should also be handled by passing a callback function address here rather than NULL; however, there is a bug with win32/api that will lead to stack overflow (cause not yet clear). As a result, I will leave NULL here, but do some monkey patching in the C code of win32/api extension so as to implement the callback function there; see vendor/win32/api.c]
 
+    @SE = SoundEffect.new()
     # remember to call self.resize and self.setConWinProp somewhere later
   end
   def ===(activated) # if the activated state is the same (true=true; false=false; false=nil)
@@ -285,7 +382,7 @@ class Console
     loop do
       c = get_input[0]['char']
       next if c.nil?
-      return -1 if allowESC and (c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE)
+      if allowESC and (c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE) then $console.SE.cancellation(); return -1 end
       i = choices.index(c.chr.upcase)
       break unless i.nil?
       beep(MB_ICONERROR)
@@ -298,7 +395,7 @@ class Console
     loop do
       c = get_input[0]['char']
       next if c.nil?
-      return -1 if c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE
+      if c == VK_ESCAPE or c == VK_RETURN or c == VK_SPACE then $console.SE.cancellation(); return -1 end
       i = c-0x30
       if last > 9
         if i > 48 then i -= 39 # 'a', 'b', ...
@@ -310,7 +407,7 @@ class Console
     beep()
     return i
   end
-  def get_num(digits) # TODO: support of arrow key
+  def get_num(digits)
     digitCount = 0
     str = ''
     x, y = get_cursor()
@@ -324,6 +421,7 @@ class Console
         count = c['repeat']
         case ord
         when VK_ESCAPE # esc
+          $console.SE.cancellation()
           return -1
         when 0x30..0x39 # num
           count = digits - digitCount if count > digits - digitCount
@@ -341,7 +439,7 @@ class Console
           digitCount -= count
           str = str[0, digitCount]
         when VK_RETURN, VK_SPACE # space/enter
-          return -1 if str.empty? # empty input; cancel
+          if str.empty? then $console.SE.cancellation(); return -1 end # empty input; cancel
           beep()
           return str.to_i
         else

@@ -311,7 +311,10 @@ def preExit(msg=nil) # finalize
   msgboxTxt(msg) if msg
   UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
-  FreeConsole.call() if $console && $console.need_free
+  if $console
+    $console.SE.dispose()
+    FreeConsole.call() if $console.need_free
+  end
   DeleteObject.call($hGUIFont2 || 0)
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)

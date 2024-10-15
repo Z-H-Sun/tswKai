@@ -58,6 +58,8 @@ def KaiMain()
     reeval
   end
   return nil if c == -1 # ENTER/SPACE/ESC
+
+  $console.SE.selection()
   if c <= 14 # status or sword/shield
     i, x, y, w, r, p = c, 0, c, 33, 13, 24
   else # item
@@ -212,6 +214,7 @@ def main()
 
   $console.setConWinProp(true)
   return if $console.show(true).nil? # fail
+  $console.SE.selection()
   res = nil
   loop { break unless (res=KaiMain()) }
   $console.show(false) if res.nil? # ESC pressed

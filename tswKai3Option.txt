@@ -53,6 +53,9 @@
 # Although the previous line hides the tip window, it will still show up if you press a hotkey. To always hide the tip window even if a hotkey is pressed, use the following line.
 #$CONshowStatusTip = nil # Default: true
 
+# Uncomment the following line to mute all sound effects in the console interface
+#$CONenableSoundEffect = false # Default: true
+
 # In the next section, you can modify the hotkeys (usually a combination of modifiers (functional keys) and a keystroke) for this app's functions
 # Modifier 0=None, 1=Alt, 2=Ctrl, 4=Shift, 8=Win
 # Virtual key code: https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes, e.g., A-Z is just their ASCII (65-90). F1-F12 is 112-123
