@@ -23,27 +23,22 @@ module Connectivity
     return nil if @destTile > 0 # inaccessible
     @destTile = -@destTile
 
-    index = @ancestor[t_index]
     case @destTile
     when 4, 5, 8, 13, 14, 15, 17, 115..121, 123..132, 159..254 # gate; prison; lava; starlight; wings of altar; dragon (not head); other
       return nil # impassible
     when 0
-      d_i = index - t_index
       access = 0 # in this case, can directly go to that destination
     else
-      access = d_i = index - t_index # in this case, should first go to somewhere 1 step away from destination
+      access = @ancestor[t_index] - t_index # in this case, should first go to somewhere 1 step away from destination
     end
+    @facing = get_facing(t_index)
 
+    index = @ancestor[t_index]
     loop do
       y, x = index.divmod(11)
       @route.push(x*$TILE_SIZE+$MAP_LEFT+$TILE_SIZE/2, y*$TILE_SIZE+$MAP_TOP+$TILE_SIZE/2)
       break if index == @o_index
       index = @ancestor[index]
-    end
-    if d_i == -11 then @facing = 1 # facing down
-    elsif d_i == 1 then @facing = 2 # facing left
-    elsif d_i == -1 then @facing = 3 # facing right
-    elsif d_i == 11 then @facing = 4 # facing up
     end
     return access
   rescue # unlikely, but in case the ancestor of a position can't be found, return false
@@ -78,5 +73,16 @@ module Connectivity
       $mapTiles[index2] = -id # search ends here, but still need to record an ancestor, and mark its status as completed
     end
     @ancestor[index2] = index
+  end
+  def get_facing(index)
+    a_index = @ancestor[index]
+    return nil unless a_index # not likely, but just in case
+    case a_index - index
+    when -11; return 1 # facing down
+    when 1; return 2 # facing left
+    when -1; return 3 # facing right
+    when 11; return 4 # facing up
+    end
+    return nil # not likely, but just in case
   end
 end

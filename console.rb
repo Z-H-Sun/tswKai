@@ -148,15 +148,15 @@ class Console
       sendMIDImsg(1, MIDI_STATUS_NOTE_ON, 0x30, 0x64)
       sendMIDImsg(1, MIDI_STATUS_NOTE_ON, 0x20, 0x7F)
     ensure
-      sleep(2)
+      sleep(1)
     end
     def deletion() # deletion sound effect (mimic using "sea shore")
-      return sleep(2) unless @hMIDIout and $CONenableSoundEffect
+      return sleep(1) unless @hMIDIout and $CONenableSoundEffect
       sendMIDImsg(2, MIDI_STATUS_NOTE_ON, 0x60, 0x7F); sleep(1)
-      sendMIDImsg(2, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF); sleep(1)
+      sendMIDImsg(2, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF)
     end
     def transaction() # transaction sound effect (mimic using "tambourine")
-      return sleep(2) unless @hMIDIout and $CONenableSoundEffect
+      return sleep(1.5) unless @hMIDIout and $CONenableSoundEffect
       sendMIDImsg(9, MIDI_STATUS_CONTROL_CHANGE, MIDI_CONTROL_ALL_SOUNDS_OFF)
       sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.15)
       sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.10)
@@ -167,7 +167,7 @@ class Console
       sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.03)
       sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.02)
       sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(0.01)
-      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(1.5)
+      sendMIDImsg(9, MIDI_STATUS_NOTE_ON, MIDI_PITCH_TAMBOURINE, 0x7F); sleep(1)
     end
 
     private

@@ -259,3 +259,66 @@ sub_draw_hero_2:
 	call 4BA2F0	; sub_draw_map; draw the next game bitmap onto screen first
 	xor byte ptr [48C5D2], 1
 	jmp loc_draw_hero_on_canvas	; then draw the current game bitmap onto screen
+
+
+;;;;;;;;;; Below, subroutines used by tswExt ;;;;;;;;;;
+
+
+;;;;;;;;;; Preparations before saving a temp data after using the "convience shop" function ;;;;;;;;;;
+; when saving a temp data, temporarily teleport the player to the altar location
+; so when you load that temp data, you knows the temp data was saved before you used the "convience shop"
+; 480944:
+sub_savetemp_prep:
+	mov ecx, 4B8698	; floorID
+	mov edx, 489DE8	; a vacant DWORD (within the block for the polyline and highlight functions); a temporary variable for hero's current floor / x / y / facing direction
+	push [edx]	; save the current value, set by module Ext::Altar or Ext::Merchant, whose LOWORD = floorID of altar and HIWORD = index (11*y+x) of altar
+	mov eax, [ecx]	; [floorID]
+	mov [edx], al	; save player's current [floorID] to the 1st byte of temp var
+	mov eax, [ecx+08]	; [X]
+	mov [edx+1], al	; save player's current [X] to the 2nd byte of temp var
+	mov eax, [ecx+0C]	; [Y]
+	mov [edx+2], al	; save player's current [Y] to the 3rd byte of temp var
+	mov eax, [4B87E8]	; [facing_direction]
+	mov [edx+3], al	; save player's current [facing_direction] to the 4th byte of temp var
+
+	pop word ptr [ecx]	; LOWORD, floorID of altar, assign to [floorID]
+	pop ax	; HIWORD, index (11*y+x) of altar
+	mov dl, 0B
+	div dl	; al = y of altar; ah = x of altar
+	mov [ecx+08], ah	; assign to [X]
+	mov [ecx+0C], al	; assign to [Y]
+	mov byte ptr [4B87E8], 4	; player facing up
+	ret
+	nop
+
+
+;;;;;;;;;; Post processing after using the "convience shop" function ;;;;;;;;;;
+; afterwards, teleport the player back to the current location
+; and update the player's status display
+; 480980:
+sub_postprocess_1:
+	mov ecx, 4B8698	; floorID
+	mov edx, [489DE8]	; saved in `sub_savetemp_prep`
+	mov [ecx], dl	; floorID = LOBYTE(LOWORD)
+	mov [ecx+08], dh	; X = HIBYTE(LOWORD)
+	shr edx, 10
+	mov [ecx+0C], dl	; Y = LOBYTE(HIWORD)
+	mov [4B87E8], dh	; facing_direction = HIBYTE(HIWORD)
+	mov byte ptr [48C58C], 0	; clear status bar text
+	jmp 44CB34	; TTSW10.disp (update player's status display)
+
+
+;;;;;;;;;; Post processing after using the "clear monster" function ;;;;;;;;;;
+; update the player's status display
+; 4809A8:
+sub_postprocess_2:
+	push eax	; store eax=[TTSW10_HANDLE]
+	call 442C38	; TTSW10.mhyouji (update map display; erase monsters)
+	mov eax, [esp]
+	call sub_draw_hero	; update hero overlay immediately (or there will be a delay where no hero overlay is visible on map); this will also clear [48C58C]
+	mov eax, [esp]
+	call 44CB34	; TTSW10.disp (update player's status display)
+	mov eax, [esp]
+	call 4664E4	; TTSW10.moncheck (some monsters, after being defeated, will trigger special events; do this check)
+	pop eax
+	jmp 44BC0C	; TTSW10.timer2on (execute the special events, if present)

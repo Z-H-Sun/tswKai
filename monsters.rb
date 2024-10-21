@@ -22,10 +22,10 @@ module Monsters
   @monsters = Hash.new() # details about monsters on this floor
   @magAttacks = Array.new(121) # places and damage where you will get magic attacks from wizards
   class << self
-    attr_writer :check_mag
     attr_writer :cross
     attr_writer :dragonSlayer
     attr_writer :luckyGold
+    attr_accessor :check_mag
     attr_accessor :heroOrb
     attr_accessor :heroHP
     attr_accessor :heroATK
@@ -36,17 +36,19 @@ module Monsters
   end
   module_function
   def getMonsterID(tileID)
-    return 19 if tileID == 122
-    if tileID < 61 or tileID > 158
+    if tileID < 61# not a monster tile
       nil
-    elsif tileID < 97
+    elsif tileID < 97 # slimeG - vampire
       tileID - 61 >> 1
-    elsif tileID < 106
+    elsif tileID < 106 # octopus
       18
-    elsif tileID < 133
+    elsif tileID == 122 # dragon
+      19
+    elsif tileID < 133 # octopus/dragon not for battle
       nil
-    else
+    elsif tileID < 159 # goldenKnight - GatemanA
       tileID - 93 >> 1
+    else nil # invalid tile
     end
   end
   def getStatus(monster_id)
@@ -83,7 +85,7 @@ module Monsters
     for i in 0...121
       case $mapTiles[i].abs
       when 255
-        break if $MPnewMode or !@heroOrb # no need for further calculation under such cases
+        next if $MPnewMode or !@heroOrb # no need for further calculation under such cases
         dmg = @magAttacks[i]
         if dmg.nil? # unlikely, but let's add this new item into database
           sign = $mapTiles[i] <=> 0
