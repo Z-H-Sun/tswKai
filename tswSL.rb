@@ -120,6 +120,7 @@ module SL
   class << self
     attr_reader :savedat_path
     attr_reader :_tmp_id
+    attr_reader :_sub_savetemp
   end
   module_function
   def init

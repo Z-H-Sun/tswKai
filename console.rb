@@ -390,7 +390,7 @@ class Console
     beep() if beepOnEnd
     return i
   end
-  def choice_num(start, last) # allow numberic input between `start` and `last` (included) (if `last` >= 10, will allow input of 'Aa'-'Ff')
+  def choice_num(start, last, beepOnEnd=true) # allow numberic input between `start` and `last` (included) (if `last` >= 10, will allow input of 'Aa'-'Ff')
     i = -1
     loop do
       c = get_input[0]['char']
@@ -404,10 +404,10 @@ class Console
       break if i>=start and i<=last
       beep(MB_ICONERROR)
     end
-    beep()
+    beep() if beepOnEnd
     return i
   end
-  def get_num(digits)
+  def get_num(digits, beepOnEnd=true)
     digitCount = 0
     str = ''
     x, y = get_cursor()
@@ -440,14 +440,15 @@ class Console
           str = str[0, digitCount]
         when VK_RETURN, VK_SPACE # space/enter
           if str.empty? then $console.SE.cancellation(); return -1 end # empty input; cancel
-          beep()
+          beep() if beepOnEnd
           return str.to_i
         else
           beep(MB_ICONERROR)
         end
       end
     end
-    beep(); return str.to_i
+    beep() if beepOnEnd
+    return str.to_i
   end
   def beep(msg=MB_ICONASTERISK)
     MessageBeep.call(msg)

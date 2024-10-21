@@ -34,7 +34,7 @@ Recall that we are solving the maximum $m$ (variable) at given $n$ and $G$ (cons
 $${\rm LHS}=f(x)=x^3+5x-q,\quad {\rm where}\ q=n\left(n^2+5\right)+\left\lfloor \frac {3G}{10}\right\rfloor$$
 
 We note two things:
-1. The opposite of the constant term $q=3\left(S_n+\left\lfloor\frac G{10}\right\rfloor\right)>0$
+1. The opposite of the constant term $q=3\left(\frac{S_n}{10}+\left\lfloor\frac G{10}\right\rfloor\right)>0$
 2. The derivative $f^\prime(x)=3x^2+5\ge 0, \forall x\in{\mathbb R}$
 
 The second attribute is good in that it guarantees that $f(x)$ increases monotonically, so there will only be one real-number root $x_0$ for equation $f(x)=0$. It is also obvious that $x_0 \ge n \ge 0$. Therefore, the maximum positive integer $m$ we seek for should simply be $\left\lfloor x_0 \right\rfloor-n$.
