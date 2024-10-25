@@ -261,9 +261,11 @@ TAPPLICATION_ADDR = 0x8a6f8 + BASE_ADDRESS
 TEDIT8_MSGID_ADDR = 0x8c58c + BASE_ADDRESS
 MAP_LEFT_ADDR = 0x8c578 + BASE_ADDRESS
 MAP_TOP_ADDR = 0x8c57c + BASE_ADDRESS
-MIDSPEED_MENUID = 33 # The idea is to hijack the midspeed menu
-MIDSPEED_ADDR = 0x7f46d + BASE_ADDRESS # so once click event of that menu item is triggered, arbitrary code can be executed
-MIDSPEED_ORIG = 0x6F # original bytecode (call TTSW10.speedmiddle@0x47f4e0)
+N9_MENUID = 36 # The idea is to hijack the TTSW10.N9 menu item (a menu separator which can't be clicked by user), so once click event of that menu item is triggered, arbitrary code can be executed
+OFFSET_N9 = 0x3a4
+OFFSET_TMENUITEM_ONCLICK = 0x90
+TMENU_CLICK_ADDR = 0x10680 + BASE_ADDRESS # for this idea to work, we need some extra work
+TMENU_CLICK_PATCH_BYTES = "\x8D\x88\x90\0\0\0\x83\x39\0\x74\xF4\x8B\x50\4\x8B\x41\4\x85\xC0\x74\2\xFF\x21\x92\x87\x11\xFF\xE2" # see the first entry in `tswMPExt_3.asm` for more details
 REFRESH_MAP_TILES_ADDR = 0x42c38 + BASE_ADDRESS # TTSW10.mhyouji
 ITEM_LIVE_ADDR = 0x50880 + BASE_ADDRESS # TTSW10.itemlive
 SACREDSHIELD_ADDR = 0xb872c + BASE_ADDRESS
@@ -382,7 +384,7 @@ def waitForTSW()
 
   updateSettings()
   AttachThreadInput.call_r(GetCurrentThreadId.call_r(), $tID, 1) # This is necessary for GetFocus to work: 
-  #https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
+  # https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
   # Also, this is also critical to circumvent the ForegroundLockTimeout (flashing in taskbar but not activated) because now this app is attached to the input of TSW (see: https://devblogs.microsoft.com/oldnewthing/20080801-00/?p=21393)
   $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_SYNCHRONIZE, 0, $pID)
   $bufHWait[0, POINTER_SIZE] = [$hPrc].pack(HANDLE_STRUCT)
@@ -392,6 +394,9 @@ def waitForTSW()
   $TTSW = readMemoryDWORD(TTSW_ADDR)
   return unless (edit8 = waitTillAvail($TTSW+OFFSET_EDIT8))
   return unless ($hWndText = waitTillAvail(edit8+OFFSET_HWND))
+  return unless (n9 = waitTillAvail($TTSW+OFFSET_N9))
+  $callFunc_addr_addr = n9+OFFSET_TMENUITEM_ONCLICK # address for changing the arbitrary function address
+  WriteProcessMemory.call_r($hPrc, TMENU_CLICK_ADDR, TMENU_CLICK_PATCH_BYTES, TMENU_CLICK_PATCH_BYTES.size, 0)
   $appTitle = APP_NAME + ' - pID=%d' % $pID
   return true
 end
@@ -438,15 +443,6 @@ def waitInit(waitForNextCompatibleTSW = false)
   end
 end
 
-def writeMemoryDWORD_noRaise(address, dword)
-  return WriteProcessMemory.call($hPrc, address, [dword].pack('l'), 4, 0)
-end
-def callFunc_noRaise(address)
-  return false if writeMemoryDWORD_noRaise(MIDSPEED_ADDR, address-MIDSPEED_ADDR-4).zero?
-  SendMessage.call($hWnd, WM_COMMAND, MIDSPEED_MENUID, 0)
-  return !writeMemoryDWORD(MIDSPEED_ADDR, MIDSPEED_ORIG).zero?
-end
-
 def readMemoryDWORD(address)
   ReadProcessMemory.call_r($hPrc, address, $bufDWORD, 4, 0)
   return $bufDWORD.unpack('l')[0]
@@ -455,10 +451,18 @@ def writeMemoryDWORD(address, dword)
   WriteProcessMemory.call_r($hPrc, address, [dword].pack('l'), 4, 0)
 end
 def callFunc(address) # execute the subroutine at the given address
-  writeMemoryDWORD(MIDSPEED_ADDR, address-MIDSPEED_ADDR-4)
-  SendMessage.call($hWnd, WM_COMMAND, MIDSPEED_MENUID, 0)
-  writeMemoryDWORD(MIDSPEED_ADDR, MIDSPEED_ORIG) # restore
+  WriteProcessMemory.call_r($hPrc, $callFunc_addr_addr, [address].pack('Q'), 8, 0) # this will not only set [TMenuItem+0x90], but also clear [TMenuItem+0x94] just to be safe (see tswMPExt_3.asm for justification)
+  SendMessage.call($hWnd, WM_COMMAND, N9_MENUID, 0)
 end
+def callFunc_noRaise(address) # this variant will not raise an error when WriteProcessMemory fails
+  return false if WriteProcessMemory.call($hPrc, $callFunc_addr_addr, [address].pack('Q'), 8, 0).zero?
+  return SendMessage.call($hWnd, WM_COMMAND, N9_MENUID, 0)
+end
+def callFunc_noBlock(address) # this variant will not block the thread and wait until TSW finish processing the function
+  WriteProcessMemory.call_r($hPrc, $callFunc_addr_addr, [address].pack('Q'), 8, 0)
+  PostMessage.call_r($hWnd, WM_COMMAND, N9_MENUID, 0)
+end
+
 def msgboxTxtA(textIndex, flag=MB_ICONASTERISK, *argv)
   API.msgbox(Str::StrEN::STRINGS[textIndex] % argv, flag)
 end

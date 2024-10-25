@@ -79,7 +79,6 @@ MP_KEY2 = VK_TAB # hotkeys for teleportation and using items
 $MPshowMapDmg = true # whether to enable enhanced damage display
 $MPnewMode = true # show damage display all the time, not just when WIN/TAB is being held down
 
-$x_pos = $y_pos = -1
 $hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack(LOGFONT_STRUCT))
 $hSysFont = GetStockObject.call_r(SYSTEM_FONT)
 $hBr = GetStockObject.call_r(DC_BRUSH)
@@ -107,6 +106,7 @@ module HookProcAPI
   @itemAvail = [] # the items you have
   @winDown = false # [WIN] pressed; active
   @lastIsInEvent = false
+  @x_pos = @y_pos = -1
   @access = nil # the destination is accessible?
   @flying = nil # currently using OrbOfFly; active
   @error = nil # exception within hook callback function
@@ -144,7 +144,7 @@ module HookProcAPI
     if result
       return true if @lastIsInEvent
       @lastIsInEvent = true # if @lastIsInEvent is false
-      $x_pos = $y_pos = -1 # reset pos
+      @x_pos = @y_pos = -1 # reset pos
       initHDC unless $hDC # it is possible that hDC is not assigned yet
       showMsg(1, 0)
     elsif @lastIsInEvent # result is false and @lastIsInEvent is true
@@ -316,10 +316,10 @@ module HookProcAPI
       break if @lastIsInEvent
       case wParam
       when WM_LBUTTONDOWN, WM_RBUTTONDOWN # mouse click; teleportation
-        break if $x_pos < 0 or $y_pos < 0 or isInEvent
+        break if @x_pos < 0 or @y_pos < 0 or isInEvent
         block = true
         cheat = (wParam == WM_RBUTTONDOWN)
-        x, y = $x_pos, $y_pos
+        x, y = @x_pos, @y_pos
         if cheat
           cheat = (@access != 0)
           showMsgTxtbox(cheat ? 8 : -1)
@@ -371,7 +371,7 @@ module HookProcAPI
         drawMapDmg(false) # since the map has already refreshed, the damage values on the map should be redrawn
         showMsg(cheat ? 2 : 0, 5, x, y, @itemAvail.empty? ? $str::STRINGS[-1] : $str::STRINGS[6])
         $mapTiles.map! {|i| if i.zero? then 6 elsif i < 0 then -i else i end} # revert previous graph coloring
-        Connectivity.floodfill(x, y) # if event is not triggered, then the current coordinate is (x, y) not ($x_pos, $y_pos)!
+        Connectivity.floodfill(x, y) # if event is not triggered, then the current coordinate is (x, y) not (@x_pos, @y_pos)!
         break
       when WM_MOUSEMOVE
       else
@@ -395,7 +395,7 @@ module HookProcAPI
       x_pos = ((x - $MAP_LEFT) / $TILE_SIZE).floor
       y_pos = ((y - $MAP_TOP) / $TILE_SIZE).floor
 
-      break if x_pos == $x_pos and y_pos == $y_pos # same pos
+      break if x_pos == @x_pos and y_pos == @y_pos # same pos
       if !nCode.nil? then break if isInEvent end # don't check this on init
 
       if @lastDraw # undo the last drawing
@@ -412,12 +412,12 @@ module HookProcAPI
 
       if x_pos < 0 or x_pos > 10 or y_pos < 0 or y_pos > 10 # outside
         if @itemAvail.empty? then showMsg(1, 2) else showMsg(3, 4) end
-        $x_pos = $y_pos = -1 # cancel preview
+        @x_pos = @y_pos = -1 # cancel preview
         @lastDraw = false
         break
       end
 
-      $x_pos = x_pos; $y_pos = y_pos
+      @x_pos = x_pos; @y_pos = y_pos
 
 # it is possible that when [WIN] key is released (and thus `unhookM` is called), `_msHook` is still running; in this case, do not do the following things:
       @access = Connectivity.main(x_pos, y_pos)
@@ -613,7 +613,7 @@ module HookProcAPI
       return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
     end
     # if TSW has already quitted, the above WriteProcessMemory/callFunc_noRaise call return 0/false, then no need to do anything below
-    $x_pos = $y_pos = -1
+    @x_pos = @y_pos = -1
     InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar
     ReadProcessMemory.call($hPrc || 0, MONSTER_STATUS_FACTOR_ADDR, $bufDWORD, 4, 0) # 0 or 43

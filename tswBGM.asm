@@ -818,7 +818,9 @@ BASE:7EC3A		xor edi, edi
 		TTSW10.savework	endp
 
 BASE:54DE8	TTSW10.syokidata2	proc near	; called upon game status refreshing, such as restarting a game / loading a game / changing game window size / initialize all options / etc.
-		; Changes made: do not change BGM or WAV options when loading data
+		; Changes made:
+		; * do not change BGM or WAV options when loading data
+		; * when loading data, stop the previous sound effect
 		; Like above, the treatments of WAV (soundeffect) are also chaotic. There are multiple things that can determine whether WAV is on: sometimes the checked state of the menu item, sometimes a boolean byte variable [TSW_WAV_setting(BASE:89BA3)] (like [TSW_BGM_setting(BASE:89BA2)]), and sometimes DWORD variable [TSW_WAV_OFF(BASE:B87EC)] (like [TSW_BGM_ID(BASE:B87F0)]). For the latter two, a value of 0 means WAV on, and a value of 1 means WAV off
 		; If the current WAV is off, loading a data where WAV is on will turn WAV on, and the corresponding menu item will be ticked. If the current WAV is on, loading a data where WAV is off will turn WAV off, but the corresponding menu item will NOT be unticked. I think this is likely a bug of TSW not a feature.
 		; So my decision is to retain old BGM / WAV options after loading a data, i.e., if BGM is on, it remains on; and if BGM is off, it remains off, just like all other options. This is achieved by referring to the byte variables [TSW_WAV_setting] and [TSW_BGM_setting] as discussed above
@@ -832,14 +834,14 @@ BASE:54DE8	TTSW10.syokidata2	proc near	; called upon game status refreshing, suc
 
 ;BASE:55AC1		cmp dword ptr [esi+0168], 0	; [TSW_BGM_ID]
 ;BASE:55AC8		je BASE:55ADE
-;BASE:55ACA	loc_syokidata2_BGM_on:
-;			mov dl, 01
+;BASE:55ACA		mov dl, 01
 ;BASE:55ACC		mov eax, [ebx+0330]	; TTSW10.BGMON1:TMenuItem
 ;BASE:55AD2		call TMenuItem.SetChecked
 ;BASE:55AD7		mov byte ptr [TSW_BGM_setting], 1
 ;BASE:55ADE		cmp dword ptr [esi+0168],00	; [TSW_BGM_ID]
 ;BASE:55AE5		je loc_syokidata2_next
-;BASE:55AE7		mov eax,[ebx+041C]	; TTSW10.Timer4
+;BASE:55AE7	loc_syokidata2_BGM_on:
+;			mov eax,[ebx+041C]	; TTSW10.Timer4
 ;BASE:55AED		cmp byte ptr [eax+20], 0	; TTimer.FEnabled:Boolean
 ;BASE:55AF1		jne loc_syokidata2_next
 ;BASE:55AF3		mov eax, ebx
@@ -847,15 +849,21 @@ BASE:54DE8	TTSW10.syokidata2	proc near	; called upon game status refreshing, suc
 ;BASE:55AFA	loc_syokidata2_next:
 		; ...
 		; patched bytes:
-BASE:55AAB		mov ecx, offset TSW_WAV_setting
-BASE:55AB0		mov edx, offset TSW_WAV_OFF
-BASE:55AB5		mov al, [ecx]
-BASE:55AB7		mov [edx], al	; read [TSW_WAV_OFF] from [TSW_WAV_setting]
-BASE:55AB9		mov al, [ecx-01]	; [TSW_BGM_setting]
-BASE:55ABC		test al, al
-BASE:55ABE		jne loc_syokidata2_BGM_on
-BASE:55AC0		mov [edx+04], al	; read [TSW_BGM_ID] from [TSW_BGM_setting]=0
-BASE:55AC3		jmp loc_syokidata2_next
+BASE:55AAB		mov edi, offset TSW_WAV_setting	; edi is vacant in this subroutine; will be restored at the end
+BASE:55AB0		cmp byte ptr [edi], 0
+BASE:55AB3		jne BASE:55AC0	; !=0: WAV is off; otherwise, stop the previous sound effect
+BASE:55AB5		mov eax, [ebx+TTSW10.TMediaPlayer6]
+BASE:55ABB		call TMediaPlayer.Close
+
+BASE:55AC0		mov edx, offset TSW_WAV_OFF
+BASE:55AC5		mov al, [edi]
+BASE:55AC7		mov [edx], al	; read [TSW_WAV_OFF] from [TSW_WAV_setting]
+BASE:55AC9		mov al, [edi-01]	; [TSW_BGM_setting]
+BASE:55ACC		test al, al
+BASE:55ACE		jne loc_syokidata2_BGM_on
+BASE:55AD0		mov [edx+04], al	; read [TSW_BGM_ID] from [TSW_BGM_setting]=0
+BASE:55AD3		jmp loc_syokidata2_next
+		; it is found that there is no need to set the enabled states for the menu items, as they will be set elsewhere
 		; ...
 
 

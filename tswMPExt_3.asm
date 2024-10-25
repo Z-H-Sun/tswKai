@@ -2,6 +2,51 @@
 ; the assembly codes here can be loaded by CheatEngine's auto-assembler; before doing so, replace all semicolons (;) with double slashes (//) as CheatEngine won't recognize simicolons as comments
 ; use CheatEngine 6.7. Higher versions are known to have bugs in auto-assembler, which tend to use longer opcodes for some specific assembly operations, and that will mess up everything
 
+;;;;;;;;;; Execute arbitrary code from tswKai3 in TSW ;;;;;;;;;;
+; basic idea on how this works: a windows msg from tswKai3 will be sent to TSW, mimicking menu-click event
+; that menu item is a separator (horizontal dividing line, TTSW10.N9), which normally won't trigger a click event from user
+; originally, that menu item does not have a callback function associated with it on click, but tswKai3 changes that prior to sending the msg
+; so the sent msg will trigger the OnClick event and then execute the designated function
+410680:
+Menus_TMenuItem_Click:
+; original opcodes:
+;	cmp byte ptr [eax+29], 0	; Enabled
+;	je loc_TMenuItem_Click	; do nothing if the menu item is disabled; however, this check is unnecessary as disabled menu item won't trigger this event by user
+;	cmp word ptr [eax+92], 0	; don't know what it is. But `dword ptr [eax+90]` is the pointer to the callback function; if it is 0, obviously `word ptr [eax+92]` will also be 0
+;	je loc_TMenuItem_Click	; do nothing if there is no associated callback function for the OnClick event
+;	mov ecx, eax	; TMenuItem handle (not used in TSW)
+;	mov edx, eax	; TMenuItem handle (not used in TSW)
+;	mov eax, [ecx+94]	; TMenuItem owner handle, in this case, TTSW10 ([48C510])
+;	call dword ptr [ecx+90]	; OnClick callback function
+;	loc_TMenuItem_Click:
+;	ret
+
+; changes made below:
+; for TTSW10.N9, a menu separator without an OnClick callback function, its [TMenuItem+0x90] is NULL, and its [TMenuItem+0x94] (owner handle) is also NULL
+; we can make use of this characteristic feature. For normal menu click events, we know there must be an associated OnClick callback function, and its [TMenuItem+0x94] is defined
+; we will then go with the old treatment. On the contrary, for TTSW10.N9, its [TMenuItem+0x94] is NULL, then we will do the following:
+; a) get its owner handle, which is available in [TMenuItem+4] (this holds true for any control: [TControl+4] is its owner's handle)
+; b) call [TMenuItem+0x90], which was set previously by tswKai3
+; c) resetting [TMenuItem+0x90] as NULL before calling. Although it's unlikely that a user can trigger such OnClick event for this menu separator, but just to be safe
+; patched opcodes:
+	lea ecx, [eax+90]	; ecx = offset TMenuItem+0x90
+	cmp [ecx], 0
+	je 41067F	; ret (do nothing if OnClick callback function [TMenuItem+0x90] is NULL)
+	mov edx, [eax+4]	; edx = [TMenuItem+4] (owner's handle)
+	mov eax, [ecx+4]	; eax = [TMenuItem+0x94]
+	test eax, eax	; for normal menu items, eax is its owner's handle, then call the associated function directly
+	je +2	; otherwise, eax is 0, then need to do some extra work
+	jmp [ecx]	; normal menu item
+	xchg eax, edx	; after this exchange, eax=[TMenuItem+4]=owner's handle=[TTSW10]; edx=0
+	xchg edx, [ecx]	; after this exchange, edx=[TMenuItem+0x90]=callback function; the latter will be reset to NULL just to be safe
+	jmp edx	; call callback function
+
+; other findings:
+; for any TControl, [TControl+8] is the pointer to its name
+; for menu item, [TMenuItem+0x20] is the pointer to its caption; for menu items with submenu, [TMenuItem+0x24] is hMenu (NULL if without submenu)
+
+
+
 ;;;;;;;;;; Fix a bug when player moves to/from an animated tile ;;;;;;;;;;
 ; this is impossible unless you use a game mod such as tswMP, so not a particularly serious bug
 ; however, if you use tswMP to move to/from an animated tile, such as a monster, lava, etc.
@@ -270,7 +315,8 @@ sub_draw_hero_2:
 ; 480944:
 sub_savetemp_prep:
 	mov ecx, 4B8698	; floorID
-	mov edx, 489DE8	; a vacant DWORD (within the block for the polyline and highlight functions); a temporary variable for hero's current floor / x / y / facing direction
+	mov edx, 48C74C	; a vacant DWORD (used as TSW event sequence array (see discussions in tswBGM.asm); but the index starts from 1 not 0, so the first 6 bytes are vacant)
+	; a temporary variable for hero's current floor / x / y / facing direction
 	push [edx]	; save the current value, set by module Ext::Altar or Ext::Merchant, whose LOWORD = floorID of altar and HIWORD = index (11*y+x) of altar
 	mov eax, [ecx]	; [floorID]
 	mov [edx], al	; save player's current [floorID] to the 1st byte of temp var
@@ -298,7 +344,7 @@ sub_savetemp_prep:
 ; 480980:
 sub_postprocess_1:
 	mov ecx, 4B8698	; floorID
-	mov edx, [489DE8]	; saved in `sub_savetemp_prep`
+	mov edx, [48C74C]	; saved in `sub_savetemp_prep`
 	mov [ecx], dl	; floorID = LOBYTE(LOWORD)
 	mov [ecx+08], dh	; X = HIBYTE(LOWORD)
 	shr edx, 10

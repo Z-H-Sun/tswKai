@@ -103,7 +103,6 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             ShowWindow.call($hWndDialog, SW_HIDE)
             Kai.main()
           else # nothing -> dialog
-            HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
             HookProcAPI.abandon()
             showMsgTxtbox(-1)
             Mod.showDialog(true)
@@ -118,7 +117,6 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       when 0
         HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
       when Ext::EXT_WPARAM
-        HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
         Ext.main()
       else # signal from console by `SetConsoleCtrlHandler`
         $console.need_free = false # don't call `FreeConsole` (by unsetting `$console.need_free`; in this case, `$console` is definitely not `nil`), or it will freeze!

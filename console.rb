@@ -204,7 +204,6 @@ class Console
     @lastIsCHN = nil # depending on whether the language is changed, the interface may need reloading
     @need_free = true
 
-    system('') # do not delete this seemingly useless line, which is useful on Windows 10; otherwise, the frame of the console window will not display properly; not yet know what this does
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
     SetConsoleCtrlHandler.call_r(nil, 1) # depress Ctrl-C [Ideally, Ctrl-Break and Close signals should also be handled by passing a callback function address here rather than NULL; however, there is a bug with win32/api that will lead to stack overflow (cause not yet clear). As a result, I will leave NULL here, but do some monkey patching in the C code of win32/api extension so as to implement the callback function there; see vendor/win32/api.c]
 
@@ -275,6 +274,7 @@ class Console
       if tswActive and API.focusTSW() != $hWnd # has popup child
         msgboxTxt(28, MB_ICONASTERISK); return nil # fail
       end
+      HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
       @active = true
       ShowWindow.call(@hConWin, SW_RESTORE)
       SetForegroundWindow.call(@hConWin)

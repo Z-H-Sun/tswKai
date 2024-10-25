@@ -2,6 +2,7 @@
 ; - Solve 49F sorcerer show-up animation bug: addressed in tswMod.asm
 ; - Allow data loading during events: addressed in tswSL.asm
 ; - Properly process consecutive sound effects: addressed in tswBGM.asm
+; - Do not change BGM and WAV settings when loading data: addressed in tswBGM.asm
 
 BASE:41BFC	dw 000F	; total length of the structure
 BASE:41BFE	;dd offset BASE:7F544	; original bytes
@@ -56,8 +57,10 @@ BASE:7F46A		jmp loc_DisTEdit8_2	; BASE:7F474	; need more space; we can do the sa
 
 BASE:7F46C	TTSW10.Middle1Click	proc near
 			call BASE:7F4E0	; => TTSW10.speedmiddle
-				; this space will be used by tswKai3 `callFunc` method
-				; so do not change these codes here
+				; ~~this space will be used by tswKai3 `callFunc` method~~
+				; ~~so do not change these codes here~~
+				; No, it will not any more. The newer treatment has adopted a better trick and abandoned using this space (see tswMPExt_3.asm)
+				; However, for compatibility consideration, don't touch this in the future
 BASE:7F471		ret
 		TTSW10.Middle1Click	endp
 BASE:7F472	align 04
@@ -1116,11 +1119,79 @@ BASE:53A34		xchg ax, ax	; 2-byte nop
 
 
 ;============================================================
-		; Rev8: Fix the wrong prompt after finishing the 40F boss battle
+		; Rev8: Fix a bug of the 33F trap room on the right
+		; Originally, the trap would only be triggered when you reach Location (X=9,Y=4), which is reasonable if you go into that room from the upper side; however, if you go into that room from the lower side, the trap would not be triggered when you reach Location (X=9,Y=6), and if you kill all monsters without touching the (X=9,Y=4) cell, you would be locked in the room forever
+		; The fix below adds a trigger point at (X=9,Y=6) as well to avoid the awkward situation above
+
+		; Rev8-b: Fix the wrong prompt after finishing the 40F boss battle
 		; Originally, TSW will show a 'The door has opened.' prompt after you pass the 40F boss battle, which is incorrect--It should be a 'gate' that opens, but there is no such prompts in the game, so I will simply delete this event sequence
+
+BASE:54DE8	TTSW10.syokidata2	proc near	; (rōmaji of '初期data2') initialization of game data
+		; this subroutine will be called whenever the game status is refreshed, such as restarting a game / loading a game / changing game window size / initialize all options / etc.
+		; ...
+		; the codes below sets multiple controls to be invisible, but they can be re-written to save space for our new code
+		; i.e., setting the map tile at (F=33,X=9,Y=6) to be the same as the tile at (F=33,X=9,Y=4), such that:
+		; * When you have not triggered the trap, then you can trigger the trap at both locations
+		; * When you have triggered the old trap, triggers at both locations will be removed
+		; original bytes:
+;BASE:54E0B		xor edx,edx
+;BASE:54E0D		mov eax, [ebx+01CC]	; TTSW10.RichEdit1
+;BASE:54E13		call TControl.SetVisible	; BASE:13500
+;BASE:54E18		xor edx,edx
+;BASE:54E1A		mov eax, [ebx+01D0]	; TTSW10.Button1
+;BASE:54E20		call TControl.SetVisible
+;BASE:54E25		xor edx,edx
+;BASE:54E27		mov eax, [ebx+01D4]	; TTSW10.Button2
+;BASE:54E2D		call TControl.SetVisible
+;BASE:54E32	loc_syokidata2_next1:
+			; ...
+		; patched bytes:
+BASE:54E0B		xor edi,edi
+BASE:54E0D	loc_syokidata2_loop1:
+			xor edx,edx
+BASE:54E0F		mov eax, [ebx+edi*4+01CC]	; 01CC / 01D0 / 01D4
+BASE:54E16		call BASE:13500
+BASE:54E1B		inc edi
+BASE:54E1C		cmp edi, 03
+BASE:54E1F		jne loc_syokidata2_loop1
+		; above, the re-written code fullfills the original function using smaller space; then we can implemente our new treatment below:
+BASE:54E21		mov al, [BASE:B9946]	; tile @ F=33,X=9,Y=4
+BASE:54E26		mov [BASE:B995C], al	; tile @ F=33,X=9,Y=6
+BASE:54E2B		jmp loc_syokidata2_next1	; BASE:54E32
+		; ...
+		TTSW10.syokidata2	endp
+
 
 BASE:6CB1C	TTSW10.ichicheck	proc near	; ichi = rōmaji of 位置; position
 
+		; ...
+		; check 33F trap status:
+		; check if 11*Y+X == 107 (X==8 && Y==9; the bottom right corner room); this case is processed from BASE:735BA-736EF
+		; otherwise, the other case (the center right room) is processed starting from BASE:736EF, i.e., below
+		; the codes below adds a (0,0,0) event sequence, but it can be re-written in a more efficient way to save space for our new code
+		; original bytes:
+;BASE:73723		mov word ptr [esi+eax*2], 0
+;BASE:73729		mov eax, [ebx]
+;BASE:7372B		lea eax, [eax+eax*2]
+;BASE:7372E		mov word ptr [esi+eax*2+02], 0
+;BASE:73735		mov eax, [ebx]
+;BASE:73737		lea eax, [eax+eax*2]
+;BASE:7373A		mov word ptr [esi+eax*2+04], 0
+;BASE:73741	loc_syokidata2_next2:
+			; ...
+		; patched bytes:
+		; we will need to eliminate both triggers once either of them is triggered
+BASE:73723		lea eax, [esi+eax*2]
+BASE:73726		xor edx, edx
+BASE:73728		mov [eax], edx
+BASE:7372A		mov [eax+04], dx
+		; above, the re-written code fullfills the original function using smaller space; then we can implemente our new treatment below:
+BASE:7372E		mov byte ptr [BASE:B9946], 06	; turn tile @ F=33,X=9,Y=4 into plain road
+BASE:73735		mov byte ptr [BASE:B995C], 06	; turn tile @ F=33,X=9,Y=6 into plain road
+BASE:7373C		jmp loc_syokidata2_next2	; BASE:73741
+		; ...
+
+		; check 40F trap status:
 BASE:740BE	; original bytes:
 ;			mov word ptr [esi+eax*2], 0002	; originally, here will insert an event sequence (2,4,0) that will show 'The door has opened.' prompt in the status bar
 		; patched bytes:
