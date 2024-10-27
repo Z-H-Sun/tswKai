@@ -85,9 +85,61 @@ module Ext
       end
       return r
     end
+    def fprint_pos(x, y, *argv) # move cursor to a new location and then print
+      $console.cursor(x, y)
+      $console.fprint(*argv)
+    end
   end
 
-  module Altar
+  class Common # common workflow for Altar / Merchant / Monsters classes
+    def initialize(); @disable_reason = check() end # only need to calculate results once (during initialization)
+    def input_prompt(str, color, *argv) # for altars, this method will be redefined, since more prompts need showing; for other items, simply show one line
+      $console.fprint(color, str.is_a?(Array) ? str[0] : str, *argv)
+    end
+    def descr_disabled(i, disable_reason, disable_str_index)
+      Ext::Console.fprint_pos(1, EXT_DESCR_LINE, FOREGROUND_INTENSITY, $str::STRINGS[disable_str_index][disable_reason])
+      $console.fprint(STYLE_B_RED, $str::STRINGS[53][5], @a_n) if disable_str_index == 53 and disable_reason == 2 # prompt GOLD for next altar visit
+      return Ext::Console.pause(i, $str::STRINGS[52][3])
+    end
+    def descr_avail(i, caveat, prompt_str_index, *prompt_str_arg)
+      $console.cursor(1, EXT_DESCR_LINE)
+      prompt_str = $str::STRINGS[prompt_str_index]
+      input_prompt(prompt_str, *prompt_str_arg) # in most cases, the 1st element of prompt_str_arg is the font color of the prompt
+      Ext::Console.fprint_pos(EXT_DESCR_TITLE_END, EXT_DESCR_TITLE_LINE, FOREGROUND_INTENSITY, $str::STRINGS[52][6]) if i<4 and $SLautosave # prompt auto snapshot saving (only for altar and merchant)
+      Ext::Console.fprint_pos(1, EXT_DESCR_LINE+(i<3 ? 4 : 2), FOREGROUND_INTENSITY, prompt_str[1]) if caveat # promp limited transactions to avoid INT32 overflow
+      $console.cursor(1, EXT_DESCR_LINE+1)
+      if i<4
+        $console.print(prompt_str[2])
+        return Ext::Console::get_num(prompt_str_arg[1]) # input a number between 1-max, where max is the 2nd element of prompt_str_arg
+      else
+        $console.fprint(STYLE_B_YELLOW, $str::STRINGS[52][4])
+        return Ext::Console.pause(i, $str::STRINGS[52][5], true)
+      end
+    end
+    def descr_succ(prompt_str_line, prompt_str_index, *prompt_str_arg)
+      $console.cls_pos(0, prompt_str_line-1, ::Console::CONSOLE_WIDTH*(::Console::CONSOLE_HEIGHT-prompt_str_line+1))
+      Ext::Console.fprint_pos(1, prompt_str_line, STYLE_B_YELLOW, $str::STRINGS[prompt_str_index], *prompt_str_arg)
+    end
+    def post_shopping(temp_coord, temp_floor, var0_ind, var1_ind, prompt_str_line, prompt_str_index, *prompt_str_arg)
+      descr_succ(prompt_str_line, prompt_str_index, *prompt_str_arg)
+      $console.SE.transaction()
+      # when saving a temp data, temporarily teleport the player to the shop location, so when you load that temp data, you knows the temp data was saved before you used the "convience shop"
+      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\xc3", 1, 0) # TIMER1TIMER ret (disable; freeze) [it is unlikely that TSW will refresh during this short period of time, but just to be extra cautious]
+      writeMemoryDWORD(HERO_FXYD_ADDR, (temp_coord+11 << 16) | temp_floor) # LOWORD: floorID; HIWORD: index (11*y+x) of shop [you will be one cell below it (in TSW, this position is passable for 28F merchant and all altars), so the actual index is added by 11]
+      callFunc(SAVETEMP_PREP_ADDR) # this takes care of everything (see tswMPExt_3.asm)
+      callFunc(SL._sub_savetemp) if $SLautosave
+      # the actual status changes
+      var0_ind, var1_ind = STATUS_INDEX[var0_ind], STATUS_INDEX[var1_ind]
+      writeMemoryDWORD(STATUS_ADDR+(var0_ind << 2), $heroStatus[var0_ind]-prompt_str_arg[0])
+      writeMemoryDWORD(STATUS_ADDR+(var1_ind << 2), $heroStatus[var1_ind]+prompt_str_arg[1])
+      # afterwards, teleport the player back to the current location, and update the player's status display
+      callFunc(POSTPROCESS_1_ADDR)
+      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
+      showMsgTxtbox(prompt_str_index, *prompt_str_arg)
+    end
+  end
+
+  class Altar < Common
     ALTAR_FLOORS = {5=>46, 4=>32, 2=>12, 1=>4} # block => floor
     ALTAR_TILE_ID = 16 # 16-th tile is Altar (middle part)
 
@@ -96,6 +148,8 @@ module Ext
     # DFS algorithm instead of BFS
     module Connectivity
       module_function
+      def altar_pos(); return @t_i; end
+
       def main(floorID)
         if $heroStatus[STATUS_INDEX[4]] == floorID # you are currently on that floor
           return (@t_i = $mapTiles.index(-ALTAR_TILE_ID)) # whether you can access altar on the current floor (already processed in the `::Connectivity` module)
@@ -124,12 +178,7 @@ module Ext
         floodFill(index - 11) if y > 0
         floodFill(index + 11) if y < 10
       end
-
-      def altar_pos(); return @t_i+11; end # in TSW, the position right below altar is passable
     end
-
-    module_function
-    def need_init; @need_init = true; end # call this everytime tswExt starts; calculate once so the results can be used later
 
     def check() # return value is nil if OK; otherwise the id of reason to disable
       return 0 unless $mapTiles.include?(-11) or $mapTiles.include?(-12) # you must have access to stairs
@@ -139,7 +188,7 @@ module Ext
 
     def highestMultiplier()
       highestFloor = $heroStatus[STATUS_INDEX[5]]
-      ALTAR_FLOORS.each_pair {|i, f| return i if highestFloor >= f && self::Connectivity.main(f)}
+      ALTAR_FLOORS.each_pair {|i, f| return i if highestFloor >= f && Ext::Altar::Connectivity.main(f)}
       return nil # no altar visited
     end
 
@@ -150,6 +199,7 @@ module Ext
       return 3 if n >= MAX_VISITS # upper limit reached; don't further process; because can easily lead to int32 overflow
 
       g = $heroStatus[STATUS_INDEX[3]]/10 # [Gold/10]
+      @a_n = n*n+n+2 # a_{n+1}/10
       @s_n = (n*n+5)*n # 3*S_n/10
       q = g*3+@s_n
       x = Math.cbrt(q).to_i
@@ -165,11 +215,13 @@ module Ext
       return (x==MAX_VISITS ? false : nil) # no problem (but need to add a caveat if going to reach upper limit soon)
     end
 
+    def input_prompt(str, *argv) # override the superclass's prompt method, since more prompts need showing
+      $console.print(str[0], argv[0]) # altar level
+      Ext::Console.fprint_pos(1, EXT_DESCR_LINE+2, STYLE_B_GREEN, str[3], @a_n, argv[2]) # one power-up
+      Ext::Console.fprint_pos(1, EXT_DESCR_LINE+3, STYLE_B_RED, str[4], argv[1], argv[3], argv[4]) # max power-ups
+    end 
+
     def main(i) # 0=HP; 1=ATK; 2=DEF
-      if @need_init
-        @disable_reason = check()
-        @need_init = false
-      end # otherwise, calculated before, use previous results directly
       disable_reason = @disable_reason
       n = $heroStatus[STATUS_INDEX[11]] # previous altar visits
       base = ::Monsters.statusFactor
@@ -191,22 +243,12 @@ module Ext
         end
         disable_reason = 4 if m_max <= 0
       end
-      $console.cursor(1, EXT_DESCR_LINE)
-      if disable_reason
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[53][disable_reason])
-        $console.fprint(STYLE_B_RED, $str::STRINGS[54][0], n*n+n+2) if disable_reason == 2
-        return Ext::Console.pause(i, $str::STRINGS[52][3])
-      end
+      return descr_disabled(i, disable_reason, 53) if disable_reason
+
       if m_max > @m_max
         m_max = @m_max # this is the new upper limit after taking the final status value into consideration
       else
         disable_reason = false # add a caveat because upper limit will be soon exceeded
-      end
-
-      $console.print($str::STRINGS[54][1], @mul_max)
-      if $SLautosave
-        $console.cursor(EXT_DESCR_TITLE_END, EXT_DESCR_TITLE_LINE)
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[52][6])
       end
       val1 = base
       valm = base*m_max
@@ -215,52 +257,22 @@ module Ext
         val1 *= n+1 << 1
         valm *= x+n+1
       end
-      $console.cursor(1, EXT_DESCR_LINE+2)
-      $console.fprint(STYLE_B_GREEN, $str::STRINGS[54][2], n*n+n+2, val1)
-      $console.cursor(1, EXT_DESCR_LINE+3)
-      $console.fprint(STYLE_B_RED, $str::STRINGS[54][3], m_max, ((x*x+5)*x - @s_n)/3, valm)
-      if disable_reason == false
-        $console.cursor(1, EXT_DESCR_LINE+4)
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[54][4])
-      end
-      $console.cursor(1, EXT_DESCR_LINE+1)
-      $console.print($str::STRINGS[54][5])
-      m = Ext::Console::get_num(m_max)
-      return false if m <= 0 # cancel or enter 0
+      return false if (m = descr_avail(i, disable_reason==false, 54, @mul_max, m_max, val1, ((x*x+5)*x - @s_n)/3, valm)) <= 0 # cancel or enter 0
+
       x = m + n
       t = ((x*x+5)*x - @s_n)/3*10
       d = m*base # ATK: 2*m*multiplier; DEF: 4*m*multiplier
       d = (x+n+1)*m*base if i.zero? # HP: summation of (n+i)*100 for i=1 to m
-      s = $str::STRINGS[54][-1-i]
 
-      $console.cls_pos(0, EXT_DESCR_LINE+2, ::Console::CONSOLE_WIDTH*3)
-      $console.cursor(1, EXT_DESCR_LINE+3)
-      $console.fprint(STYLE_B_YELLOW, $str::STRINGS[55], t, d, s)
-      $console.SE.transaction()
-      # when saving a temp data, temporarily teleport the player to the altar location, so when you load that temp data, you knows the temp data was saved before you used the "convience altar"
-      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\xc3", 1, 0) # TIMER1TIMER ret (disable; freeze) [it is unlikely that TSW will refresh during this short period of time, but just to be extra cautious]
-      writeMemoryDWORD(HERO_FXYD_ADDR, (self::Connectivity.altar_pos() << 16) | ALTAR_FLOORS[@mul_max]) # LOWORD: floorID of altar; HIWORD: index (11*y+x) of altar
-      callFunc(SAVETEMP_PREP_ADDR) # this takes care of everything (see tswMPExt_3.asm)
-      callFunc(SL._sub_savetemp) if $SLautosave
-      # the actual status changes
-      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[i] << 2), $heroStatus[STATUS_INDEX[i]]+d)
-      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[3] << 2), $heroStatus[STATUS_INDEX[3]]-t)
-      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[11] << 2), $heroStatus[STATUS_INDEX[11]]+m)
-      # afterwards, teleport the player back to the current location, and update the player's status display
-      callFunc(POSTPROCESS_1_ADDR)
-      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
-      showMsgTxtbox(55, t, d, s)
+      post_shopping(Ext::Altar::Connectivity.altar_pos(), ALTAR_FLOORS[@mul_max], 3, i, EXT_DESCR_LINE+3, 55, t, d, $str::STRINGS[54][-1-i])
+      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[11] << 2), $heroStatus[STATUS_INDEX[11]]+m) # update increased altar visits in TSW
       return nil
     end
   end
 
-  module Merchant
-    MERCHANT_INDEX = 3 # this is the third extension item
+  class Merchant < Common
     MERCHANT_FLOOR = 28
     MERCHANT_COORD = 40 # X=3, Y=7
-    module_function
-    def need_init; @need_init = true; end
-
     def check() # return value is nil if OK; otherwise the id of reason to disable
       return 0 unless $mapTiles.include?(-11) or $mapTiles.include?(-12) # you must have access to stairs
       return 1 if $heroStatus[STATUS_INDEX[5]] < MERCHANT_FLOOR # you must have been to at least 28F before
@@ -276,66 +288,23 @@ module Ext
       end
     end
 
-    def main()
-      if @need_init
-        @disable_reason = check()
-        @need_init = false
-      end # otherwise, calculated before, use previous results directly
-      $console.cursor(1, EXT_DESCR_LINE)
-      if @disable_reason
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[56][@disable_reason])
-        return Ext::Console.pause(MERCHANT_INDEX, $str::STRINGS[52][3])
-      end
-
-      $console.fprint(STYLE_B_GREEN, $str::STRINGS[57][0], @maxKeys, @maxKeys)
-      if $SLautosave
-        $console.cursor(EXT_DESCR_TITLE_END, EXT_DESCR_TITLE_LINE)
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[52][6])
-      end
-      if @disable_reason == false
-        $console.cursor(1, EXT_DESCR_LINE+2)
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[57][1])
-      end
-      $console.cursor(1, EXT_DESCR_LINE+1)
-      $console.print($str::STRINGS[57][2])
-      k = Ext::Console::get_num(@maxKeys)
-      return false if k <= 0 # cancel or enter 0
-
-      g = k * 100
-      $console.cls_pos(0, EXT_DESCR_LINE+1, ::Console::CONSOLE_WIDTH*4)
-      $console.cursor(1, EXT_DESCR_LINE+2)
-      $console.fprint(STYLE_B_YELLOW, $str::STRINGS[58], k, g)
-      $console.SE.transaction()
-      # when saving a temp data, temporarily teleport the player to the merchant location, so when you load that temp data, you knows the temp data was saved before you used the "convience shop"
-      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\xc3", 1, 0) # TIMER1TIMER ret (disable; freeze) [it is unlikely that TSW will refresh during this short period of time, but just to be extra cautious]
-      writeMemoryDWORD(HERO_FXYD_ADDR, (MERCHANT_COORD+11 << 16) | MERCHANT_FLOOR) # LOWORD: floorID; HIWORD: index (11*y+x) of merchant (you will be one cell below it, so the actual index is MERCHANT_COORD+11)
-      callFunc(SAVETEMP_PREP_ADDR) # this takes care of everything (see tswMPExt_3.asm)
-      callFunc(SL._sub_savetemp) if $SLautosave
-      # the actual status changes
-      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[3] << 2), $heroStatus[STATUS_INDEX[3]]+g)
-      writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[8] << 2), $heroStatus[STATUS_INDEX[8]]-k)
-      # afterwards, teleport the player back to the current location, and update the player's status display
-      callFunc(POSTPROCESS_1_ADDR)
+    def main(i)
+      return descr_disabled(i, @disable_reason, 56) if @disable_reason
+      return false if (k = descr_avail(i, @disable_reason==false, 57, STYLE_B_GREEN, @maxKeys)) <= 0 # cancel or enter 0
+      post_shopping(MERCHANT_COORD, MERCHANT_FLOOR, 8, 3, EXT_DESCR_LINE+2, 58, k, k*100) # HERO_STATUS[8]=key_number -= k; HERO_STATUS[3]=gold_number += k*100
       callFunc(KEY_DISP_ADDR)
-      WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
-      showMsgTxtbox(58, k, g)
       return nil
     end
   end
 
-  module Monsters
-    MONSTERS_INDEX = 4 # this is the fourth extension item
-    @mapTilesRaw = "\0"*121
-    @facing = 1
-    module_function
-    def need_init; @need_init = true; end
-
+  class Monsters < Common
+    @@mapTilesRaw = "\0"*121
     def check() # return value is nil if OK; otherwise the id of reason to disable
       floor = $heroStatus[STATUS_INDEX[4]]
       return 1 if floor == 49 and $mapTiles.include?(-93) # 49F sorcerer
       curTile = $mapTiles[($heroStatus[STATUS_INDEX[7]]*11+$heroStatus[STATUS_INDEX[6]])]
       return 2 if curTile != 0 and curTile != 6 # not a "normal" road (i.e., without trap nor magic attack damage)
-      ReadProcessMemory.call_r($hPrc, MAP_ADDR+floor*123+2, @mapTilesRaw, 121, 0)
+      ReadProcessMemory.call_r($hPrc, MAP_ADDR+floor*123+2, @@mapTilesRaw, 121, 0)
       @monsterCount = @goldCount = 0
       @includeGiantMon = false # whether giant monsters (Octopus and Dragon) are included
       return 0 unless checkMon() # first, preliminary trial
@@ -356,7 +325,7 @@ module Ext
         gold = mDetail[4]
         @last_loc = i unless @includeGiantMon # if Octopus / Dragon head is present, teleport to that location because TSW will judge whether to erase all 9 cells according to player's current location; otherwise, teleport the last monster's location
         @monsterCount += 1
-        @mapTilesRaw[i] = "\6" # change to road = tile id 6
+        @@mapTilesRaw[i] = "\6" # change to road = tile id 6
         if mID == 18 # Octopus
           if $mapTiles[i] == -104 # head
             @includeGiantMon = true
@@ -365,7 +334,7 @@ module Ext
           end
         elsif mID == 19 # Dragon
           @includeGiantMon = true
-          @mapTilesRaw[i-1, 3] = @mapTilesRaw[i-12, 3] = @mapTilesRaw[i-23, 3] = "\6\6\6" # clear all 9 cells of Dragon
+          @@mapTilesRaw[i-1, 3] = @@mapTilesRaw[i-12, 3] = @@mapTilesRaw[i-23, 3] = "\6\6\6" # clear all 9 cells of Dragon
         end
         @goldCount += gold
       end
@@ -379,37 +348,22 @@ module Ext
       oy = $heroStatus[STATUS_INDEX[7]]
       begin # clear monster iteratively (it is possible that some monsters are blocked by some other monsters)
         # need to recalculate connectivity
-        $mapTiles = @mapTilesRaw.unpack(MAP_TYPE)
+        $mapTiles = @@mapTilesRaw.unpack(MAP_TYPE)
         $mapTiles.each_with_index {|x, i| ::Monsters.getMagDmg(i) if x == 6} if ::Monsters.check_mag # re-tag the tiles with magic attack damage (this recalculation is sometimes necessary because if a wizard is eliminated, its surrounding tiles will now be safe, no longer with magic attack damage)
         ::Connectivity.floodfill(ox, oy)
       end while checkMon()
     end
 
-    def main()
-      if @need_init
-        @disable_reason = check()
-        @need_init = false
-      end # otherwise, calculated before, use previous results directly
-      $console.cursor(1, EXT_DESCR_LINE)
-      if @disable_reason
-        $console.fprint(FOREGROUND_INTENSITY, $str::STRINGS[59][@disable_reason])
-        return Ext::Console.pause(MONSTERS_INDEX, $str::STRINGS[52][3])
-      end
+    def main(i)
+      return descr_disabled(i, @disable_reason, 59) if @disable_reason
+      if (r = descr_avail(i, false, 60, STYLE_B_GREEN, @monsterCount, @goldCount)) != true then return r end
 
-      $console.fprint(STYLE_B_GREEN, $str::STRINGS[60], @monsterCount, @goldCount)
-      $console.cursor(1, EXT_DESCR_LINE+1)
-      $console.fprint(STYLE_B_YELLOW, $str::STRINGS[52][4])
-      r = Ext::Console.pause(MONSTERS_INDEX, $str::STRINGS[52][5], true)
-      return r if r != true
-
-      $console.cls_pos(0, EXT_DESCR_LINE+1, ::Console::CONSOLE_WIDTH*4)
-      $console.cursor(1, EXT_DESCR_LINE+2)
-      $console.fprint(STYLE_B_YELLOW, $str::STRINGS[61], @monsterCount, @goldCount)
+      descr_succ(EXT_DESCR_LINE+2, 61, @monsterCount, @goldCount)
       $console.SE.explosion()
       # first, update map and hero's gold/position/facing direction
-      WriteProcessMemory.call_r($hPrc, MAP_ADDR+$heroStatus[STATUS_INDEX[4]]*123+2, @mapTilesRaw, 121, 0)
+      WriteProcessMemory.call_r($hPrc, MAP_ADDR+$heroStatus[STATUS_INDEX[4]]*123+2, @@mapTilesRaw, 121, 0)
       writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[3] << 2), $heroStatus[STATUS_INDEX[3]]+@goldCount)
-      writeMemoryDWORD(HERO_FACE_ADDR, @facing) if @facing # facing down
+      writeMemoryDWORD(HERO_FACE_ADDR, @facing) if @facing # change hero facing direction
       y, x = @last_loc.divmod(11)
       writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[6] << 2), x)
       writeMemoryDWORD(STATUS_ADDR+(STATUS_INDEX[7] << 2), y) # teleport to the last monster's location (This is necessary for Dragon and Octopus, because TSW will judge whether to erase all 9 cells according to player's current location)
@@ -450,11 +404,14 @@ module Ext
 
     case c
     when 1..3
-      r = Altar.main(c-1)
+      @altar = Ext::Altar.new unless @altar
+      r = @altar.main(c-1)
     when 4
-      r = Merchant.main()
+      @merchant = Ext::Merchant.new unless @merchant
+      r = @merchant.main(3)
     when 5
-      r = Monsters.main()
+      @monsters = Ext::Monsters.new unless @monsters
+      r = @monsters.main(4)
     else
       $console.cursor(1, EXT_DESCR_LINE)
       r = Ext::Console.pause(c-1, 'TODO') # TODO
@@ -493,8 +450,7 @@ module Ext
     $str::STRINGS[51].each_with_index {|x, i| $console.print_pos(1, i+1, x)} # \r\n does not seem to be properly treated as line breaks using `WriteConsoleOutputCharacter`, so have to do this line by line
     $console.p_rect(2, 1, 1, EXT_OPTIONS_LEN, EXT_OPTIONS, STYLE_B_YELLOW_U)
     $console.cls_pos(0, EXT_OPTIONS_LEN+1, ::Console::CONSOLE_WIDTH, false, 95) # '_'.ord
-    $console.cursor(1, EXT_DESCR_TITLE_LINE)
-    $console.fprint(STYLE_B_YELLOW_U, $str::STRINGS[52][0])
+    Ext::Console.fprint_pos(1, EXT_DESCR_TITLE_LINE, STYLE_B_YELLOW_U, $str::STRINGS[52][0])
     printDefaultDescr()
   end
 
@@ -517,10 +473,7 @@ module Ext
     $console.setConWinProp(false)
     return if $console.show(true).nil? # fail
 
-    Altar.need_init
-    Merchant.need_init
-    Monsters.need_init
-
+    @altar = @merchant = @monsters = nil # clear previous objects; need to initialize them again
     $console.SE.selection()
     res = nil
     loop { break unless (res=ExtMain()) }

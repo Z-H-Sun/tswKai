@@ -73,7 +73,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       ChkBox_CheckMsg(i, msg)
       next unless IsDialogMessage.call($hWndDialog, $buf).zero?
     elsif msgType == WM_HOTKEY
-      if (dummy = ($keybdinput_num > 0xFF)) # this hotkey event only serves to "steal" the focus from another foreground process
+      if $keybdinput_num > 0xFF # this hotkey event only serves to "steal" the focus from another foreground process
         $keybdinput_num &= 0xFF
         next # don't do extra stuff
       end

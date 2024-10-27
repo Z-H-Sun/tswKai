@@ -150,8 +150,8 @@ process has already been running (pID = %d).',
 APP_NAME+' Extensions - pID=%p', # 50
 ['[ ] Raise HP by paying gold to the highest altar visited', '[ ] Raise ATK by paying gold to the highest altar visited', '[ ] Raise DEF by paying gold to the highest altar visited', '[ ] Sell yellow keys to the 28F merchant to earn gold', '[ ] Clear accessible zero-damage monsters on this floor', '[ ] Clear all temporary data and reset snapshot count'],
 ['Description:', 'Press a Numeric / Arrow Key to select an item shown above, ', ' or press ESC / SPACE / ENTER to return to TSW.', "\n Press any key to continue...\n Or press a Numeric / Arrow Key to choose another item.", 'Press SPACE / ENTER to confirm, ', "or any other key to cancel\n (Numeric / Arrow Key = cancel & choose another item).", '(A snapshot will be saved beforehand)'],
-["Function unavailable.\n Please go to a place where you can access a stair.", 'Function unavailable: You have not visited any altars yet.', 'Function unavailable: Not enough gold for future power-ups  ', "Function unavailable to avoid INT32 overflow.\n You have power-uped for no less than 9999 times.", "Function unavailable to avoid INT32 overflow.\n You have already had a high status value."],
-['(The next power-up needs %d0 gold).', 'You will be using the Block-%d altar.', 'For next 1: Offer %d0 gold = Raise %d pts.', 'At most %d: Offer %d0 gold = Raise %d pts.', '(Cannot do more power-ups to avoid INT32 overflow)', 'Please enter the number of power-ups ', 'DEF', 'ATK', 'HP'],
+["Function unavailable.\n Please go to a place where you can access a stair.", 'Function unavailable: You have not visited any altars yet.', 'Function unavailable: Not enough gold for future power-ups  ', "Function unavailable to avoid INT32 overflow.\n You have power-uped for no less than 9999 times.", "Function unavailable to avoid INT32 overflow.\n You have already had a high status value.", '(The next power-up needs %d0 gold).'],
+['You will be using the Block-%d altar.', '(Cannot do more power-ups to avoid INT32 overflow)', 'Please enter the number of power-ups ', 'For next 1: Offer %d0 gold = Raise %d pts.', 'At most %d: Offer %d0 gold = Raise %d pts.', 'DEF', 'ATK', 'HP'],
 'Offered %d gold and raised %d pts of %s!', # 55
 ["Function unavailable.\n Please go to a place where you can access a stair.", 'Function unavailable: You have not visited 28F yet.', 'Function unavailable: No yellow keys to sell.', "Function unavailable to avoid INT32 overflow.\n You have already had a great amount of gold."],
 ['At most %d key(s) can be sold (100 gold ea). ', '(Cannot sell more keys to avoid INT32 overflow)', 'Please enter the amount to sell '],
@@ -305,8 +305,8 @@ APP_NAME+' 设置（动态）- pID=%p',
 APP_NAME+' 扩展功能 - pID=%p', # 50
 ['[ ] 供奉金币，提升数次生命力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次攻击力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次防御力（使用目前所到访过的最高祭坛）', '[ ] 向28层商人卖出指定数量的黄钥匙，赚取金币', '[ ] 清除当前楼层中可直接到达的所有零伤害怪物', '[ ] 清除所有临时存档，并重置临时存档节点编号'],
 ['说明:', '按 方向键 或 对应数字键 选定一个上方所列的项目；', '或按 ESC、  空格 或 回车 键以直接返回游戏。', "\n 请按 任意键 继续，或按 方向键 / 对应数字键 选定其他项目。", '请按 空格 / 回车键确认操作，', "或按 其他任意键 取消；\n 其中，按 方向键 / 对应数字键 可以在取消后选定其他项目。", '(进行此操作前会保存一个临时存档节点)'],
-['请移动到楼梯口（或与之直接连通处），否则无法使用快捷祭坛。', '玩家未曾到访过任一祭坛，因此无法使用快捷祭坛功能。', '当前金币数量不够下一次的祭坛加点，因此无法使用快捷祭坛功能  ', '玩家已加点 ≥9999 次，已暂停快捷祭坛功能以防整数溢出。', '玩家属性值太高，已暂停快捷祭坛功能以防整数溢出。'],
-['(下次祭坛加点需要 %d0 金币)。', '正在使用第 %d 区域祭坛。', '若只加 1 次，供奉 %d0 金币，可提升 %d 点；', '最多加 %d 次，供奉 %d0 金币，可提升 %d 点。', '(为防止属性值过高而导致整数溢出，已限制加点次数上限)', '请输入加点次数 ', '防御力', '攻击力', '生命力'],
+['请移动到楼梯口（或与之直接连通处），否则无法使用快捷祭坛。', '玩家未曾到访过任一祭坛，因此无法使用快捷祭坛功能。', '当前金币数量不够下一次的祭坛加点，因此无法使用快捷祭坛功能  ', '玩家已加点 ≥9999 次，已暂停快捷祭坛功能以防整数溢出。', '玩家属性值太高，已暂停快捷祭坛功能以防整数溢出。', '(下次祭坛加点需要 %d0 金币)。'],
+['正在使用第 %d 区域祭坛。', '(为防止属性值过高而导致整数溢出，已限制加点次数上限)', '请输入加点次数 ', '若只加 1 次，供奉 %d0 金币，可提升 %d 点；', '最多加 %d 次，供奉 %d0 金币，可提升 %d 点。', '防御力', '攻击力', '生命力'],
 '供奉了 %d 金币，提升了 %d 点%s！', # 55
 ['请移动到楼梯口（或与之直接连通处），否则无法使用快捷商店。', '玩家未曾到访过 28 层，因此无法使用快捷商店功能。', '玩家当前无黄钥匙可卖。', '玩家当前金币数太高，已暂停此功能以防整数溢出。'],
 ['最多可卖出 %d 把黄钥匙 (每把获得 100 金币)。', '(为防止金币数过高而导致整数溢出，已限制卖出数量上限)', '请输入卖出钥匙数量 '],
