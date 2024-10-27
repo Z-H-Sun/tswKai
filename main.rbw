@@ -34,7 +34,7 @@ def init()
   hDC = GetDC.call_r($hWnd)
   $hMemDC = CreateCompatibleDC.call_r(hDC)
   $hBMP = CreateCompatibleBitmap.call_r(hDC, 40, 80) # 40*80 memory bitmap; the top 40*40 region is for tswExt icon (see next line); the bottom 40*40 region is for legacy mode of tswMP, to store the tile image at the current cursor position (see tswMP.rb)
-  SetDIBits.call_r(hDC, $hBMP, 0, 40, Ext::EXT_BMP[1], Ext::EXT_BMP[0], 0)
+  SetDIBits.call_r(hDC, $hBMP, 0, 40, EXT_BMP[1], EXT_BMP[0], 0)
   $hBMP0 = SelectObject.call_r($hMemDC, $hBMP)
   ReleaseDC.call($hWnd, hDC)
 

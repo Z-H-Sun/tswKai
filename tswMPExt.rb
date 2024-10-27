@@ -19,13 +19,13 @@ module Math
   end
 end
 
-module Ext
   open('tswMPExt.bmp', 'rb') do |f| # temporary treatments here; in the future, the contents of EXT_BMP will be incorporated into tswMPDat.rb
     f.seek(14) # skip BMP file header
     EXT_BMP = [f.read(64), # first 40 bytes are BITMAPINFOHEADER, followed by 6*4 bytes of color table (6 RGBA colors in total)
       f.read(800)] # then, 40*40 pixel data, each pixel taking up 4 bits (half byte)
   end
 
+module Ext
   MAX_STATUS = 999999999 # to avoid int32 overflow
   MAX_VISITS = 9999
 
@@ -33,6 +33,8 @@ module Ext
   SAVETEMP_PREP_ADDR = 0x480944 # preparations before saving a temp data (after using the "convience shop" function)
   POSTPROCESS_1_ADDR = 0x480980 # post processing after using the "convience shop" function
   POSTPROCESS_2_ADDR = 0x4809A8 # post processing after using the "clear monsters" function
+  LOAD_TEMP_ANY_ADDR = 0x4809CC # Load a specific temp data
+  LOAD_TEMP_ANY_STRING_ADDR = 0x454748 # const string for the above subroutine
 
   EXT_WPARAM = 2 # signature for the WM_APP message (so we can know the Msg means to open the tswExt console)
   EXT_OPTIONS = '012345' # items 0-5
@@ -295,6 +297,17 @@ module Ext
       callFunc(KEY_DISP_ADDR)
       return nil
     end
+
+    def temp_data_deletion_main(i) # used to delete all temp data (not relevant to 28F merchant)
+      if (r = descr_avail(i, false, 62, STYLE_B_RED)) != true then return r end
+      if msgboxTxt(62, MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDNO then $console.SE.cancellation(); return false end
+
+      callFunc(SL._sub_init)
+      descr_succ(EXT_DESCR_LINE+2, 63)
+      $console.SE.deletion()
+      showMsgTxtbox(63)
+      return nil
+    end
   end
 
   class Monsters < Common
@@ -412,9 +425,9 @@ module Ext
     when 5
       @monsters = Ext::Monsters.new unless @monsters
       r = @monsters.main(4)
-    else
-      $console.cursor(1, EXT_DESCR_LINE)
-      r = Ext::Console.pause(c-1, 'TODO') # TODO
+    when 6 # delete temp data
+      @merchant = Ext::Merchant.new unless @merchant # don't take the trouble to create a new object; just pick an existing one with the smallest amount of calculation on initialization
+      r = @merchant.temp_data_deletion_main(5)
     end
 
     if r
@@ -502,12 +515,14 @@ module MPExt
   @_sub_res = 0x4ba668
   @_sub_fin = 0x4ba6bc
 
-  MP_PATCH_BYTES_3[-1][1] += 136
-  MP_PATCH_BYTES_3[-1][2] += "\xB9\x98\x86\x4B\x00\xBA\x4C\xC7\x48\x00\xFF\x32\x8B\x01\x88\x02\x8B\x41\x08\x88\x42\x01\x8B\x41\x0C\x88\x42\x02\xA1\xE8\x87\x4B\x00\x88\x42\x03\x66\x8F\x01\x66\x58\xB2\x0B\xF6\xF2\x88\x61\x08\x88\x41\x0C\xC6\x05\xE8\x87\x4B\x00\x04\xC3\x90\xB9\x98\x86\x4B\x00\x8B\x15\x4C\xC7\x48\x00\x88\x11\x88\x71\x08\xC1\xEA\x10\x88\x51\x0C\x88\x35\xE8\x87\x4B\x00\xC6\x05\x8C\xC5\x48\x00\x00\xE9\x8C\xC1\xFC\xFF\x50\xE8\x8A\x22\xFC\xFF\x8B\x04\x24\xE8\xFE\xFE\xFF\xFF\x8B\x04\x24\xE8\x76\xC1\xFC\xFF\x8B\x04\x24\xE8\x1E\x5B\xFE\xFF\x58\xE9\x40\xB2\xFC\xFF" # temporary treatments here; in the future, the modified contents will be incorporated into tswMPDat.rb
+  MP_PATCH_BYTES_3[-1][1] += 224
+  MP_PATCH_BYTES_3[-1][2] += "\xB9\x98\x86\x4B\x00\xBA\x4C\xC7\x48\x00\xFF\x32\x8B\x01\x88\x02\x8B\x41\x08\x88\x42\x01\x8B\x41\x0C\x88\x42\x02\xA1\xE8\x87\x4B\x00\x88\x42\x03\x66\x8F\x01\x66\x58\xB2\x0B\xF6\xF2\x88\x61\x08\x88\x41\x0C\xC6\x05\xE8\x87\x4B\x00\x04\xC3\x90\xB9\x98\x86\x4B\x00\x8B\x15\x4C\xC7\x48\x00\x88\x11\x88\x71\x08\xC1\xEA\x10\x88\x51\x0C\x88\x35\xE8\x87\x4B\x00\xC6\x05\x8C\xC5\x48\x00\x00\xE9\x8C\xC1\xFC\xFF\x50\xE8\x8A\x22\xFC\xFF\x8B\x04\x24\xE8\xFE\xFE\xFF\xFF\x8B\x04\x24\xE8\x76\xC1\xFC\xFF\x8B\x04\x24\xE8\x1E\x5B\xFE\xFF\x58\xE9\x40\xB2\xFC\xFF\x53\x8B\xD8\xB9\xE8\x9D\x48\x00\x51\xB8\x48\x47\x45\x00\x8D\x50\x10\xE8\xBA\xC5\xFA\xFF\x84\xC0\x59\x74\x3B\x8B\x11\x21\xD1\x74\x2F\x83\x7A\xFC\x03\x72\x12\xC7\x02\x2D\x35\x00\x00\xB8\xA0\x47\x45\x00\xE8\x75\xC5\xFA\xFF\xEB\xCA\x8A\x02\x8A\x4A\x01\x80\xE9\x3A\x80\xC1\x0A\x73\xE1\x3C\x2D\x74\x06\x3C\x2B\x75\xD9\xF6\xD9\xFF\x15\xB0\x47\x45\x00\x5B\xC3" # temporary treatments here; in the future, the modified contents will be incorporated into tswMPDat.rb
 
   module_function
   def init
     MP_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0], i[2], i[1], 0)}
+    inputbox_load_temp_str = ($str::INPUTBOX_LOADTEMP_PROMPTS+[SL._loc_load_temp_2]).pack('a16a72a16L')
+    WriteProcessMemory.call_r($hPrc, Ext::LOAD_TEMP_ANY_STRING_ADDR, inputbox_load_temp_str, inputbox_load_temp_str.size, 0)
 
     callFunc(@_sub_fin) # this is just to guarantee no GDI leak, in case the previous run of tswKai3 failed to clean up on exit
     if $MPnewMode

@@ -26,6 +26,7 @@ FORMKEYDOWN_ADDR = 0x60BD8 + BASE_ADDRESS
 LOAD8_CLICK_ADDR = 0x7e614 + BASE_ADDRESS
 SAVE_WORK_ADDR = 0x7eadc + BASE_ADDRESS
 
+GET_MOD_HANDLE_ADDR = 0x12b0 + BASE_ADDRESS
 LOAD_LIBRARY_ADDR = 0x4bfc + BASE_ADDRESS
 GET_PROC_ADDR_ADDR = 0x4b84 + BASE_ADDRESS
 CLOSE_HANDLE_ADDR = 0x1228 + BASE_ADDRESS
@@ -118,7 +119,9 @@ module SL
   class << self
     attr_reader :savedat_path
     attr_reader :_tmp_id
+    attr_reader :_sub_init
     attr_reader :_sub_savetemp
+    attr_reader :_loc_load_temp_2
   end
   module_function
   def init
@@ -185,6 +188,7 @@ module SL
     @_sub_checkfloor = $lpNewAddr + 0x85c
     @_sub_checkitem = $lpNewAddr + 0x8d0
     @_sub_checkHotkey = $lpNewAddr + 0x924
+    @_loc_load_temp_2 = $lpNewAddr + 0x970
     @TTSW10_formkeydown_offset_sub_checkHotkey = @_sub_checkHotkey-FORMKEYDOWN_ADDR-5
 
     injBuf = @tmp_filename.ljust(MAX_PATH+10, "\0") + # 0000...0108: string tmp_filename; 0108...010C: dword bytesRead; 010C: byte tmp_id
@@ -346,6 +350,14 @@ $str::MSG_LOAD.ljust(0x20, "\0") # 09B0...09D0  string msg_load
     enableAutoSave($SLautosave)
 
     callFunc(@_sub_init)
+
+    injBuf2 = [0xbb53, $lpNewAddr+0x560].pack('SL') + # after the old `sub_init` has been called, its space can be overwritten by new functions
+"\x83\x3B\0\x75\x17\x68\xFC\xB5\x4B\x00\xE8" + [GET_MOD_HANDLE_ADDR-$lpNewAddr-0x525,
+0x68, $lpNewAddr+0x564, 0xe850, GET_PROC_ADDR_ADDR-$lpNewAddr-0x530,
+0x389, 0xdb31, 0xb9, @_tmp_id, 0x41c61988, 0x8b66fe02, 0x5d04, @_id_str,
+0xa366, @tmp_id_addr, 0x68, @_tmp_filename, 0x15ff, $lpNewAddr+0x560].pack('lCLSlSSCLLLSLSLCLSL') +
+"\xFE\xCB\x75\xE3\x5B\xEB\x71\x90\0\0\0\0DeleteFileA\0"
+    WriteProcessMemory.call_r($hPrc, @_sub_init, injBuf2, injBuf2.size, 0) # the new `sub_init` for replacement
   end
   def compatibilizeExtSL(bEnable)
     SL_PATCH_BYTES_1.each {|i| WriteProcessMemory.call_r($hPrc, i[0], bEnable ? (i[3] % [instance_variable_get(i[4])].pack('l')) : i[2], i[1], 0)}

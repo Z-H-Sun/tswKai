@@ -396,7 +396,7 @@ EXTRA:0108	bytesRead	dd 0	; dummy parameter passed to `ReadFile` and `WriteFile`
 EXTRA:010C	tmp_id	db 0	; current temp data index
 EXTRA:010D		align 02
 EXTRA:010E	last_coordinate	dw 00FE	; = x+y*16+floor*256
-			; do not save temp data with the same `last_coordinate`; set as 254 at the start of / after loading a game, so no coordinate will be equal to this value (i.e. always save a first temp data)
+			; do not save temp data with the same `last_coordinate`; set as 254 at the start of a game and 255 after loading a game, so no coordinate will be equal to this value (i.e. always save a first temp data)
 
 		; char dat_filename[0x108]
 EXTRA:0110	dat_filename	db 'C:\Program Files (x86)\Tower of the Sorcerer\Savedat\%y%m%d_0.dat',0
@@ -456,7 +456,7 @@ EXTRA:04C4	dialog_struct:
 
 
 		;===== SUBROUTINE =====
-EXTRA:0510	sub_init	proc near	;load open/save dialog lib; load last saved tmp data id (default 0 and create hidden file if file not exist)
+EXTRA:0510	sub_init	proc near	; load open/save dialog lib; load last saved tmp data id (default 0 and create hidden file if file not exist)
 
 			push offset comdlg32_dllname
 EXTRA:0515		call LoadLibraryA	; the loaded functions will be reused once they are loaded for the first time, so no need to `FreeLibrary`
@@ -493,6 +493,46 @@ EXTRA:0572	loc_ret1:
 
 		sub_init	endp
 EXTRA:0573	align 04
+
+
+		;===== SUBROUTINE =====
+		;======================
+		; in replacement of the original sub_init
+		;======================
+EXTRA:0510	sub_init	proc near	; clear all existing temp data files
+		; because the old sub_init needs calling for only once and will be no longer useful afterwards
+		; new codes for a new function, clear all temp data, can be added to overwrite this space
+			push ebx
+EXTRA:0511		mov ebx, offset deletefile_addr
+EXTRA:0516		cmp [ebx], 0
+EXTRA:0519		jne loc_init_perform	; already got the address for DeleteFileA
+EXTRA:051B		push BASE:BB5FC	; "kernel32.dll"
+EXTRA:0520		call BASE:012B0	; kernel32.GetModuleHandleA
+EXTRA:0525		push offset deletefile_funcname
+EXTRA:052A		push eax
+EXTRA:052B		call BASE:04B84	;kernel32.GetProcAddress
+EXTRA:0530		mov [ebx], eax	; store address for DeleteFileA
+EXTRA:0532	loc_init_perform:
+			xor ebx,ebx
+EXTRA:0534		mov ecx, offset tmp_id
+EXTRA:0539		mov byte ptr [ecx], bl	; reset tmp_id to be 0
+EXTRA:053B		mov byte ptr [ecx+02], -2	; reset last_coordinate to be 254 (0xFE; see its accompanying comment)
+EXTRA:053F	loc_init_loop:
+			mov ax, word ptr [ebx*2+id_str]	; change tmp data filename
+EXTRA:0547		mov [tmp_id_addr], ax
+EXTRA:054D		push offset tmp_filename
+EXTRA:0552		call [deletefile_addr]
+EXTRA:0558		dec bl
+EXTRA:055A		jne loc_init_loop
+
+EXTRA:055C		pop ebx
+EXTRA:055D		jmp sub_rec_tmpid	; update content of 'autoID.tmp'
+
+		sub_init	endp
+EXTRA:055F	align 04
+
+EXTRA:0560	deletefile_addr	dd 0
+EXTRA:0564	deletefile_funcname	db 'DeleteFileA',0
 
 
 		;===== SUBROUTINE =====

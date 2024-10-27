@@ -504,6 +504,11 @@ module HookProcAPI
           unhookM
           PostMessage.call(0, WM_APP, Ext::EXT_WPARAM, 0) # this msg will be handled in main.rbw, and tswExt console interface will show up. This action must be postponed and should not be done within the hook callback function to avoid significant system performance degradation
           block = true; break
+        elsif key == (SL_HOTKEYS[2] & 0xFF)
+          disposeHDC # de-active; restore
+          unhookM
+          callFunc_noBlock(Ext::LOAD_TEMP_ANY_ADDR)
+          block = true; break
         else abandon(); break # if any non-functional key is pressed (same above), cancel this operation immediately; this is to avoid potential conflicts in certain scenarios (e.g., when you press Enter after talking to an NPC (in this case, because another key is pressed, the previous hotkey won't generate any more KeyDown events); switching to a different window; etc.)
         end
       end

@@ -159,6 +159,8 @@ APP_NAME+' Extensions - pID=%p', # 50
 ["Function unavailable.\n No zero-damage monsters can be directly accessed.", 'Function unavailable during boss fight on 49F.', "Function unavailable.\n Please go to a normal road (i.e. no trap or magic damage).", "Function unavailable to avoid INT32 overflow.\n You have already had a great amount of gold."],
 'Proceed to kill %d monsters to obtain %d gold?', # 60
 'Killed %d monster(s) and got %d gold!',
+'Are you sure you want to do this, which cannot be undone?',
+'All snapshots deleted! Snapshot index has been reset to 0.',
 
 'Inf', # -2
 '.' # -1
@@ -314,6 +316,8 @@ APP_NAME+' 扩展功能 - pID=%p', # 50
 ['不存在可以直接到达的零伤害怪物。', '此功能在 49 层 Boss 战期间禁用。', '请移动到普通路面（无陷阱、无魔法伤害）才可使用此功能。', '玩家当前金币数太高，已暂停此功能以防整数溢出。'],
 '当前可消灭 %d 只零伤害怪物，并获得 %d 金币。', # 60
 '消灭了 %d 只怪物，获得了 %d 金币！',
+'是否清空目前为止所有的临时存档？此操作无法撤销！',
+'所有临时存档已删除！临时存档节点编号已重置为零。',
 
 '∞', # -2
 '。' # -1

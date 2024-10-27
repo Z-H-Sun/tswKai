@@ -368,3 +368,75 @@ sub_postprocess_2:
 	call 4664E4	; TTSW10.moncheck (some monsters, after being defeated, will trigger special events; do this check)
 	pop eax
 	jmp 44BC0C	; TTSW10.timer2on (execute the special events, if present)
+
+
+;;;;;;;;;; Load a specific temp data ;;;;;;;;;;
+; pop up a input box, which allows input with format of "-N" or "+N"
+; then load a temp data that is N snapshots before or after the current one
+; 4809CC:
+sub_loadtemp_any:
+	push ebx
+	mov ebx, eax	; [ebx]=TTSW10 handle, which is required for sub_loadtemp in tswSL.asm
+
+	loc_loadtemp_any_noprolog:
+	mov ecx, 489DE8	; 489DE8: a vacant DWORD (within the block for the polyline and highlight functions)
+	; [IN,OUT] used to receive the pointer of user input text, also used to serve as the pointer of the initial text of the input box
+	; initially, NULL, indicating null string
+	push ecx	; store this value
+	mov edx, 454748	; input box title; "Load Temp Data"; see below
+	lea eax, [edx+10]	; input box label; "Load the prev/next N-th (0-9) snapshot:\n\n\nFormat: -N / +N / blank (N=0)"; see below
+	call 42CF9C	; _Unit9.InputBox
+	test al, al	; return value; if 0, it means the user cancelled the input
+	pop ecx	; retrieve input text pointer; balance the stack
+	je +3B	; loc_loadtemp_any_ret (when user cancelled)
+	; if the user confirmed the input, continue processing below...
+; Briefly, explain how Delphi implements "string":
+; char array, starting from offset XXXXXX, will align to 4-byte boundary
+; a DWORD integer, at offset XXXXXX-4, is the length of the text contents, excluding the trailing \0
+; a DWORD integer, at offset XXXXXX-8, is the reference count of the string object; each time @LStrClr is called, the count is decreased by 1, and the memory space of the whole string object will be freed once it reaches 0; if the count is -1 (i.e., 0xFFFFFFFF), it means the string is a const string, and its reference count will never decrease, meaning it will never be freed
+; in Delphi's built-in functions, if it receive a string pointer in its paramters and alters its pointing address to a different string (e.g., this InputBox function; other examples are @LStrCat, @LStrAsg etc.), the original string object will be properly freed when necessary (by calling @LStrClr), so we don't need to do extra processing (such as manually calling @LStrClr) on our own
+; another advantage of leaving the string object alone is that the previous user's input will automatically serve as the initial text the next time the input box is shown
+	mov edx, [ecx]	; actual char array address
+	and ecx, edx	; since ecx is not 0, the result will be 0 only when edx is 0 (which triggers je below, and in this case ecx will also become 0)
+	je +2F	; loc_loadtemp_any_ret_loadtemp; empty str; cl=0
+
+	cmp [edx-4], 3	; string length
+	jb +12	; should only be 0, 1, or 2; otherwise, invalid input; need to retry
+
+	loc_loadtemp_any_retry:
+	mov [edx], "-5"	; [2D 35 00 00]; change the example text in the next input box to be "-5"
+	mov eax, 4547A0	; message text; "Invalid input!"
+	call 42CF78	; _Unit9.ShowMessage
+	jmp loc_loadtemp_any_noprolog	; start from the beginning
+
+	mov al, [edx]	; first char
+	mov cl, [edx+1]	; second char
+	sub cl, 3A	; ascii of '0'-'9' is 0x30 to 0x39
+	add cl, 0A	; on one hand, after these two operations, cl will become 0-9 if it was '0'-'9'
+	jae loc_loadtemp_any_retry	; on the other hand, CF register will only be on when cl was '0'-'9'; otherwise, invalid input
+	cmp al, "-"	; [2D] the first char should be either '-' or '+'
+	je +6	; when '-', no need to do anything, because cl for sub_loadtemp in tswSL.asm means (current_tempdata_id - target_tempdata_id), so a positive value of cl means rewinding
+	cmp al, "+"
+	jne loc_loadtemp_any_retry; when neither '-' nor '+', invalid input
+	neg cl	; when '+', need to change the sign of cl; a negative value of cl for sub_loadtemp in tswSL.asm means fastforwarding
+
+	loc_loadtemp_any_ret_loadtemp:
+	call [4547B0]	; pointer of `sub_loadtemp` in tswSL.asm
+
+	loc_loadtemp_any_ret:
+	pop ebx
+	ret
+
+454748:	; vacant space from 454748 to 4547B4, saved by rewriting TTSW10.kaidanwork (see tswMPExt_2.asm)
+	; unlike other Delphi-built-in functions, which need to specify [XXXXXX-8] and [XXXXXX-4] for input string objects as reference count and text length respectively, since the input box title and label texts are const string objects (won't be freed), no such requirements are necessary
+	; however, the caveat is that [XXXXXX-4] should not be 0, otherwise Delphi might misunderstand it as null string
+	db 'Load Temp Data',0,0	; of course, for a Chinese version, the text here will be the corresponding Chinese text; same below
+454758:
+	db 'Load the prev/next N-th (0-9) snapshot:',0A,0A,0A
+	; the width of the input box is limited, so the label text can't be too long in one line
+	; there is still some space for a second line of label in the input box, which needs three line breaks to be placed at the correct position
+	db 'Format: -N / +N / blank (N=0)',0
+4547A0:
+	db 'Invalid input!',0,0
+4547B0:
+	db 00000970	; the pointer of `loc_load_temp_2` in tswSL.asm, which is $lpNewAddr+0x970 (here shows an example, not an accurate value)

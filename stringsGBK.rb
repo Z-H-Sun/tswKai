@@ -17,6 +17,10 @@ module Str
     MSG_LOAD = 'PLCHLDR tempdata - autoID.tmp'
     MSG_LOAD_SUCC = 'Loaded: '
     MSG_LOAD_UNSUCC = 'No such '
+    INPUTBOX_LOADTEMP_PROMPTS = ['Load Temp Data', 'Load the prev/next N-th (0-9) snapshot:
+
+
+Format: -N / +N / blank (N=0)', 'Invalid input!']
 
     ERR_MSG = ['Unsupported system or Ruby version (neither 32-bit or 64-bit).',
 'The hotkey `MP_KEY1` must be set.',
@@ -42,6 +46,10 @@ Prototype="%s", ReturnType="%s", ARGV=[%s]']
     MSG_LOAD = '占位符  临时存档 - autoID.tmp'
     MSG_LOAD_SUCC = '已读取自'
     MSG_LOAD_UNSUCC = '不存在此'
+    INPUTBOX_LOADTEMP_PROMPTS = ['读取临时存档 ', '读取之前/之后第N个节点 (N=0~9):
+
+
+输入格式为 -N 或 +N 或留空（代表N=0）', '输入值无效！']
 
     ERR_MSG = ['不受支持的系统或 Ruby 版本（不是 32 位或 64 位）。',
 '必须为快捷键 `MP_KEY1` 赋值。',
