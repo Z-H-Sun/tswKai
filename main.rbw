@@ -57,7 +57,7 @@ def showWelcomingMsg()
   end
   keySL = Array.new(4)
   (0..3).each {|i| keySL[i] = getKeyName(SL_HOTKEYS[i] >> 8, SL_HOTKEYS[i] & 0xFF)}
-  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, keySL[0], keySL[1], keySL[2], keySL[3], $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0], $regKeyName[0])
+  msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, getKeyName(0, EXT_KEY), keySL[0], keySL[1], keySL[2], keySL[3], getKeyName(0, MP_KEY1)+'+'+getKeyName(0, SL_HOTKEYS[2] & 0xFF), $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0], $regKeyName[0])
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2=console
   while !PeekMessage.call($buf, 0, 0, 0, 1).zero?

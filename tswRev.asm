@@ -59,7 +59,7 @@ BASE:7F46C	TTSW10.Middle1Click	proc near
 			call BASE:7F4E0	; => TTSW10.speedmiddle
 				; ~~this space will be used by tswKai3 `callFunc` method~~
 				; ~~so do not change these codes here~~
-				; No, it will not any more. The newer treatment has adopted a better trick and abandoned using this space (see tswMPExt_3.asm)
+				; No, it will not any more. The newer treatment (introduced in commit 0e55437) has adopted a better trick and abandoned using this space (see tswMPExt_3.asm)
 				; However, for compatibility consideration, don't touch this in the future
 BASE:7F471		ret
 		TTSW10.Middle1Click	endp

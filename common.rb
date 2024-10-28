@@ -243,7 +243,7 @@ unless $Exerb # EXERB GUI has its own error handler window
   end
 end
 
-APP_SETTINGS_FNAME = APP_NAME + 'Option.txt'
+APP_SETTINGS_FNAME = 'tswKai3Option.txt'
 APP_ICON_ID = 1 # Icons will be shown in the GUI of this app; this defines the integer identifier of the icon resource in the executable
 TSW_CLS_NAME = 'TTSW10'
 BASE_ADDRESS = 0x400000
@@ -397,7 +397,7 @@ def waitForTSW()
   return unless (n9 = waitTillAvail($TTSW+OFFSET_N9))
   $callFunc_addr_addr = n9+OFFSET_TMENUITEM_ONCLICK # address for changing the arbitrary function address
   WriteProcessMemory.call_r($hPrc, TMENU_CLICK_ADDR, TMENU_CLICK_PATCH_BYTES, TMENU_CLICK_PATCH_BYTES.size, 0)
-  $appTitle = APP_NAME + ' - pID=%d' % $pID
+  $appTitle = 'tswKai3 - pID=%d' % $pID
   return true
 end
 def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles are not ready yet; need to wait
