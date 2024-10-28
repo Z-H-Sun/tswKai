@@ -32,6 +32,7 @@ ENABLE_PROCESSED_OUTPUT = 1
 ENABLE_WRAP_AT_EOL_OUTPUT = 2
 ENABLE_VIRTUAL_TERMINAL_PROCESSING = 4
 ENABLE_LVB_GRID_WORLDWIDE = 16 # this supposedly solve the COMMON_LVB_* issue mentioned above, even on a non-DBCS code page (https://learn.microsoft.com/en-us/windows/console/getconsolemode); however, this does not seem to work in my tests on Windows 7 (en-US locale)
+CP_GB2312 = 936
 KEY_EVENT = 1
 
 GetConsoleWindow = API.new('GetConsoleWindow', 'V', 'L', 'kernel32')
@@ -48,7 +49,7 @@ SetConsoleCtrlHandler = API.new('SetConsoleCtrlHandler', 'PL', 'L', 'kernel32')
 SetConsoleTitle = API.new('SetConsoleTitleA', 'S', 'L', 'kernel32')
 SetConsoleTitleW = API.new('SetConsoleTitleW', 'S', 'L', 'kernel32')
 SetConsoleMode = API.new('SetConsoleMode','LL','L','kernel32')
-
+SetConsoleOutputCP = API.new('SetConsoleOutputCP', 'I', 'I', 'kernel32')
 ReadConsole = API.new('ReadConsole', 'LPLPL', 'L', 'kernel32')
 ReadConsoleInput = API.new('ReadConsoleInput', 'LPLP', 'L', 'kernel32')
 PeekConsoleInput = API.new('PeekConsoleInput', 'LPLP', 'L', 'kernel32')
@@ -205,6 +206,7 @@ class Console
     @need_free = true
 
     SetConsoleMode.call(@hConOut, ENABLE_PROCESSED_OUTPUT|ENABLE_WRAP_AT_EOL_OUTPUT|ENABLE_VIRTUAL_TERMINAL_PROCESSING|ENABLE_LVB_GRID_WORLDWIDE) # Virtual Terminal mode is important for modern console (https://learn.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences)
+    SetConsoleOutputCP.call(CP_GB2312) # specify code page 936 to make sure correct display of Chinese characters, as well as underlines (as mentioned above on line 34, underlines won't show in latin code pages, so this is beneficial even for pure English interface)
     SetConsoleCtrlHandler.call_r(nil, 1) # depress Ctrl-C [Ideally, Ctrl-Break and Close signals should also be handled by passing a callback function address here rather than NULL; however, there is a bug with win32/api that will lead to stack overflow (cause not yet clear). As a result, I will leave NULL here, but do some monkey patching in the C code of win32/api extension so as to implement the callback function there; see vendor/win32/api.c]
 
     @SE = SoundEffect.new()
