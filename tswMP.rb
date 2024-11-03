@@ -104,7 +104,7 @@ module HookProcAPI
   @hkhook = nil
   @hmhook = nil
   @itemAvail = [] # the items you have
-  @winDown = false # [WIN] pressed; active
+  @winDown = nil # [WIN] pressed; active (nil=WIN key not pressed; false/true=whether to respond (not in-event) when WIN key is pressed)
   @lastIsInEvent = false
   @x_pos = @y_pos = -1
   @access = nil # the destination is accessible?
@@ -136,15 +136,12 @@ module HookProcAPI
     return false
   end
   def isInEvent()
-    result = (isButtonFocused and !@flying)
-    unless result
-      result = (readMemoryDWORD(EVENT_SEQ_INDEX_ADDR) > 0)
-    end
-
+    result = ((isButtonFocused and !@flying) or (readMemoryDWORD(EVENT_SEQ_INDEX_ADDR) > 0))
     if result
       return true if @lastIsInEvent
       @lastIsInEvent = true # if @lastIsInEvent is false
       @x_pos = @y_pos = -1 # reset pos
+      InvalidateRect.call($hWnd, $itemsRect, 0) # clear item bar highlights
       initHDC unless $hDC # it is possible that hDC is not assigned yet
       showMsg(1, 0)
     elsif @lastIsInEvent # result is false and @lastIsInEvent is true
@@ -174,19 +171,18 @@ module HookProcAPI
     SetStretchBltMode.call_r($hDC, COLORONCOLOR)
   end
   def disposeHDC()
-    @winDown = false
+    @winDown = nil # nil=WIN key not pressed
     return unless $hDC
     SelectObject.call($hDC, $hPen0) # might be an overkill, but just to guarantee no GDI leak
     ReleaseDC.call($hWnd, $hDC)
     $hDC = nil # hDC already released; no longer valid
   end
   def abandon()
-    if @flying
+    if @flying # special case; need to do more treatments when orb of flight was being used
       callFunc_noRaise(CONSUMABLES['event_addr'][2][4]) # click OK if using OrbOfFlight (if TSW has already quitted, ignore error)
-      unhookM(true)
-    else
-      unhookM(false)
-    end
+      ClipCursor.call(nil)
+      noHighlightRect()
+    else unhookM() end
     disposeHDC
     @lastIsInEvent = false
     @flying = nil
@@ -487,9 +483,15 @@ module HookProcAPI
         if key == VK_ESCAPE then break if isSLActive end
         alphabet = false # alphabet key pressed?
         arrow = false # arrow key pressed?
+        @winDown = false if @winDown == nil # WIN key is pressed, but whether to respond will depend on whether not in-event
       else
-        break unless @winDown and wParam == WM_KEYDOWN
-
+        break if wParam != WM_KEYDOWN and wParam != WM_SYSKEYDOWN
+        if key == (SL_HOTKEYS[2] & 0xFF) and @winDown != nil # as long as WIN key is pressed, trigger "load specific temp data" function whether or not in-event
+          abandon()
+          callFunc_noBlock(Ext::LOAD_TEMP_ANY_ADDR)
+          block = true; break
+        end
+        break unless @winDown
         if (alphabet = CONSUMABLES['key'].index(key)) # which item chosen?
           unless @itemAvail.include?(alphabet) # you must have that item
             abandon(); break
@@ -500,14 +502,8 @@ module HookProcAPI
             abandon(); break
           end
         elsif key == EXT_KEY
-          disposeHDC # de-active; restore
-          unhookM
-          PostMessage.call(0, WM_APP, Ext::EXT_WPARAM, 0) # this msg will be handled in main.rbw, and tswExt console interface will show up. This action must be postponed and should not be done within the hook callback function to avoid significant system performance degradation
-          block = true; break
-        elsif key == (SL_HOTKEYS[2] & 0xFF)
-          disposeHDC # de-active; restore
-          unhookM
-          callFunc_noBlock(Ext::LOAD_TEMP_ANY_ADDR)
+          abandon()
+          PostMessage.call(0, WM_APP, Ext::EXT_WPARAM, 0) unless isInEvent # this msg will be handled in main.rbw, and tswExt console interface will show up. This action must be postponed and should not be done within the hook callback function to avoid significant system performance degradation
           block = true; break
         else abandon(); break # if any non-functional key is pressed (same above), cancel this operation immediately; this is to avoid potential conflicts in certain scenarios (e.g., when you press Enter after talking to an NPC (in this case, because another key is pressed, the previous hotkey won't generate any more KeyDown events); switching to a different window; etc.)
         end
@@ -517,9 +513,7 @@ module HookProcAPI
       if wParam == WM_KEYDOWN
         break if isInEvent # when holding [WIN] key, this (i.e. `isInEvent`) will automatically be called every ~50 msec (keyboard repeat delay)
         if alphabet and !@flying
-          disposeHDC # de-active; restore
-          unhookM
-
+          abandon()
           callFunc(CONSUMABLES['event_addr'][alphabet]) # imgXXwork = click that item
           if isButtonFocused # can use item successfully (so the don't-use button is focused now)
             callFunc(CONSUMABLES['event_addr'][12]) if alphabet > 2 # buttonUseClick = click 'Use' (excluding OrbOfHero/Wisdom)
@@ -540,7 +534,7 @@ module HookProcAPI
               @lastArrow = arrow
             end
           else
-            unhookM
+            unhookM(false) # do not stop ClipCursor yet
             WriteProcessMemory.call_r($hPrc, CONSUMABLES['event_addr'][2][1], ORB_FLIGHT_RULE_BYTES[1], 6, 0) if arrow == 3 # bypass OrbOfFlight restriction (JNZ->NOP)
             callFunc(CONSUMABLES['event_addr'][2][0]) # Image4Click (OrbOfFlight)
             WriteProcessMemory.call_r($hPrc, CONSUMABLES['event_addr'][2][1], ORB_FLIGHT_RULE_BYTES[0], 6, 0) if arrow == 3 # restore (JNZ)
@@ -558,6 +552,7 @@ module HookProcAPI
               PatBlt.call_r($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
             else
               disposeHDC
+              ClipCursor.call(nil)
               showMsgTxtbox(10, $str::LONGNAMES[16].gsub(' ', '')) if readMemoryDWORD(TEDIT8_MSGID_ADDR) != ORB_FLIGHT_RULE_MSG_ID # otherwise, it's because "you must be near the stairs to fly!"
             end
           end
@@ -604,12 +599,12 @@ module HookProcAPI
     @hmhook = SetWindowsHookEx.call_r(WH_MOUSE_LL, MouseProc, $hMod, 0)
     return true
   end
-  def unhookM(noCheck=false)
-    return false unless @hmhook or noCheck
+  def unhookM(stopClipCursor=true)
+    unless @hmhook then noHighlightRect() if @lastIsInEvent; return false end # redraw $msgRect and $itemsRect when necessary
     UnhookWindowsHookEx.call(@hmhook || 0)
     @hmhook = nil
 
-    ClipCursor.call(nil) # do not confine cursor range
+    ClipCursor.call(nil) if stopClipCursor # do not confine cursor range
     if $MPnewMode
       if @lastDraw
         return true unless callFunc_noRaise(EPL_ADDR) # undo the last drawing
@@ -619,8 +614,7 @@ module HookProcAPI
     end
     # if TSW has already quitted, the above WriteProcessMemory/callFunc_noRaise call return 0/false, then no need to do anything below
     @x_pos = @y_pos = -1
-    InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
-    InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar
+    noHighlightRect()
     ReadProcessMemory.call($hPrc || 0, MONSTER_STATUS_FACTOR_ADDR, $bufDWORD, 4, 0) # 0 or 43
     return true if $bufDWORD.unpack('l')[0].zero? or !$hWndMemo or $hWndMemo.empty?
     return true if ReadProcessMemory.call($hPrc || 0, STATUS_ADDR, $buf, STATUS_LEN << 2, 0).zero? # refresh, in case the values have changed
@@ -629,6 +623,10 @@ module HookProcAPI
     SendMessage.call($hWndMemo[1], WM_SETTEXT, 0, $heroStatus[STATUS_INDEX[1]].to_s)
     SendMessage.call($hWndMemo[2], WM_SETTEXT, 0, $heroStatus[STATUS_INDEX[2]].to_s)
     return true
+  end
+  def noHighlightRect()
+    InvalidateRect.call($hWnd, $itemsRect, 0) # redraw item bar
+    InvalidateRect.call($hWnd, $msgRect, 0) # clear message bar
   end
   private :_msHook
   private :_keyHook
