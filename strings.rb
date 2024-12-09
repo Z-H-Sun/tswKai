@@ -22,20 +22,20 @@ module Str
 'Weapon(Sword)', 'Shield Level', 'Back Tower *',
 'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
     STRINGS = [
-'tswKai3: Please wait for game event to complete...', # 0
+'tswKai3: Please wait for game event to complete...%s', # 0
 'tswKai3: Click the mouse to teleport to (%X,%X)%s',
 'tswKai3: Move the mouse to choose a destination to teleport.',
 'tswKai3: (%X,%X) is inaccessible. Move the mouse to choose a different destination.',
 'tswKai3: Press an alphabet/arrow key to use the corresponding item.',
 'tswKai3: Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
 ', or press a key to use an item.',
-'tswKai3: Use arrow keys to fly up/down; release the %s key to confirm.',
+'tswKai3: Use arrow keys to fly up/down; %s the %s key to confirm.',
 'tswKai3: YOU HAVE CHEATED AT THE GAME!',
 'tswKai3: Started. Found TSW running - pID=%d; hWnd=0x%08X',
 'tswKai3: Could not use %s!', # 10
 "tswKai3 is running. Here is a summary of the usage:
 
-When the %s hotkey is down:
+When %s down %s:
 1) Move the mouse and then click to teleport in the map\n    (Right click = cheat);
 2) If you have Orb of Hero, hover the mouse on a monster\n    to view its various stats (Their next critical values and\n    damage will be directly displayed on the map);
 3) Press a specified alphabet key to use an item or any\n    arrow keys to use Orb of Flight (Up arrow = cheat);
@@ -158,6 +158,9 @@ process has already been running (pID = %d).',
 'Are you sure you want to do this, which cannot be undone?',
 'All snapshots deleted! Snapshot index has been reset to 0.',
 
+'Sticky Mode is on. Press any key to turn it off...',
+[' (Both down = Sticky Mode)', ' Then move the mouse again.', 'press', 'release'], # 65
+
 'Inf', # -2
 '.' # -1
     ]
@@ -184,20 +187,20 @@ process has already been running (pID = %d).',
 '佩 剑 等 级', '盾 牌 等 级', '里侧塔属性×',
 '勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
     STRINGS = [
-'tswKai3: 请等待游戏内部事件结束……', # 0
+'tswKai3: 请等待游戏内部事件结束……%s', # 0
 'tswKai3: 单击鼠标传送至 (%X,%X)%s',
 'tswKai3: 移动鼠标选择一个传送的目的地。',
 'tswKai3: 无法前往 (%X,%X)，请移动鼠标另选一个目的地。',
 'tswKai3: 按下字母键 / 方向键使用相应的宝物。',
 'tswKai3: 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
 '，或按下对应按键使用宝物。',
-'tswKai3: 使用方向键上 / 下楼，最后松开 %s 键确认。',
+'tswKai3: 使用方向键上 / 下楼，最后%s %s 键确认。',
 'tswKai3: 已 作 弊 ！',
 'tswKai3: 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
 'tswKai3: 无法使用%s！', # 10
 "tswKai3 已开启，以下为使用方法摘要。
 
-当按下 %s 快捷键时：
+按下 %s 键时%s：
 1) 单击鼠标可传送到地图上的新位置（右键＝作弊）；
 2) 拥有勇者灵球时，将鼠标移至怪物图块上可查看\n    其各项属性（地图上将显示其下一临界及总伤害）；
 3) 按下特定字母键可使用对应的宝物；或按下任一\n    方向键，可以使用飞翔灵球（▲ 上方向键＝作弊）；
@@ -311,6 +314,9 @@ process has already been running (pID = %d).',
 '消灭了 %d 只怪物，获得了 %d 金币！',
 '是否清空目前为止所有的临时存档？此操作无法撤销！',
 '所有临时存档已删除！临时存档节点编号已重置为零。',
+
+'已启用粘滞模式，按任意键退出……',
+['（同时按下＝粘滞模式）', '然后重新移动鼠标以继续传送。', '按下', '松开'], # 65
 
 '∞', # -2
 '。' # -1

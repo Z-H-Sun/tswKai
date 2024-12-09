@@ -315,7 +315,7 @@ def preExit(msg=nil) # finalize
   UnregisterHotKey.call(0, 0)
   UnregisterHotKey.call(0, 1)
   if $console
-    $console.SE.dispose()
+    $console.SE.dispose() if $console.SE
     FreeConsole.call() if $console.need_free
   end
   DeleteObject.call($hGUIFont2 || 0)
@@ -346,12 +346,12 @@ def initLang()
     getHookKeyName()
   end
   if $isCHN
-    alias :showMsg :showMsgW
+    alias :drawTxt :drawTxtW
     alias :showMsgTxtbox :showMsgTxtboxW
     alias :msgboxTxt :msgboxTxtW
     alias :setTitle :setTitleW
   else
-    alias :showMsg :showMsgA
+    alias :drawTxt :drawTxtA
     alias :showMsgTxtbox :showMsgTxtboxA
     alias :msgboxTxt :msgboxTxtA
     alias :setTitle :setTitleA

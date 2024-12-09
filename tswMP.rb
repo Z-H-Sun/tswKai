@@ -104,7 +104,7 @@ module HookProcAPI
   @hkhook = nil
   @hmhook = nil
   @itemAvail = [] # the items you have
-  @winDown = nil # [WIN] pressed; active (nil=WIN key not pressed; false/true=whether to respond (not in-event) when WIN key is pressed)
+  @winDown = nil # whether [WIN] pressed and thus active (nil=WIN key not pressed; false=do not respond (because in event) though WIN key is pressed; 0-2=active; 0=both WIN and TAB keys pressed and thus in sticky mode)
   @lastIsInEvent = false
   @x_pos = @y_pos = -1
   @access = nil # the destination is accessible?
@@ -143,7 +143,7 @@ module HookProcAPI
       @x_pos = @y_pos = -1 # reset pos
       InvalidateRect.call($hWnd, $itemsRect, 0) # clear item bar highlights
       initHDC unless $hDC # it is possible that hDC is not assigned yet
-      showMsg(1, 0)
+      showMsg(1, 0, @winDown == 0 ? $str::STRINGS[65][1] : '')
     elsif @lastIsInEvent # result is false and @lastIsInEvent is true
       if @hmhook # just waited an event over; redraw items bar and map damage
         callFunc(TIMER2_ADDR) # immediately call TIMER2TIMER. Normally, the timer2 will wait 300 msec, then run once (i.e. will disable itself after the first run), where it will call `TTSW10.itemlive (which ends the in-event status)`. This will enforce redrawing the window, which will mess up with our drawing. So we will call it by ourselves without the 300 ms delay; then begin drawing
@@ -274,6 +274,7 @@ module HookProcAPI
   def drawItemsBar()
     @lastDraw = false
     @itemAvail = []
+    drawTxt($msgRect2, 64) if @winDown == 0 # sticky mode
     SetBkMode.call_r($hDC, 2) # opaque
     SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
     for i in 0..11 # check what items you have
@@ -309,7 +310,7 @@ module HookProcAPI
     block = false # block input?
     finally do
       break if nCode != HC_ACTION and !nCode.nil? # do not process
-      break if @lastIsInEvent
+      break if @lastIsInEvent and @winDown != 0 # during sticky mode, do not stop mouse hook
       case wParam
       when WM_LBUTTONDOWN, WM_RBUTTONDOWN # mouse click; teleportation
         break if @x_pos < 0 or @y_pos < 0 or isInEvent
@@ -409,7 +410,6 @@ module HookProcAPI
       if x_pos < 0 or x_pos > 10 or y_pos < 0 or y_pos > 10 # outside
         if @itemAvail.empty? then showMsg(1, 2) else showMsg(3, 4) end
         @x_pos = @y_pos = -1 # cancel preview
-        @lastDraw = false
         break
       end
 
@@ -484,6 +484,7 @@ module HookProcAPI
         alphabet = false # alphabet key pressed?
         arrow = false # arrow key pressed?
         @winDown = false if @winDown == nil # WIN key is pressed, but whether to respond will depend on whether not in-event
+        curWinDown = (key == MP_KEY1 ? 1 : 2) # currently WIN key or TAB key pressed; if the other key pressed next time, activate sticky mode
       else
         break if wParam != WM_KEYDOWN and wParam != WM_SYSKEYDOWN
         if key == (SL_HOTKEYS[2] & 0xFF) and @winDown != nil # as long as WIN key is pressed, trigger "load specific temp data" function whether or not in-event
@@ -546,7 +547,7 @@ module HookProcAPI
               showMsgTxtbox(8) if @flying == 2
               @lastArrow = -1
               UpdateWindow.call($hWnd) # update immediately to clear the invalidated rect
-              showMsg(@flying, 7, $MPhookKeyName)
+              showMsg(@flying, 7, $str::STRINGS[65][@winDown == 0 ? 2 : 3], $MPhookKeyName)
               SetBkMode.call_r($hDC, 2) # opaque
               DrawTextW.call_r($hDC, "\xBC\x25\n\0\xB2\x25", 3, $OrbFlyRect.last, 0) # U+25BC/25B2 = down/up triangle
               PatBlt.call_r($hDC, 2*$TILE_SIZE+$ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, $TILE_SIZE, RASTER_DPo) # before this, UpdateWindow must be called; otherwise, the TSW's own redrawing process (caused by `InvalidateRect` above) may clear the drawing here
@@ -557,17 +558,19 @@ module HookProcAPI
             end
           end
         elsif !@winDown # only trigger at the first time
-          @winDown = true
+          @winDown = curWinDown || 1 # true (`curWinDown`` is used for sticky mode judgements) [it is not likely to be undefined, but just to be cautious and set a default value of 1 here]
           initHDC unless $hDC # this statement is always valid, but just to be cautious and check if $hDC already initialized
           checkTSWsize
           recalcStatus
           drawItemsBar
           hookM
           _msHook(nil, WM_MOUSEMOVE, 0) # do this subroutine once even without mouse move
+        elsif @winDown == 0 then @winDown = curWinDown; InvalidateRect.call($hWnd, $msgRect2, 0) # if hotkey is pressed again during sticky mode, then quit sticky mode and clear sticky key prompt
+        elsif @winDown != curWinDown then @winDown = 0; drawTxt($msgRect2, 64) # if both hotkeys (WIN / TAB) pressed, turn on sticky mode
         end
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
-        abandon()
+        abandon() if @winDown != 0 or @flying # do not abandon if in sticky mode and not flying
       end
     end
     return 1 if block # block input
@@ -627,6 +630,7 @@ module HookProcAPI
   def noHighlightRect()
     InvalidateRect.call($hWnd, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd, $msgRect, 0) # clear message bar
+    InvalidateRect.call($hWnd, $msgRect2, 0) # clear sticky mode prompt
   end
   private :_msHook
   private :_keyHook
@@ -644,18 +648,16 @@ def checkTSWrects()
 
   $itemsRect = [$ITEMSBAR_LEFT, $ITEMSBAR_TOP, x3, $ITEMSBAR_TOP+$TILE_SIZE*5].pack('l4')
   $OrbFlyRect = [[x1, $ITEMSBAR_TOP, x2, y1].pack('l4'), [x2, $ITEMSBAR_TOP, x3, y1].pack('l4'), [x1, $ITEMSBAR_TOP, x3, y1].pack('l4')] # left(0), right(1), none(-1)
-  $msgRect = [0, $H-$MAP_TOP*2, $W-2, $H-$MAP_TOP].pack('l4')
+  $msgRect = [0, $H-$MAP_TOP*2, $W-2, $H-$MAP_TOP].pack('l4') # for `showMsg` prompt
+  $msgRect2 = [0, 0, $W-2, $MAP_TOP].pack('l4') # for sticky mode prompt
 end
 
-def showMsgA(colorIndex, textIndex, *argv)
+def drawTxtA(msgRect, textIndex, *argv); DrawText.call_r($hDC, Str::StrEN::STRINGS[textIndex] % argv, -1, msgRect, DT_CENTERBOTH); end
+def drawTxtW(msgRect, textIndex, *argv); DrawTextW.call_r($hDC, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv), -1, msgRect, DT_CENTERBOTH); end
+def showMsg(colorIndex, textIndex, *argv)
   SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
   FillRect.call_r($hDC, $msgRect, $hBr)
-  DrawText.call_r($hDC, Str::StrEN::STRINGS[textIndex] % argv, -1, $msgRect, DT_CENTERBOTH)
-end
-def showMsgW(colorIndex, textIndex, *argv)
-  SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
-  FillRect.call_r($hDC, $msgRect, $hBr)
-  DrawTextW.call_r($hDC, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv), -1, $msgRect, DT_CENTERBOTH)
+  drawTxt($msgRect, textIndex, *argv)
 end
 def showMsgTxtboxA(textIndex, *argv)
   SendMessage.call($hWndText, WM_SETTEXT, 0, textIndex < 0 ? '' : Str::StrEN::STRINGS[textIndex] % argv)
