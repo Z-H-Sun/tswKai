@@ -127,6 +127,7 @@ module Kai
       return true
     elsif i == 6 or i == 7 # X / Y position
       writeMemoryDWORD(LAST_I_ADDR, $heroStatus[STATUS_INDEX[6]] + $heroStatus[STATUS_INDEX[7]]*11) # previous position of player (11*old_y+old_x); this is also used to tell `ERASE_AND_DRAW_HERO_ADDR` which tile to redraw (i.e., erase previous hero overlay)
+      showMsgTxtbox(-1)
     end
 
     callFunc(a) # refresh status display
