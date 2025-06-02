@@ -12,12 +12,12 @@ $$\frac{S_n}{10}=\sum_{i=1}^n{\frac{a_i}{10}}=\frac13 n\left(n^2+5\right)\in{\ma
 
 With that, we can then calculate the Gold required for your next $m$ visits to the altar after your $n$-th visit, $T_{n,m}$, which is something we care more about:
 
-```math
+$$
 \begin{aligned}
 \frac{T_{n,m}}{10}=\frac{S_{n+m}-S_n}{10}&=\frac13\left[(n+m)\left((n+m)^2+5\right)-n\left(n^2+5\right)\right]\\
 &=\frac13 \left(m^3+3nm^2+(3n^2+5)m\right)\in{\mathbb N}_+
 \end{aligned}
-```
+$$
 
 ## Turning Inequation into Equation
 
@@ -72,14 +72,14 @@ Additionally, floating-point operation is slower than integer operations, so the
 
 We note that
 
-```math
+$$
 \begin{aligned}
 f(x_1)=5r&>0,\quad {\rm where}\ x_1=r=\sqrt[3]{q}>0\\
 f(x_2)=-3r^2+8r-6&<0,\quad {\rm where}\ x_2=r-1
 \end{aligned}
-```
+$$
 
-The second inequation holds because ${\rm LHS} = -3\left(r-\frac43\right)^2-\frac23<0,\ \forall r\in\{\mathbb R}$.
+The second inequation holds because ${\rm LHS} = -3\left(r-\frac43\right)^2-\frac23<0,\ \forall r\in {\mathbb R}$.
 
 Therefore, according to intermediate value theorem, the desired root should be
 

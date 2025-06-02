@@ -136,6 +136,7 @@ module Ext
   end
 
   class Altar < Common
+    ALTAR_BLOCKS = [5, 4, 2, 1] # block numbers with altars; from high to low
     ALTAR_FLOORS = {5=>46, 4=>32, 2=>12, 1=>4} # block => floor
     ALTAR_TILE_ID = 16 # 16-th tile is Altar (middle part)
 
@@ -184,7 +185,7 @@ module Ext
 
     def highestMultiplier()
       highestFloor = $heroStatus[STATUS_INDEX[5]]
-      ALTAR_FLOORS.each_pair {|i, f| return i if highestFloor >= f && Ext::Altar::Connectivity.main(f)}
+      ALTAR_BLOCKS.each {|i| return i if highestFloor >= (f = ALTAR_FLOORS[i]) && Ext::Altar::Connectivity.main(f)}
       return nil # no altar visited
     end
 
