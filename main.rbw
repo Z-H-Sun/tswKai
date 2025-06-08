@@ -34,7 +34,7 @@ def init()
   hDC = GetDC.call_r($hWnd)
   $hMemDC = CreateCompatibleDC.call_r(hDC)
   $hBMP = CreateCompatibleBitmap.call_r(hDC, 40, 40)
-  SelectObject.call_r($hMemDC, $hBMP)
+  $hBMP0 = SelectObject.call_r($hMemDC, $hBMP)
   ReleaseDC.call($hWnd, hDC)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size

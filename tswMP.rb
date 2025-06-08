@@ -31,6 +31,7 @@ SetROP2 = API.new('SetROP2', 'LI', 'I', 'gdi32')
 
 HC_ACTION = 0
 DC_BRUSH = 18
+DC_PEN = 19
 DT_CENTER = 1
 DT_VCENTER = 4
 DT_SINGLELINE = 0x20
@@ -74,6 +75,7 @@ $x_pos = $y_pos = -1
 $hGUIFont = CreateFontIndirect.call_r(DAMAGE_DISPLAY_FONT.pack(LOGFONT_STRUCT))
 $hSysFont = GetStockObject.call_r(SYSTEM_FONT)
 $hBr = GetStockObject.call_r(DC_BRUSH)
+$hPen0 = GetStockObject.call_r(DC_PEN)
 $hPen = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[4])
 $hPen2 = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[-2])
 
@@ -165,6 +167,7 @@ module HookProcAPI
   def disposeHDC()
     @winDown = false
     return unless $hDC
+    SelectObject.call($hDC, $hPen0) # might be an overkill, but just to guarantee no GDI leak
     ReleaseDC.call($hWnd, $hDC)
     $hDC = nil # hDC already released; no longer valid
   end

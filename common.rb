@@ -287,7 +287,10 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   end
   HookProcAPI.unhookK
   HookProcAPI.abandon(true)
-  DeleteObject.call($hBMP || 0)
+  if $hBMP
+    SelectObject.call($hMemDC, $hBMP0 || 0) # might be an overkill, but just to guarantee no GDI leak
+    DeleteObject.call($hBMP)
+  end
   DeleteDC.call($hMemDC || 0)
   VirtualFreeEx.call($hPrc || 0, $lpNewAddr || 0, 0, MEM_RELEASE)
   CloseHandle.call($hPrc || 0)
