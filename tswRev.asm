@@ -800,7 +800,7 @@ BASE:53091		dec eax
 BASE:53092		mov edx, offset BASE:8C524	; TBitmap
 BASE:53097		call loc_stackwork_draw_tile	; see below
 
-BASE:5309C		call imagework
+BASE:5309C		call TTSW10.imagework
 BASE:530A1		pop eax		; `A` parameter in the current (0,A,B) event sequence; this is the tile index of the monster
 BASE:530A2		dec eax
 BASE:530A3		add eax, [BASE:8C554]	; output of TTSW10.imagework

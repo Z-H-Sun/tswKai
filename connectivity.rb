@@ -6,35 +6,44 @@ module Connectivity
   @ancestor = Array.new(121) # for each position, record its parent position (where it is moved from)
   @route = []
   @destTile = 0
+  @facing = nil
   class << self
     attr_reader :route
     attr_reader :destTile
+    attr_reader :facing
   end
 # note: in order to detect magic attacks (mark these floor tiles as impassible), need to call `Monsters.checkMap` beforehand
   module_function
   def main(tx, ty) # end point: (tx, ty)
     @route.clear # clear last route
     @route.push(tx*$TILE_SIZE+$MAP_LEFT+$TILE_SIZE/2, ty*$TILE_SIZE+$MAP_TOP+$TILE_SIZE/2)
+    @facing = nil
     t_index = 11*ty + tx
     @destTile = $mapTiles[t_index]
     return nil if @destTile > 0 # inaccessible
     @destTile = -@destTile
 
+    index = @ancestor[t_index]
     case @destTile
     when 4, 5, 8, 13, 14, 15, 17, 115..121, 123..132, 159..254 # gate; prison; lava; starlight; wings of altar; dragon (not head); other
       return nil # impassible
     when 0
+      d_i = index - t_index
       access = 0 # in this case, can directly go to that destination
     else
-      access = @ancestor[t_index] - t_index # in this case, should first go to somewhere 1 step away from destination
+      access = d_i = index - t_index # in this case, should first go to somewhere 1 step away from destination
     end
 
-    index = @ancestor[t_index]
     loop do
       y, x = index.divmod(11)
       @route.push(x*$TILE_SIZE+$MAP_LEFT+$TILE_SIZE/2, y*$TILE_SIZE+$MAP_TOP+$TILE_SIZE/2)
       break if index == @o_index
       index = @ancestor[index]
+    end
+    if d_i == -11 then @facing = 1 # facing down
+    elsif d_i == 1 then @facing = 2 # facing left
+    elsif d_i == -1 then @facing = 3 # facing right
+    elsif d_i == 11 then @facing = 4 # facing up
     end
     return access
   rescue # unlikely, but in case the ancestor of a position can't be found, return false

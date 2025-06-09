@@ -321,6 +321,7 @@ module HookProcAPI
         EnableWindow.call($hWndText, 0)
         writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[6] << 2), x)
         writeMemoryDWORD(STATUS_ADDR + (STATUS_INDEX[7] << 2), y)
+        if (facing = Connectivity.facing) then writeMemoryDWORD(HERO_FACE_ADDR, facing) end # update player's facing direction
 
         WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
         callFunc(REFRESH_XYPOS_ADDR) # TTSW10.mhyouji (only refresh braveman position; do not refresh whole map)
