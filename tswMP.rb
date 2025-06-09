@@ -171,8 +171,13 @@ module HookProcAPI
     ReleaseDC.call($hWnd, $hDC)
     $hDC = nil # hDC already released; no longer valid
   end
-  def abandon(force=true)
-    unhookM(force)
+  def abandon()
+    if @flying
+      callFunc_noRaise(CONSUMABLES['event_addr'][2][4]) # click OK if using OrbOfFlight (if TSW has already quitted, ignore error)
+      unhookM(true)
+    else
+      unhookM(false)
+    end
     disposeHDC
     @lastIsInEvent = false
     @flying = nil
@@ -427,11 +432,18 @@ module HookProcAPI
   def _keyHook(nCode, wParam, lParam)
     # 'ILL': If the prototype is set as 'LLP', the size of the pointer could not be correctly assigned
     # Therefore, the address of the pointer is retrieved instead, and RtlMoveMemory is used to get the pointer data
-    RtlMoveMemory.call($buf, lParam, 20)
-    key = $buf.unpack('L')[0]
     block = false # block input?
     finally do
       break if nCode != HC_ACTION # do not process
+
+      hWnd = GetForegroundWindow.call
+      if hWnd != $hWnd # TSW is not active
+        abandon() if @winDown or @flying
+        break
+      end
+
+      RtlMoveMemory.call($buf, lParam, 20)
+      key = $buf.unpack('L')[0]
       if key == MP_KEY1 or key == MP_KEY2
         if key == VK_ESCAPE then break if isSLActive end
         alphabet = false # alphabet key pressed?
@@ -443,14 +455,12 @@ module HookProcAPI
           break unless @itemAvail.include?(alphabet) # you must have that item
         elsif (arrow = CONSUMABLES['key'][2].index(key)) # up/downstairs?
           unless @itemAvail.include?(2) # you must have orb of flight
-            block = true if GetForegroundWindow.call == $hWnd # do not respond to arrow keys which may cause conflicts (because events can be triggered)
+            block = true # do not respond to arrow keys which may cause conflicts (because events can be triggered)
             break
           end
         else break
         end
       end
-      hWnd = GetForegroundWindow.call
-      if hWnd != $hWnd then abandon(false); break end # TSW is not active
 
       block = true
       if wParam == WM_KEYDOWN
@@ -511,8 +521,7 @@ module HookProcAPI
         end
       elsif wParam == WM_KEYUP # (alphabet == false; arrow == false)
         block = false # if somehow [WIN] key down signal is not intercepted, then do not block (otherwise [WIN] key will always be down)
-        callFunc(CONSUMABLES['event_addr'][2][4]) if @flying # click OK
-        abandon
+        abandon()
       end
     end
     return 1 if block # block input
@@ -551,6 +560,7 @@ module HookProcAPI
 
     ClipCursor.call(nil) # do not confine cursor range
     return true if WriteProcessMemory.call($hPrc || 0, TIMER1_ADDR, "\x53", 1, 0).zero? # TIMER1TIMER push ebx (restore; re-enable)
+    # if TSW has already quitted, the above WriteProcessMemory call return 0, then no need to do anything below
     $x_pos = $y_pos = -1
     InvalidateRect.call($hWnd || 0, $itemsRect, 0) # redraw item bar
     InvalidateRect.call($hWnd || 0, $msgRect, 0) # clear message bar

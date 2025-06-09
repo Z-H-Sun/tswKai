@@ -286,7 +286,7 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
     Mod.showDialog(false, false) # like above
   end
   HookProcAPI.unhookK
-  HookProcAPI.abandon(true)
+  HookProcAPI.abandon
   if $hBMP
     SelectObject.call($hMemDC, $hBMP0 || 0) # might be an overkill, but just to guarantee no GDI leak
     DeleteObject.call($hBMP)
@@ -432,6 +432,15 @@ def waitInit(waitForNextCompatibleTSW = false)
       end
     end
   end
+end
+
+def writeMemoryDWORD_noRaise(address, dword)
+  return WriteProcessMemory.call($hPrc, address, [dword].pack('l'), 4, 0)
+end
+def callFunc_noRaise(address)
+  return false if writeMemoryDWORD_noRaise(MIDSPEED_ADDR, address-MIDSPEED_ADDR-4).zero?
+  SendMessage.call($hWnd, WM_COMMAND, MIDSPEED_MENUID, 0)
+  return !writeMemoryDWORD(MIDSPEED_ADDR, MIDSPEED_ORIG).zero?
 end
 
 def readMemoryDWORD(address)
