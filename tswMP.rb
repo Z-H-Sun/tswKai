@@ -3,16 +3,16 @@
 # Author: Z.Sun
 # main repo: https://github.com/Z-H-Sun/tswMP.git
 
-UpdateWindow = API.new('UpdateWindow', 'L', 'L', 'user32')
-FillRect = API.new('FillRect', 'LSL', 'L', 'user32')
-DrawText = API.new('DrawTextA', 'LSIPL', 'L', 'user32')
-DrawTextW = API.new('DrawTextW', 'LSIPL', 'L', 'user32')
-TextOut = API.new('TextOutA', 'LLLSL', 'L', 'gdi32')
-TextOutW = API.new('TextOutW', 'LLLSL', 'L', 'gdi32')
-Polyline = API.new('Polyline', 'LSI', 'L', 'gdi32')
-PatBlt = API.new('PatBlt', 'LLLLLL', 'L', 'gdi32')
-BitBlt = API.new('BitBlt', 'LLLLLLLLL', 'L', 'gdi32')
-InvalidateRect = API.new('InvalidateRect', 'LPL', 'L', 'user32')
+UpdateWindow = API.new('UpdateWindow', 'L', 'I', 'user32')
+FillRect = API.new('FillRect', 'LSL', 'I', 'user32')
+DrawText = API.new('DrawTextA', 'LSIPI', 'I', 'user32')
+DrawTextW = API.new('DrawTextW', 'LSIPI', 'I', 'user32')
+TextOut = API.new('TextOutA', 'LIISI', 'I', 'gdi32')
+TextOutW = API.new('TextOutW', 'LIISI', 'I', 'gdi32')
+Polyline = API.new('Polyline', 'LSI', 'I', 'gdi32')
+PatBlt = API.new('PatBlt', 'LIIIII', 'I', 'gdi32')
+BitBlt = API.new('BitBlt', 'LIIIILIII', 'I', 'gdi32')
+InvalidateRect = API.new('InvalidateRect', 'LPI', 'I', 'user32')
 GetFocus = API.new('GetFocus', 'V', 'L', 'user32')
 GetCursorPos = API.new('GetCursorPos', 'P', 'L', 'user32')
 ScreenToClient = API.new('ScreenToClient', 'LP', 'L', 'user32')
@@ -23,9 +23,9 @@ CreatePen = API.new('CreatePen', 'IIL', 'L', 'gdi32')
 GetStockObject = API.new('GetStockObject', 'I', 'L', 'gdi32')
 DeleteObject = API.new('DeleteObject', 'L', 'L', 'gdi32')
 SelectObject = API.new('SelectObject', 'LL', 'L', 'gdi32')
-SetDCBrushColor = API.new('SetDCBrushColor', 'LL', 'I', 'gdi32')
-SetTextColor = API.new('SetTextColor', 'LL', 'I', 'gdi32')
-SetBkColor = API.new('SetBkColor', 'LL', 'I', 'gdi32')
+SetDCBrushColor = API.new('SetDCBrushColor', 'LI', 'I', 'gdi32')
+SetTextColor = API.new('SetTextColor', 'LI', 'I', 'gdi32')
+SetBkColor = API.new('SetBkColor', 'LI', 'I', 'gdi32')
 SetBkMode = API.new('SetBkMode', 'LI', 'I', 'gdi32')
 SetROP2 = API.new('SetROP2', 'LI', 'I', 'gdi32')
 
@@ -268,6 +268,7 @@ module HookProcAPI
     @lastDraw = false
     @itemAvail = []
     SetBkMode.call_r($hDC, 2) # opaque
+    SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
     for i in 0..11 # check what items you have
       j = CONSUMABLES['position'][i]
       count = $heroItems[ITEM_INDEX[2+j]] # note the first 2 are sword and shield
@@ -286,7 +287,6 @@ module HookProcAPI
         kName = Str.utf8toWChar(getKeyName(0, CONSUMABLES['key'][i]))
         TextOutW.call_r($hDC, x, y, kName, Str.strlen())
       end
-      SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
       PatBlt.call_r($hDC, x, y, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
     end
     SetBkMode.call_r($hDC, 1) # transparent
@@ -329,7 +329,7 @@ module HookProcAPI
         if (facing = Connectivity.facing) then writeMemoryDWORD(HERO_FACE_ADDR, facing) end # update player's facing direction
 
         WriteProcessMemory.call_r($hPrc, TIMER1_ADDR, "\x53", 1, 0) # TIMER1TIMER push ebx (re-enable)
-        callFunc(REFRESH_XYPOS_ADDR) # TTSW10.mhyouji (only refresh braveman position; do not refresh whole map)
+        callFunc(REFRESH_MAP_TILES_ADDR) # TTSW10.mhyouji (only refresh braveman position; do not refresh whole map)
 
         checkTSWsize()
 

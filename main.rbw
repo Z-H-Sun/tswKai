@@ -38,7 +38,7 @@ def init()
   ReleaseDC.call($hWnd, hDC)
 
   $lpNewAddr = VirtualAllocEx.call_r($hPrc, 0, 4096, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE) # 1 page size
-  $console.need_init = true if $console # refresh console in case there is any change
+  Kai.need_update # refresh console in case there is any change
   SL.init
   BGM.init
   Mod.init
@@ -99,7 +99,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             $configDlg = false
             writeMemoryDWORD(Mod::MOD_FOCUS_HWND_ADDR, 0) # hiding the dialog window below will implicitly switch focus to the TSW game window, so need to unset the HWND to set focus to (see Entry #-1 of tswMod.asm)
             ShowWindow.call($hWndDialog, SW_HIDE)
-            KaiMain()
+            Kai.main()
           else # nothing -> dialog
             HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
             HookProcAPI.abandon()
@@ -113,7 +113,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       next
     elsif msgType == WM_APP
       if msg[2].zero? then HookProcAPI.handleHookExceptions # check if error to be processed within hook callback func
-      else $_TSWKAI = false; quit() end # or signal from console by `SetConsoleCtrlHandler` (especially, don't call `FreeConsole` (by unsetting $_TSWKAI), or it will freeze!)
+      else $console.need_free = false; quit() end # or signal from console by `SetConsoleCtrlHandler` (especially, don't call `FreeConsole` (by unsetting $console.need_free; in this case, `$console` is definitely not `nil`), or it will freeze!)
     end
 
     TranslateMessage.call($buf)
