@@ -1,10 +1,12 @@
 BASE:00000	; Pre-defined functions in TSW.exe
 
-BASE:00000	TSW_BGM_setting	:= dword ptr BASE:089BA2
+BASE:00000	TSW_BGM_setting	:= byte ptr BASE:089BA2
+		TSW_WAV_setting	:= byte ptr BASE:089BA3
 		TSW_hero_status	:= dword ptr BASE:0B8688
 		; dword array[12]
 		; [4] -> floor; [6] -> x_pos; [7] -> y_pos
 		TSW_hero_floor	:= dword ptr BASE:0B8698
+		TSW_WAV_OFF	:= dword ptr BASE:0B87EC
 		TSW_BGM_ID	:= dword ptr BASE:0B87F0
 		TSW_DataCheck1	:= dword ptr BASE:0B8918
 		TSW_DataCheck2	:= dword ptr BASE:0B891C
@@ -27,7 +29,7 @@ BASE:00000	TSW_BGM_setting	:= dword ptr BASE:089BA2
 BASE:2F838	mciSendCommandA	proc near	; winmm
 BASE:2F838	mciSendCommandA	endp
 
-; For patches @BASE:30EF8, @BASE:5282A, @BASE:53463, @BASE:63E78, @BASE:63F71, @BASE:6F972, @BASE:76EAD, @BASE:7EBDA, @BASE:7EC67, @BASE:6B640, @BASE:81F6F, and @BASE:8468E, which are comparably simple, please refer to the comments for `BGM_PATCH_BYTES` in `tswBGM.rbw` for more information
+; For patches @BASE:30EF8, @BASE:5282A, @BASE:53463, @BASE:63E78, @BASE:63F71, @BASE:6F972, @BASE:76EAD, @BASE:6B640, @BASE:81F6F, and @BASE:8468E, which are comparably simple, please refer to the comments for `BGM_PATCH_BYTES` in `tswBGM.rbw` for more information
 
 BASE:2C454	TTimer.SetEnabled	proc near
 		; TTSW10.TTimer4 was used to show the prolog animation; in tswBGM, instead, it is used to achieve the fading out effect of BGM. Therefore, when tswBGM is initiated, it is necessary to check whether TTimer4 is still enabled (meaning it's in prolog) and set `isInProlog`; if so, the initialization of tswBGM should be delayed. If TTimer4 is later set enabled or disabled, the state of `isInProlog` needs to be set false
@@ -742,6 +744,121 @@ BASE:82B00	loc_next_2:
 		TTSW10.timer4ontimer	endp
 
 
+BASE:7EADC	TTSW10.savework	proc near	; called when saving data
+		; Changes made: do not save [TSW_BGM_ID] into data
+		; This might worth a bit explanation here. I think this is likely a bug of TSW not a feature:
+		; If you save a data while BGM is on, then [TSW_BGM_ID] goes into this data. When you load this data, even if you set BGM off in the options, BGM will still be turned on. This is because a non-zero [TSW_BGM_ID] value is loaded into the memory. On the other hand, however, if you save a data while BGM is off, then when you load this data, BGM state will not change (i.e., if BGM is on, it will remain on)
+		; This is definitely a design flaw. Each other option has its own variable to determine its state, and they will be loaded by your saved *options* not saved *data*. On the contrary, there are multiple things that can determine whether BGM is on: sometimes the checked state of the menu item, sometimes a boolean byte variable [TSW_BGM_setting], and sometimes whether [TSW_BGM_ID] is zero. These can be at odds with others and can be quite chaotic
+		; So my decision is to exclude [TSW_BGM_ID] in the saved data, so when you load a data, only the current options will be taken into consideration, i.e., if BGM is on, it remains on; and if BGM is off, it remains off, just like all other options
+
+		; ...
+		; original bytes:
+;BASE:7EBAD		push 0
+;BASE:7EBAF		mov edx, offset BASE:B8934	; map data starting from BASE:B8934
+;BASE:7EBB4		mov ecx, 00001881	; with a length of 0x1881 bytes
+;BASE:7EBB9		mov eax, offset BASE:8C600	; TSW_file_handle
+;BASE:7EBBE		call BASE:04254	; @BlockWrite
+;BASE:7EBC3		call BASE:02710	; @_IOTest
+;BASE:7EBC8		push 0
+;BASE:7EBCA		mov edx, offset BASE:B8688	; player data starting from BASE:B8688 (TSW_hero_status)
+;BASE:7EBCF		mov ecx, 000002AC	; with a length of 0x02AC bytes
+;BASE:7EBD4		mov eax, offset BASE:8C600	; TSW_file_handle
+;BASE:7EBD9		call BASE:04254	; @BlockWrite
+;BASE:7EBDE		call BASE:02710	; @_IOTest
+;BASE:7EBE3		mov eax, offset BASE:8C600	; TSW_file_handle
+;BASE:7EBE8		call BASE:042B8	; @Close
+;BASE:7EBED		call BASE:02710	; @_IOTest
+;BASE:7EBF2		mov dword ptr [BASE:8C58C], 0086	; TSW_tedit8_msg_id = 0x86 ("Saved the game.")
+		; ...
+		; patched bytes:
+BASE:7EBAD		xor edi,edi	; edi will be restored at the end of `savework`
+BASE:7EBAF		mov eax, [BASE:8C600]	; [TSW_file_handle]
+BASE:7EBB4		push eax	; hObject
+		; up to here we have pushed the parameter for the `CloseHandle` call
+BASE:7EBB5		lea ecx, [ebp-08]	; see `savework`: vacant space on stack; suitable to be the pointer of `lpNumberOfBytesWritten`
+BASE:7EBB8		push edi	; lpOverlapped (0)
+BASE:7EBB9		push ecx	; lpNumberOfBytesWritten
+BASE:7EBBA		push 02AC	; nNumberOfBytesToWrite
+BASE:7EBBF		push offset BASE:B8688	; lpBuffer
+BASE:7EBC4		push eax	; hFile
+		; up to here we have pushed all parameters for the second `WriteFile` call
+BASE:7EBC5		push edi	; lpOverlapped (0)
+BASE:7EBC6		push ecx	; lpNumberOfBytesWritten
+BASE:7EBC7		push 1881	; nNumberOfBytesToWrite
+BASE:7EBCC		push offset BASE:B8934	; lpBuffer
+BASE:7EBD1		push eax	; hFile
+		; up to here we have pushed all parameters for the first `WriteFile` call
+BASE:7EBD2		mov esi, offset TSW_BGM_ID	; esi will be restored at the end of `savework`
+BASE:7EBD7		xchg [esi], edi	; [TSW_BGM_ID] -> 0; edi -> old [TSW_BGM_ID]
+		; Another important thing about data saving is the checksum. TSW will refuse to load a data if the checksum is wrong, which indicates the data is corrupted. (In practice, before you load a data, TSW will save the current status to `save0.dat`, and then it loads the data: If the data is not alright, TSW will pop up a messagebox saying "Do not use this data," and then load back `save0.dat`)
+		; [TSW_DataCheck1] is the sum of 0xA4 dword variables starting from offset TSW_hero_status; [TSW_DataCheck2] adds up all odd-numbered variables in the range above, and then minuses all even-numbered variables
+		; TSW_BGM_ID is odd-numbered, so if we set it as 0, both [TSW_DataCheck1] and [TSW_DataCheck2] should be subtracted by its original value to ensure data integrity
+BASE:7EBD9		mov eax, offset TSW_DataCheck1
+BASE:7EBDE		sub [eax], edi	; subtract this value from this checksum (sum of all variables)
+BASE:7EBE0		sub [eax+4], edi	; [TSW_DataCheck2]; subtract this value from this checksum (sum of all odd-numbered variables minus all even-numbered variables)
+BASE:7EBE3		call kernel32.WriteFile
+BASE:7EBE8		call kernel32.WriteFile
+BASE:7EBED		call kernel32.CloseHandle
+BASE:7EBF2		mov [esi], edi	; restore [TSW_BGM_ID]
+BASE:7EBF4		mov byte ptr [BASE:8C58C], 86	; assign BYTE instead of DWORD can save 3-byte space (10->7 bytes of opcode); TSW_tedit8_msg_id = 0x86 ("Saved the game.")
+BASE:7EBFB		nop
+		; ...
+		; Above, the treatments are for the case where a data file already exists, and new data will overwrite the old file
+		; Below, the treatments are for the case where no such data file was existent previously, so a new file will be created
+		; The codes are exactly the same
+		; original bytes:
+;BASE:7EC3A		push 0
+			; ... (same as above)
+		; ...
+		; patched bytes:
+BASE:7EC3A		xor edi, edi
+			; ... (same as above)
+		; ...
+
+		TTSW10.savework	endp
+
+BASE:54DE8	TTSW10.syokidata2	proc near	; called upon game status refreshing, such as restarting a game / loading a game / changing game window size / initialize all options / etc.
+		; Changes made: do not change BGM or WAV options when loading data
+		; Like above, the treatments of WAV (soundeffect) are also chaotic. There are multiple things that can determine whether WAV is on: sometimes the checked state of the menu item, sometimes a boolean byte variable [TSW_WAV_setting(BASE:89BA3)] (like [TSW_BGM_setting(BASE:89BA2)]), and sometimes DWORD variable [TSW_WAV_OFF(BASE:B87EC)] (like [TSW_BGM_ID(BASE:B87F0)]). For the latter two, a value of 0 means WAV on, and a value of 1 means WAV off
+		; If the current WAV is off, loading a data where WAV is on will turn WAV on, and the corresponding menu item will be ticked. If the current WAV is on, loading a data where WAV is off will turn WAV off, but the corresponding menu item will NOT be unticked. I think this is likely a bug of TSW not a feature.
+		; So my decision is to retain old BGM / WAV options after loading a data, i.e., if BGM is on, it remains on; and if BGM is off, it remains off, just like all other options. This is achieved by referring to the byte variables [TSW_WAV_setting] and [TSW_BGM_setting] as discussed above
+		; ...
+		; original bytes:
+;BASE:55AAB		cmp dword ptr [esi+0164], 0	; [TSW_WAV_OFF]
+;BASE:55AB2		jne BASE:55AC1
+;BASE:55AB4		mov dl, 01
+;BASE:55AB6		mov eax, [ebx+032C]	; TTSW10.wavon1:TMenuItem
+;BASE:55ABC		call TMenuItem.SetChecked
+
+;BASE:55AC1		cmp dword ptr [esi+0168], 0	; [TSW_BGM_ID]
+;BASE:55AC8		je BASE:55ADE
+;BASE:55ACA	loc_syokidata2_BGM_on:
+;			mov dl, 01
+;BASE:55ACC		mov eax, [ebx+0330]	; TTSW10.BGMON1:TMenuItem
+;BASE:55AD2		call TMenuItem.SetChecked
+;BASE:55AD7		mov byte ptr [TSW_BGM_setting], 1
+;BASE:55ADE		cmp dword ptr [esi+0168],00	; [TSW_BGM_ID]
+;BASE:55AE5		je loc_syokidata2_next
+;BASE:55AE7		mov eax,[ebx+041C]	; TTSW10.Timer4
+;BASE:55AED		cmp byte ptr [eax+20], 0	; TTimer.FEnabled:Boolean
+;BASE:55AF1		jne loc_syokidata2_next
+;BASE:55AF3		mov eax, ebx
+;BASE:55AF5		call TTSW10.soundplay
+;BASE:55AFA	loc_syokidata2_next:
+		; ...
+		; patched bytes:
+BASE:55AAB		mov ecx, offset TSW_WAV_setting
+BASE:55AB0		mov edx, offset TSW_WAV_OFF
+BASE:55AB5		mov al, [ecx]
+BASE:55AB7		mov [edx], al	; read [TSW_WAV_OFF] from [TSW_WAV_setting]
+BASE:55AB9		mov al, [ecx-01]	; [TSW_BGM_setting]
+BASE:55ABC		test al, al
+BASE:55ABE		jne loc_syokidata2_BGM_on
+BASE:55AC0		mov [edx+04], al	; read [TSW_BGM_ID] from [TSW_BGM_setting]=0
+BASE:55AC3		jmp loc_syokidata2_next
+		; ...
+
+
 ; ==========
 
 
@@ -1102,34 +1219,3 @@ EXTRA:0DCD		mov eax, [ebx+TTimer4]
 EXTRA:0DD3		jmp TTimer.SetEnabled
 
 		sub_finalizeBGM	endp
-
-
-		;===== SUBROUTINE =====
-EXTRA:0DD8	sub_save_excludeBGM	proc near	; do not save [TSW_BGM_ID] into data
-		; This might worth a bit explanation here. I think this is likely a bug of TSW not a feature. If you save a data while BGM is on, then [TSW_BGM_ID] goes into this data. When you load this data, even if you set BGM off in the options, BGM will still be turned on. This is because a non-zero [TSW_BGM_ID] value is loaded into the memory. This is definitely a design flaw. Each other option has its own variable to determine its state, and they will be loaded by your saved *options* not saved *data*. On the contrary, there are multiple things that can determine whether BGM is on: sometimes the checked state of the menu item, sometimes a boolean byte variable [TSW_BGM_setting], and sometimes whether [TSW_BGM_ID] is zero. These can be at odds with others and can be quite chaotic
-		; so my decision is to exclude [TSW_BGM_ID] in the saved data, so when you load a data, only the current options will be taken into consideration, i.e., if BGM is on, it remains on; and if BGM is off, it remains off, just like all other options.
-
-EXTRA:0DD8		xor edi,edi	; edi will be restored at the end of `savework`
-EXTRA:0DDA		mov ebx, [eax]	; [TSW_file_handle]
-EXTRA:0DDC		push ebx	; hObject for CloseHandle
-EXTRA:0DDD		lea eax, [esp+08]	; see `savework`: before this function is called, there is a `push 0` opcode, which is suitable to be the pointer of `lpNumberOfBytesWritten`
-EXTRA:0DE1		push edi	; lpOverlapped (0)
-EXTRA:0DE2		push eax	; lpNumberOfBytesWritten
-EXTRA:0DE3		push ecx	; nNumberOfBytesToWrite (02AC)
-EXTRA:0DE4		push edx	; lpBuffer (BASE:0B8688)
-EXTRA:0DE5		push ebx	; hFile
-EXTRA:0DE6		mov eax, offset TSW_BGM_ID
-EXTRA:0DEB		mov ebx, [eax]	; current BGM ID
-EXTRA:0DED		sub [TSW_DataCheck1], ebx	; subtract this value from this checksum (sum of all variables)
-EXTRA:0DF3		sub [TSW_DataCheck2], ebx	; subtract this value from this checksum (sum of all odd-numbered variables minus all even-numbered variables)
-EXTRA:0DF9		mov [eax], edi	; [TSW_BGM_ID] = 0
-EXTRA:0DFB		call WriteFile
-EXTRA:0E00		call CloseHandle
-EXTRA:0E05		mov [TSW_BGM_ID], ebx	; restore [TSW_BGM_ID]
-EXTRA:0E0B		add [esp], 0014	; the file handle has already been closed, the next 20-byte opcodes is no longer necessary after this function is returned
-EXTRA:0E0F		ret 04	; pop the `lpNumberOfBytesWritten`
-		sub_save_excludeBGM	endp
-
-; Another important thing about data saving is the checksum. TSW will refuse to load a data if the checksum is wrong, which indicates the data is corrupted. (In practice, before you load a data, TSW will save the current status to `save0.dat`, and then it loads the data: If the data is not alright, TSW will pop up a messagebox saying "Do not use this data," and then load back `save0.dat`)
-; [TSW_DataCheck1] is the sum of 0xA4 dword variables starting from offset TSW_hero_status; [TSW_DataCheck2] adds up all odd-numbered variables in the range above, and then minuses all even-numbered variables
-; TSW_BGM_ID is odd-numbered, so if we set it as 0, both [TSW_DataCheck1] and [TSW_DataCheck2] should be subtracted by its original value to ensure data integrity.

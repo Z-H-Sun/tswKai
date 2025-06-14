@@ -46,6 +46,9 @@ module BGM
  [40, 5, 5, 7, 5, 4, 18, 0x12, 0x15], [49, 1, 5, 2, 5, 91, 19, -0x69, nil]]
   BGM_PHANTOMFLOOR = 'b_095xgw'
   BGM_PATCH_BYTES_0 = [ # address, len, original bytes, patched bytes
+[0x47ebad, 79, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\x91\x56\xF8\xFF\xE8\x48\x3B\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\x76\x56\xF8\xFF\xE8\x2D\x3B\xF8\xFF\xB8\0\xC6\x48\0\xE8\xCB\x56\xF8\xFF\xE8\x1E\x3B\xF8\xFF\xC7\5\x8C\xC5\x48\0\x86\0\0\0", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\x68\x34\x89\x4B\0\x50\xBE\xF0\x87\x4B\0\x87\x3E\xB8\x18\x89\x4B\0\x29\x38\x29\x78\4\xE8\xA8\x26\xF8\xFF\xE8\xA3\x26\xF8\xFF\xE8\x36\x26\xF8\xFF\x89\x3E\xC6\5\x8C\xC5\x48\0\x86\x90"], # TTSW10.savework do not save BGM_ID into data
+[0x47ec3a, 79, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\4\x56\xF8\xFF\xE8\xBB\x3A\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\xE9\x55\xF8\xFF\xE8\xA0\x3A\xF8\xFF\xB8\0\xC6\x48\0\xE8\x3E\x56\xF8\xFF\xE8\x91\x3A\xF8\xFF\xC7\5\x8C\xC5\x48\0\x86\0\0\0", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\x68\x34\x89\x4B\0\x50\xBE\xF0\x87\x4B\0\x87\x3E\xB8\x18\x89\x4B\0\x29\x38\x29\x78\4\xE8\x1B\x26\xF8\xFF\xE8\x16\x26\xF8\xFF\xE8\xA9\x25\xF8\xFF\x89\x3E\xC6\5\x8C\xC5\x48\0\x86\x90"], # same above
+[0x455aab, 26, "\x83\xBE\x64\1\0\0\0\x75\x0D\xB2\1\x8B\x83\x2C\3\0\0\xE8\x2F\xA8\xFB\xFF\x83\xBE\x68\1", "\xB9\xA3\x9B\x48\0\xBA\xEC\x87\x4B\0\x8A\1\x88\2\x8A\x41\xFF\x84\xC0\x75\x0A\x88\x42\4\xEB\x35"], # TTSW10.syokidata2_0 WAV and BGM after load
 [0x4312cb, 65, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0\0\xBB\xE4\1\0\0\0\x74\x18\x83\x8B\xDC\1\0\0\4\x8B\x83\xF0\1\0\0\x89\x44\x24\4\xC6\x83\xE4\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x74\x3D\x31\xD2\x89\x54\x24\4\5\x64\4\0\0\x3B\x18\x74\x1F\x3B\x58\xFC\xB2\4\x74\2\xB2\x40\xB8\x3B\xA1\x4B\0\x8A\x08\x39\x15\xAC\xC5\x48\0\x0F\x9F\0\x7F\x0C\x84\xC9\x75\x08\x83\x8B\xDC\1\0\0\4\x90"] # TMediaPlayer.Play
   ] # this list: always patch
   BGM_PATCH_BYTES = [ # address, len, original bytes, patched bytes[, variable to insert into patched bytes[, if `call relative`, an additional offset parameter is provided next]]
@@ -66,8 +69,6 @@ module BGM
 [0x48468e, 1, "\x85", "\x86"], # TTSW10.opening9 (ending scene) disregard BGMOn1.Checked
 [0x46b640, 1, "\x74", "\xEB"], # TTSW10.moncheck for 49F (from battle with sorcerers); disregard stopping BGM (1,6,0)
 [0x453463, 1, "\x74", "\xEB"], # TTSW10.stackwork for 11,7,0 (from opening2 (3f opening scene)); disregard playing BGM No.11 (will handle elsewhere)
-[0x47ebda, 4, "\x76\x56\xF8\xFF", '%s', :@_sub_save_excludeBGM, 4], # TTSW10.savework do not save BGM_ID into data
-[0x47ec67, 4, "\xE9\x55\xF8\xFF", '%s', :@_sub_save_excludeBGM, 4], # same above
 [TTIMER_SETENABLED_ADDR, 5, "\x3A\x50\x20\x74\x08", "\xE8%s", :@_sub_resetTTimer4, 5], # _Unit9.TTimer.SetEnabled reset TTimer4 attributes for tswBGM
 [BGM_CHECK_ADDR, 5, "\xA1\x98\x86\x4B\0", "\xE8%s", :@_sub_checkBGM_ext, 5], # TTSW10.soundcheck add more checks such as HP and boss battle
 [0x45282a, 4, "\x8E\x9A\2\0", '%s', :@_sub_instruct_playBGM, 4], # TTSW10.stackwork for 1,5,0 -> with 1,5,bgmid; call sub_instruct_playBGM instead of sub_soundplay
@@ -255,14 +256,7 @@ BGM_CHECK_EXT.map {|i| [0xf883, i[0], 0x75, i[7], 0xb8, 0, i[5], i[6], 0xa0,
  0x1589, BGM_ID_ADDR, 0x838b, OFFSET_TMEDIAPLAYER5,
  0xe8, TMEDIAPLAYER_CLOSE_ADDR-$lpNewAddr-0xdc7, # 0DC2...0DC7 call TMediaPlayer.Close
  0x158a, @_isInProlog, 0x838b, OFFSET_TTIMER4, 0xe9,
- TTIMER_SETENABLED_ADDR-$lpNewAddr-0xdd8].pack('SSSLSLClSSLSSClSLSLClSLSLCl') + # 0DD3...0DD8 jmp TTimer.SetEnabled
-
-# 0DD8: subroutine save_excludeBGM
-"\x31\xFF\x8B\x18\x53\x8D\x44\x24\x08\x57\x50\x51\x52\x53\xB8" +
-[BGM_ID_ADDR, 0x188b, 0x1d29, DATA_CHECK1_ADDR, 0x1d29,
- DATA_CHECK2_ADDR, 0x3889, 0xe8, WRITE_FILE_ADDR-$lpNewAddr-0xe00, # 0DFB...0E00 call kernel32.WriteFile
- 0xe8, CLOSE_HANDLE_ADDR-$lpNewAddr-0xe05, # 0E00...0E05 call kernel32.CloseHandle
- 0x1d89, BGM_ID_ADDR, 0x0483, 0x1424, 0xc2, 4].pack('LSSLSLSClClSLSSCS')
+ TTIMER_SETENABLED_ADDR-$lpNewAddr-0xdd8].pack('SSSLSLClSSLSSClSLSLClSLSLCl') # 0DD3...0DD8 jmp TTimer.SetEnabled
 
     WriteProcessMemory.call_r($hPrc, @_bgm_filename, injBuf, injBuf.size, 0)
 

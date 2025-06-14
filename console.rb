@@ -292,7 +292,7 @@ class Console
     beep() if beepOnEnd
     return i
   end
-  def get_num(digits) # TODO: support of arrow key
+  def get_num(digits)
     digitCount = 0
     str = ''
     x, y = get_cursor()
