@@ -159,7 +159,7 @@ Rev: %d' % index) if $check
     return @f
   end
   def res(index) # restore only the index-th item
-    print('
+    puts('
 Res: %d' % index) if $check
     @@address[index].each_with_index {|x, i| patch(0, index, i, x)}
     return @f

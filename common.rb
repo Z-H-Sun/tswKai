@@ -166,7 +166,7 @@ module Win32
 # it will trigger TTSW10.OnActivate=TTSW10.formactivate subroutine
 # which will show prolog animation and restart the game! (can change the first opcode `push ebp` to `ret` to avoid)
     end
-    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_NAME)
+    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_VER)
       if IsWindow.call($hWnd || 0).zero?
         hWnd = $hWnd = 0 # if the window has gone, create a system level msgbox
         flag |= MB_TOPMOST
@@ -217,7 +217,7 @@ module Win32
         reason = $str::ERR_MSG[6]
       end
       argv.collect! {|i| s = i.inspect; s.size > 64 ? (s[0, 60]+' ...$') : s} # trancate too long args
-      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, errMsg(err), reason, APP_NAME, prototype.join(''), return_type, argv.join(', ')])
+      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, errMsg(err), reason, APP_VER, prototype.join(''), return_type, argv.join(', ')])
     end
   end
 end
@@ -398,7 +398,7 @@ def waitForTSW()
   return unless (n9 = waitTillAvail($TTSW+OFFSET_N9))
   $callFunc_addr_addr = n9+OFFSET_TMENUITEM_ONCLICK # address for changing the arbitrary function address
   WriteProcessMemory.call_r($hPrc, TMENU_CLICK_ADDR, TMENU_CLICK_PATCH_BYTES, TMENU_CLICK_PATCH_BYTES.size, 0)
-  $appTitle = 'tswKai3 - pID=%d' % $pID
+  $appTitle = APP_VER + ' - pID=%d' % $pID
   return true
 end
 def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles are not ready yet; need to wait

@@ -30,10 +30,10 @@ module Str
 'tswKai3: Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
 ', or press a key to use an item.',
 'tswKai3: Use arrow keys to fly up/down; %s the %s key to confirm.',
-'tswKai3: YOU HAVE CHEATED AT THE GAME!',
-'tswKai3: Started. Found TSW running - pID=%d; hWnd=0x%08X',
-'tswKai3: Could not use %s!', # 10
-"tswKai3 is running. Here is a summary of the usage:
+APP_VER+': YOU HAVE CHEATED AT THE GAME!',
+APP_VER+': Started. Found TSW running - pID=%d; hWnd=0x%08X',
+APP_VER+': Could not use %s!', # 10
+APP_VER+" is running. Here is a summary of the usage:
 
 When %s down %s:
 1) Move the mouse and then click to teleport in the map\n    (Right click = cheat);
@@ -55,7 +55,7 @@ Press %-9s	= Switch to TSW or config / cheat window;
 Double press %s	= Re-register hotkeys if they stop working;
 Hold %-10s	= Quit tswKai3.",
 'Re-registered %s hotkeys.',
-'tswKai3 has stopped.',
+APP_VER+' has stopped.',
 'DMG:%s = %s * %sRND | %dG%s',
 ' | PrevCRI:%s', # 15
 ' | NextCRI:%s',
@@ -90,9 +90,9 @@ new path there. Continue?',
 please close it and then try again.',
 
 'tswKai3 is already running with pID=%s.',
-'tswKai3 Cheat Console - pID=%p', # 30
-'tswKai3 Config (Static)',
-'tswKai3 Config (Dynamic) - pID=%p',
+APP_VER+' Cheat Console - pID=%p', # 30
+APP_VER+' Config (Static)',
+APP_VER+' Config (Dynamic) - pID=%p',
 'Show only one-turn battle animation
 This can also bypass the 2500-round limit bug',
 'Fix 47F Magician_A movement bug
@@ -143,7 +143,7 @@ will hibernate until another TSW game is run; choosing
 process has already been running (pID = %d).',
 '',
 
-'tswKai3 Extensions - pID=%p', # 50
+APP_VER+' Extensions - pID=%p', # 50
 ['[ ] Raise HP by paying gold to the highest altar visited', '[ ] Raise ATK by paying gold to the highest altar visited', '[ ] Raise DEF by paying gold to the highest altar visited', '[ ] Sell yellow keys to the 28F merchant to earn gold', '[ ] Clear accessible zero-damage monsters on this floor', '[ ] Clear all temporary data and reset snapshot count'],
 ['Description:', 'Press a Numeric / Arrow Key to select an item shown above, ', ' or press ESC / SPACE / ENTER to return to TSW.', "\n Press any key to continue...\n Or press a Numeric / Arrow Key to choose another item.", 'Press SPACE / ENTER to confirm, ', "or any other key to cancel\n (Numeric / Arrow Key = cancel & choose another item).", '(A snapshot will be saved beforehand)'],
 ["Function unavailable.\n Please go to a place where you can access a stair.", 'Function unavailable: You have not visited any altars yet.', 'Function unavailable: Not enough gold for future power-ups  ', "Function unavailable to avoid INT32 overflow.\n You have power-uped for no less than 9999 times.", "Function unavailable to avoid INT32 overflow.\n You have already had a high status value.", '(The next power-up needs %d0 gold).'],
@@ -195,10 +195,10 @@ process has already been running (pID = %d).',
 'tswKai3: 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
 '，或按下对应按键使用宝物。',
 'tswKai3: 使用方向键上 / 下楼，最后%s %s 键确认。',
-'tswKai3: 已 作 弊 ！',
-'tswKai3: 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
-'tswKai3: 无法使用%s！', # 10
-"tswKai3 已开启，以下为使用方法摘要。
+APP_VER+': 已 作 弊 ！',
+APP_VER+': 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
+APP_VER+': 无法使用%s！', # 10
+APP_VER+" 已开启，以下为使用方法摘要。
 
 按下 %s 键时%s：
 1) 单击鼠标可传送到地图上的新位置（右键＝作弊）；
@@ -220,7 +220,7 @@ process has already been running (pID = %d).',
 双击 %-10s	＝当快捷键失效时重置快捷键；
 长按 %-10s	＝退出本程序。",
 '已重置 %s 快捷键。',
-'tswKai3 已退出。',
+APP_VER+' 已退出。',
 '伤害：%s = %s × %s回合｜%d金币%s',
 '｜上一临界：%s', # 15
 '｜临界：%s',
@@ -252,10 +252,10 @@ process has already been running (pID = %d).',
 请将其关闭后再重试。',
 
 'tswKai3 不可重复运行，已在进程 pID=%s 中打开。',
-'tswKai3 作弊控制台 - pID=%p', # 30
+APP_VER+' 作弊控制台 - pID=%p', # 30
 
-'tswKai3 设置（静态）',
-'tswKai3 设置（动态）- pID=%p',
+APP_VER+' 设置（静态）',
+APP_VER+' 设置（动态）- pID=%p',
 '对战只显示一回合战斗动画以节省时间
 (这也能解决2500回合战斗上限的溢出Bug)',
 '修正47层「魔術士A」魔法回退路线Bug
@@ -300,7 +300,7 @@ process has already been running (pID = %d).',
 运行中 (pID = %d)。',
 '',
 
-'tswKai3 扩展功能 - pID=%p', # 50
+APP_VER+' 扩展功能 - pID=%p', # 50
 ['[ ] 供奉金币，提升数次生命力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次攻击力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次防御力（使用目前所到访过的最高祭坛）', '[ ] 向28层商人卖出指定数量的黄钥匙，赚取金币', '[ ] 清除当前楼层中可直接到达的所有零伤害怪物', '[ ] 清除所有临时存档，并重置临时存档节点编号'],
 ['说明:', '按 方向键 或 对应数字键 选定一个上方所列的项目；', '或按 ESC、  空格 或 回车 键以直接返回游戏。', "\n 请按 任意键 继续，或按 方向键 / 对应数字键 选定其他项目。", '请按 空格 / 回车键确认操作，', "或按 其他任意键 取消；\n 其中，按 方向键 / 对应数字键 可以在取消后选定其他项目。", '(进行此操作前会保存一个临时存档节点)'],
 ['请移动到楼梯口（或与之直接连通处），否则无法使用快捷祭坛。', '玩家未曾到访过任一祭坛，因此无法使用快捷祭坛功能。', '当前金币数量不够下一次的祭坛加点，因此无法使用快捷祭坛功能  ', '玩家已加点 ≥9999 次，已暂停快捷祭坛功能以防整数溢出。', '玩家属性值太高，已暂停快捷祭坛功能以防整数溢出。', '(下次祭坛加点需要 %d0 金币)。'],

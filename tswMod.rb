@@ -137,7 +137,7 @@ module Mod
 # ====================
 # Item from tswSL.asm (used to be an item in `SL::SL_PATCH_BYTES_1` treated in the SL module)
 [0x5084d, 2, "\x33\xD2", "\xEB\x0B"], # TTSW10.itemdel; enable loading during event
- 
+
 # ====================
 # List from tswBGM.asm (used to be `BGM::BGM_PATCH_BYTES_0` treated in the BGM module)
 [0x312cb, 65, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0\x80\xBB\xE4\1\0\0\0\x74\x18\x83\x8B\xDC\1\0\0\4\x8B\x83\xF0\1\0\0\x89\x44\x24\4\xC6\x83\xE4\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x74\x3D\x31\xD2\x89\x54\x24\4\5\x64\4\0\0\x3B\x18\x74\x1F\x3B\x58\xFC\xB2\4\x74\2\xB2\x40\xB8\x3B\xA1\x4B\0\x8A\x08\x39\x15\xAC\xC5\x48\0\x0F\x9F\0\x7F\x0C\x84\xC9\x75\x08\x83\x8B\xDC\1\0\0\4\x90"], # TMediaPlayer.Play; improve consecutive sound effects

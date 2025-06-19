@@ -3,6 +3,7 @@
 # Author: Z.Sun
 
 APP_NAME = 'tswKai3'
+APP_VER = 'tswKai3.2.2'
 APP_FNAME = $Exerb ? ExerbRuntime.filepath : ($0[/^[\/\\]{2}/] ? $0.dup : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless. There is a bug in Ruby's File#expand_path method, which fails to parse UNC paths, so ignore it if the path starts with \\
 APP_PATH = File.dirname(APP_FNAME)
 CUR_PATH = Dir.pwd
@@ -142,7 +143,7 @@ loop do
   when 0 # TSW has quitted
     disposeRes()
     if $keybdinput_struct.ord == INPUT_KEYBOARD # there is at least one registered hotkeys
-      unless SendInput.call($keybdinput_num, $keybdinput_struct, INPUT_STRUCT_LEN).zero? # we can "steal" the focus from the current foreground process by sending a systemwide hotkey event
+      unless SendInput.call($keybdinput_num & 0xFF, $keybdinput_struct, INPUT_STRUCT_LEN).zero? # we can "steal" the focus from the current foreground process by sending a systemwide hotkey event
         $keybdinput_num |= 0x100 # to tell the msg loop no need to do extra stuff for this dummy hotkey event
       end # see Issue #2: sometimes SendInput may fail, especially for Windows Workstation; if that's the case, do nothing; after all, failing to steel the focus is not a huge deal (better than crashing)
     end

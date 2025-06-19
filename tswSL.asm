@@ -835,7 +835,7 @@ EXTRA:0800		shl eax, 04
 EXTRA:0803		or eax, [edx+1C]	; y_pos
 EXTRA:0806		shl eax, 04
 EXTRA:0809		or eax, [edx+18]	; x_pos
-EXTRA:080C		mov edx, last_coordinate
+EXTRA:080C		mov edx, offset last_coordinate
 EXTRA:0811		cmp ax, word ptr [edx]
 EXTRA:0814		je loc_ret5	; equal then won't trigger `jl`
 EXTRA:0816		mov word ptr [edx], ax

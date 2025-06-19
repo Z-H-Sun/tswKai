@@ -36,7 +36,7 @@ module Monsters
   end
   module_function
   def getMonsterID(tileID)
-    if tileID < 61# not a monster tile
+    if tileID < 61 # not a monster tile
       nil
     elsif tileID < 97 # slimeG - vampire
       tileID - 61 >> 1
