@@ -1,2 +1,2 @@
 #!/usr/bin/env sh
-autoconf && ./configure
+autoconf && ./configure --build=i686-pc-mingw32

@@ -10,7 +10,7 @@ ZLIB_COMPRESS_LEVEL = 9 # 0 means no compression; otherwise 1-9 (higher = smalle
 
 FILEINPUTPATH = '../' # change rb path here
 FILEOUTPUT = 'tswKai3.exa' # change output archive filename here
-FILELIST = Dir.chdir('../') {|i| Dir['main.rbw'] + Dir['*.rb'] } # main.rbw must be placed first
+FILELIST = Dir.chdir(FILEINPUTPATH) {|i| Dir['main.rbw'] + Dir['*.rb'] } # main.rbw must be placed first
 # %w(main.rbw common.rb connectivity.rb console.rb gui.rb monsters.rb strings.rb stringsGBK.rb tswBGM.rb tswKai.rb tswMP.rb tswMod.rb tswModStatic.rb tswSL.rb)
 FILELIST.delete 'tswRev.rb' # tswRev is not needed in tswKai3.exe
 
