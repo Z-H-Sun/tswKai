@@ -165,7 +165,7 @@ module Win32
 # it will trigger TTSW10.OnActivate=TTSW10.formactivate subroutine
 # which will show prolog animation and restart the game! (can change the first opcode `push ebp` to `ret` to avoid)
     end
-    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_NAME)
+    def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_VER)
       if IsWindow.call($hWnd || 0).zero?
         hWnd = $hWnd = 0 # if the window has gone, create a system level msgbox
         flag |= MB_TOPMOST
@@ -216,7 +216,7 @@ module Win32
         reason = $str::ERR_MSG[6]
       end
       argv.collect! {|i| s = i.inspect; s.size > 64 ? (s[0, 60]+' ...$') : s} # trancate too long args
-      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, errMsg(err), reason, APP_NAME, prototype.join(''), return_type, argv.join(', ')])
+      raise_r(Win32APIError, $str::ERR_MSG[7] % [err, effective_function_name, dll_name, r, errMsg(err), reason, APP_VER, prototype.join(''), return_type, argv.join(', ')])
     end
   end
 end
@@ -243,7 +243,7 @@ unless $Exerb # EXERB GUI has its own error handler window
   end
 end
 
-APP_SETTINGS_FNAME = APP_NAME + 'Option.txt'
+APP_SETTINGS_FNAME = 'tswKai3Option.txt'
 APP_ICON_ID = 1 # Icons will be shown in the GUI of this app; this defines the integer identifier of the icon resource in the executable
 TSW_CLS_NAME = 'TTSW10'
 BASE_ADDRESS = 0x400000
@@ -388,7 +388,7 @@ def waitForTSW()
   $TTSW = readMemoryDWORD(TTSW_ADDR)
   return unless (edit8 = waitTillAvail($TTSW+OFFSET_EDIT8))
   return unless ($hWndText = waitTillAvail(edit8+OFFSET_HWND))
-  $appTitle = APP_NAME + ' - pID=%d' % $pID
+  $appTitle = APP_VER + ' - pID=%d' % $pID
   return true
 end
 def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles are not ready yet; need to wait

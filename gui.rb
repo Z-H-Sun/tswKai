@@ -50,7 +50,7 @@ LOGFONT_STRUCT = 'L5C8a32'
 DIALOG_CLASS_NAME = '#32770'
 STATIC_CLASS_NAME = 'Static'
 BUTTON_CLASS_NAME = 'Button'
-APP_MUTEX_TITLE = APP_NAME+'_mutex'
+APP_MUTEX_TITLE = 'tswKai3_mutex'
 
 WINDOW_MOVE_THRESHOLD_PIXEL = 20 # only when you click and drag the mouse over this distance, the status window will then be moved (this design is to avoid misoperation)
 WINDOW_SCREEN_X, WINDOW_SCREEN_Y = 20, 20 # where the status tip window show on the screen

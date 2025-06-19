@@ -22,24 +22,22 @@ module Str
 'Weapon(Sword)', 'Shield Level', 'Back Tower *',
 'OrbOfHero', 'OrbOfWisdom', 'OrbOfFlight', 'Cross', 'Elixir', 'Mattock', 'DestructBall', 'WarpWing', 'AscentWing', 'DescentWing', 'DragonSlayer', 'SnowCrystal', 'MagicKey', 'SuperMattock', 'LuckyGold']
     STRINGS = [
-APP_NAME+': Please wait for game event to complete...', # 0
-APP_NAME+': Click the mouse to teleport to (%X,%X)%s',
-APP_NAME+': Move the mouse to choose a destination to teleport.',
-APP_NAME+': (%X,%X) is inaccessible. Move the mouse to choose a different destination.',
-APP_NAME+': Press an alphabet/arrow key to use the corresponding item.',
-APP_NAME+': Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
+'tswKai3: Please wait for game event to complete...', # 0
+'tswKai3: Click the mouse to teleport to (%X,%X)%s',
+'tswKai3: Move the mouse to choose a destination to teleport.',
+'tswKai3: (%X,%X) is inaccessible. Move the mouse to choose a different destination.',
+'tswKai3: Press an alphabet/arrow key to use the corresponding item.',
+'tswKai3: Teleported to (%X,%X). Move the mouse to continue teleporting%s', # 5
 ', or press a key to use an item.',
-APP_NAME+': Use arrow keys to fly up/down; release the %s key to confirm.',
-APP_NAME+': YOU HAVE CHEATED AT THE GAME!',
-APP_NAME+': Started. Found TSW running - pID=%d; hWnd=0x%08X',
-APP_NAME+': Could not use %s!', # 10
-APP_NAME+' is running. Here is a summary of the usage:
+'tswKai3: Use arrow keys to fly up/down; release the %s key to confirm.',
+APP_VER+': YOU HAVE CHEATED AT THE GAME!',
+APP_VER+': Started. Found TSW running - pID=%d; hWnd=0x%08X',
+APP_VER+': Could not use %s!', # 10
+APP_VER+" is running. Here is a summary of the usage:
 
 When the %s hotkey is down:
-1) Move the mouse and then click to teleport in the map
-   (Right click = cheat);
-2) Press a specified alphabet key to use an item or any
-   arrow keys to use Orb of Flight (Up arrow = cheat).
+1) Move the mouse and then click to teleport in the map\n    (Right click = cheat);
+2) Press a specified alphabet key to use an item or any\n    arrow keys to use Orb of Flight (Up arrow = cheat).
 
 When holding the hotkey, you can also see:
 * the next critical value and damage of each monster and
@@ -57,9 +55,9 @@ Press %s once	= Open config dialog;
 Press %s twice	= Open cheat console;
 Press %-9s	= Switch to TSW or config / cheat window;
 Double press %s	= Re-register hotkeys if they stop working;
-Hold %-10s	= Quit tswKai3.',
+Hold %-10s	= Quit tswKai3.",
 'Re-registered %s hotkeys.',
-APP_NAME+' has stopped.',
+APP_VER+' has stopped.',
 'DMG:%s = %s * %sRND | %dG%s',
 ' | PrevCRI:%s', # 15
 ' | NextCRI:%s',
@@ -93,17 +91,17 @@ new path there. Continue?',
 'The game now has an active popup child window;
 please close it and then try again.',
 
-APP_NAME+' is already running with pID=%s.',
-APP_NAME+' Cheat Console - pID=%p', # 30
-APP_NAME+' Config (Static)',
-APP_NAME+' Config (Dynamic) - pID=%p',
+'tswKai3 is already running with pID=%s.',
+APP_VER+' Cheat Console - pID=%p', # 30
+APP_VER+' Config (Static)',
+APP_VER+' Config (Dynamic) - pID=%p',
 'Show only one-turn battle animation
 This can also bypass the 2500-round limit bug',
 'Fix 47F Magician_A movement bug
 Rectify their behavior in first/last row/col',
 'Fix 45F Merchant bug in the backside tower
 Shouldn\'t add just 2000 HP (>=2nd round)', # 35
-'Fix 50F Zeno status bug in the backside tower
+'Fix 50F Zeno stats bug in the backside tower
 Shouldn\'t multiply factor twice (>=3rd round)',
 'Increase the margins of the dialog window',
 
@@ -172,28 +170,26 @@ process has already been running (pID = %d).',
 '佩 剑 等 级', '盾 牌 等 级', '里侧塔属性×',
 '勇 者 灵 球', '智 慧 灵 球', '飞 翔 灵 球', '十 字 架', '万 灵 药', '魔    镐', '破 坏 爆 弹', '瞬 移 之 翼', '升 华 之 翼', '降 临 之 翼', '屠 龙 匕', '雪 之 结 晶', '魔 法 钥 匙', '超 级 魔 镐', '幸 运 金 币']
     STRINGS = [
-APP_NAME+': 请等待游戏内部事件结束……', # 0
-APP_NAME+': 单击鼠标传送至 (%X,%X)%s',
-APP_NAME+': 移动鼠标选择一个传送的目的地。',
-APP_NAME+': 无法前往 (%X,%X)，请移动鼠标另选一个目的地。',
-APP_NAME+': 按下字母键 / 方向键使用相应的宝物。',
-APP_NAME+': 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
+'tswKai3: 请等待游戏内部事件结束……', # 0
+'tswKai3: 单击鼠标传送至 (%X,%X)%s',
+'tswKai3: 移动鼠标选择一个传送的目的地。',
+'tswKai3: 无法前往 (%X,%X)，请移动鼠标另选一个目的地。',
+'tswKai3: 按下字母键 / 方向键使用相应的宝物。',
+'tswKai3: 已传送至 (%X,%X)。移动鼠标继续传送%s', # 5
 '，或按下对应按键使用宝物。',
-APP_NAME+': 使用方向键上 / 下楼，最后松开 %s 键确认。',
-APP_NAME+': 已 作 弊 ！',
-APP_NAME+': 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
-APP_NAME+': 无法使用%s！', # 10
-APP_NAME+' 已开启，以下为使用方法摘要。
+'tswKai3: 使用方向键上 / 下楼，最后松开 %s 键确认。',
+APP_VER+': 已 作 弊 ！',
+APP_VER+': 已启动。发现运行中的 TSW - pID=%d; hWnd=0x%08X',
+APP_VER+': 无法使用%s！', # 10
+APP_VER+" 已开启，以下为使用方法摘要。
 
 当按下 %s 快捷键时：
 1) 单击鼠标可传送到地图上的新位置（右键＝作弊）；
-2) 按下特定字母键可使用对应的宝物；或按下任一
-   方向键，可以使用飞翔灵球（▲ 上方向键＝作弊）。
+2) 按下特定字母键可使用对应的宝物；或按下任一\n    方向键，可以使用飞翔灵球（▲ 上方向键＝作弊）。
 
 若拥有勇者灵球，在快捷键按下时还可在地图上显示：
 * 当前地图中所有怪物的下一临界及总伤害；以及
-* 将鼠标移到某个怪物上时，在右下状态栏显示怪物的
-  基本属性，并在底部状态栏显示其他重要数据。
+* 将鼠标移到某个怪物上时，在右下状态栏显示怪物的\n   基本属性，并在底部状态栏显示其他重要数据。
 
 使用以下快捷键增强存档和读档的游戏体验：
 * %-15s	＝读档自任意文件；
@@ -206,9 +202,9 @@ APP_NAME+' 已开启，以下为使用方法摘要。
 按两次 %-8s	＝打开作弊控制台；
 按下 %-10s	＝切换到魔塔游戏或上述窗口；
 双击 %-10s	＝当快捷键失效时重置快捷键；
-长按 %-10s	＝退出本程序。',
+长按 %-10s	＝退出本程序。",
 '已重置 %s 快捷键。',
-APP_NAME+' 已退出。',
+APP_VER+' 已退出。',
 '伤害：%s = %s × %s回合｜%d金币%s',
 '｜上一临界：%s', # 15
 '｜临界：%s',
@@ -239,11 +235,11 @@ APP_NAME+' 已退出。',
 '当前游戏界面存在活动的弹出式子窗口，
 请将其关闭后再重试。',
 
-APP_NAME+' 不可重复运行，已在进程 pID=%s 中打开。',
-APP_NAME+' 作弊控制台 - pID=%p', # 30
+'tswKai3 不可重复运行，已在进程 pID=%s 中打开。',
+APP_VER+' 作弊控制台 - pID=%p', # 30
 
-APP_NAME+' 设置（静态）',
-APP_NAME+' 设置（动态）- pID=%p',
+APP_VER+' 设置（静态）',
+APP_VER+' 设置（动态）- pID=%p',
 '对战只显示一回合战斗动画以节省时间
 (这也能解决2500回合战斗上限的溢出Bug)',
 '修正47层「魔術士A」魔法回退路线Bug
