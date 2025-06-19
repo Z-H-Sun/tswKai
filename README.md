@@ -464,8 +464,8 @@ In the original version of TSW, the BGM function is very user-hostile, which is 
 >
 > 参考本节的内容可配置修改器的行为。但是，配置不当（特别是对 Ruby 语言不是很了解的用户）将导致程序的行为不可控。此时请删除 `tswKai3Option.txt` 以重置。
 
-* Use any text editor to open `tswKai3Option.txt` in the same folder as `tswKai3.exe`. If the file does not exist, create one. It is recommended to start from this exemplary [`tswKai3Option.txt`](https://github.com/Z-H-Sun/tswKai/blob/v3.1.5/tswKai3Option.txt) file (which is included in the all-in-one package).<br/>
-使用任意文本编辑器打开 `tswKai3.exe` 同目录下的 `tswKai3Option.txt`，如果该文件不存在则新建一个同名文件。推荐在此样例 [`tswKai3Option.txt`](https://github.com/Z-H-Sun/tswKai/blob/v3.1.5/tswKai3Option.txt) 文件的基础上进行修改（软件整合包中已包含此样例文件）。
+* Use any text editor to open `tswKai3Option.txt` in the same folder as `tswKai3.exe`. If the file does not exist, create one. It is recommended to start from this exemplary [`tswKai3Option.txt`](https://github.com/Z-H-Sun/tswKai/blob/v3.1.8/tswKai3Option.txt) file (which is included in the all-in-one package).<br/>
+使用任意文本编辑器打开 `tswKai3.exe` 同目录下的 `tswKai3Option.txt`，如果该文件不存在则新建一个同名文件。推荐在此样例 [`tswKai3Option.txt`](https://github.com/Z-H-Sun/tswKai/blob/v3.1.8/tswKai3Option.txt) 文件的基础上进行修改（软件整合包中已包含此样例文件）。
 
 * This config file uses Ruby language. In Ruby, the pound sign (#) will comment out everything after it on the same line, so the "uncomment" instruction below means deleting the pound sign (#) at the beginning of the line so as to make this line take effect.<br/>
 此配置文件使用 Ruby 语言。在 Ruby 中，井号 (#) 表示注释掉这一行内、在它之后的所有内容，故以下说明中“取消注释”的做法即是删掉行首的井号 (#) 以使该行代码生效。

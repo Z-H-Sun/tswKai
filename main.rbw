@@ -3,7 +3,7 @@
 # Author: Z.Sun
 
 APP_NAME = 'tswKai3'
-APP_VER = 'tswKai3.1.5'
+APP_VER = 'tswKai3.1.8'
 APP_FNAME = $Exerb ? ExerbRuntime.filepath : ($0[/^[\/\\]{2}/] ? $0.dup : File.expand_path($0)) # after packed by ExeRB into exe, $0 or __FILE__ will be useless. There is a bug in Ruby's File#expand_path method, which fails to parse UNC paths, so ignore it if the path starts with \\
 APP_PATH = File.dirname(APP_FNAME)
 CUR_PATH = Dir.pwd
