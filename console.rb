@@ -178,6 +178,7 @@ class Console
       if tswActive and API.focusTSW() != $hWnd # has popup child
         msgboxTxt(28, MB_ICONASTERISK); return nil # fail
       end
+      HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
       @active = true
       ShowWindow.call(@hConWin, SW_RESTORE)
       SetForegroundWindow.call(@hConWin)

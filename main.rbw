@@ -71,7 +71,7 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
       ChkBox_CheckMsg(i, msg)
       next unless IsDialogMessage.call($hWndDialog, $buf).zero?
     elsif msgType == WM_HOTKEY
-      if (dummy = ($keybdinput_num > 0xFF)) # this hotkey event only serves to "steal" the focus from another foreground process
+      if $keybdinput_num > 0xFF # this hotkey event only serves to "steal" the focus from another foreground process
         $keybdinput_num &= 0xFF
         next # don't do extra stuff
       end
@@ -101,7 +101,6 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             ShowWindow.call($hWndDialog, SW_HIDE)
             Kai.main()
           else # nothing -> dialog
-            HookProcAPI.unhookK # no need for tswMP hook now; especially, console loop can cause significant delay when working in combination with hook; will reinstall later
             HookProcAPI.abandon()
             showMsgTxtbox(-1)
             Mod.showDialog(true)

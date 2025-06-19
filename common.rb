@@ -378,7 +378,7 @@ def waitForTSW()
 
   updateSettings()
   AttachThreadInput.call_r(GetCurrentThreadId.call_r(), $tID, 1) # This is necessary for GetFocus to work: 
-  #https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
+  # https://docs.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getfocus#remarks
   # Also, this is also critical to circumvent the ForegroundLockTimeout (flashing in taskbar but not activated) because now this app is attached to the input of TSW (see: https://devblogs.microsoft.com/oldnewthing/20080801-00/?p=21393)
   $hPrc = OpenProcess.call_r(PROCESS_VM_WRITE | PROCESS_VM_READ | PROCESS_VM_OPERATION | PROCESS_SYNCHRONIZE, 0, $pID)
   $bufHWait[0, POINTER_SIZE] = [$hPrc].pack(HANDLE_STRUCT)

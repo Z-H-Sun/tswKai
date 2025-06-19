@@ -396,7 +396,7 @@ EXTRA:0108	bytesRead	dd 0	; dummy parameter passed to `ReadFile` and `WriteFile`
 EXTRA:010C	tmp_id	db 0	; current temp data index
 EXTRA:010D		align 02
 EXTRA:010E	last_coordinate	dw 00FE	; = x+y*16+floor*256
-			; do not save temp data with the same `last_coordinate`; set as 254 at the start of / after loading a game, so no coordinate will be equal to this value (i.e. always save a first temp data)
+			; do not save temp data with the same `last_coordinate`; set as 254 at the start of a game and 255 after loading a game, so no coordinate will be equal to this value (i.e. always save a first temp data)
 
 		; char dat_filename[0x108]
 EXTRA:0110	dat_filename	db 'C:\Program Files (x86)\Tower of the Sorcerer\Savedat\%y%m%d_0.dat',0
@@ -456,7 +456,7 @@ EXTRA:04C4	dialog_struct:
 
 
 		;===== SUBROUTINE =====
-EXTRA:0510	sub_init	proc near	;load open/save dialog lib; load last saved tmp data id (default 0 and create hidden file if file not exist)
+EXTRA:0510	sub_init	proc near	; load open/save dialog lib; load last saved tmp data id (default 0 and create hidden file if file not exist)
 
 			push offset comdlg32_dllname
 EXTRA:0515		call LoadLibraryA	; the loaded functions will be reused once they are loaded for the first time, so no need to `FreeLibrary`
@@ -795,7 +795,7 @@ EXTRA:0800		shl eax, 04
 EXTRA:0803		or eax, [edx+1C]	; y_pos
 EXTRA:0806		shl eax, 04
 EXTRA:0809		or eax, [edx+18]	; x_pos
-EXTRA:080C		mov edx, last_coordinate
+EXTRA:080C		mov edx, offset last_coordinate
 EXTRA:0811		cmp ax, word ptr [edx]
 EXTRA:0814		je loc_ret5	; equal then won't trigger `jl`
 EXTRA:0816		mov word ptr [edx], ax

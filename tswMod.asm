@@ -1,5 +1,12 @@
 ; Author: Z.Sun
 ; My special thanks to Bilibili User '竹林眠り猫', who pioneered the work of analyzing the assembly codes for TSW's battle events and came up with the idea of realizing 'OTK' in TSW (i.e., displaying only one-turn battle animation to save time)
+; Other must-do patches are handled elsewhere, briefly listed below:
+; - Solve 33F trap room bug: addressed in tswRev.asm (Rev 8)
+; - Solve 40F boss battle prompt display bug: addressed in tswRev.asm (Rev 8-b)
+; - Fix the wrong GOLD income prompt after defeating a "strike-first" monster: addressed in tswRev.asm (Rev 9)
+; - Allow data loading during events: addressed in tswSL.asm
+; - Properly process consecutive sound effects: addressed in tswBGM.asm
+; - Do not change BGM and WAV settings when loading data: addressed in tswBGM.asm
 
 BASE:00000	; Pre-defined functions and variables in TSW.exe
 
