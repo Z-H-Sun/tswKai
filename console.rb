@@ -143,7 +143,7 @@ class Console
     hConMenu = GetSystemMenu.call(@hConWin, 0)
     DeleteMenu.call(hConMenu, SC_CLOSE, 0) # disable close (For Windows XP and 7, graying out the close sysmenu of a console window by using EnableMenuItem can be counteracted by the system! DeleteMenu is safer)
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
-# note: this will be executed everytime the console window is shown, which can revert the effect of `SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)` in Line 192
+# note: this will be executed everytime the console window is shown, which can revert the effect of `SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)` in Line 198
 # also, I tried setting the owner window to $hWndDialogParent, but then the app will easily freeze, maybe because potential conflicts with the current message loop? So $hWndTApp is the next available convenient owner
     SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)

@@ -16,7 +16,8 @@
 typedef void _on_fail(VALUE);
 static _on_fail* on_fail_orig;
 static inline void on_fail_wrap(VALUE errinfo) {
-  rb_funcall(rb_mKernel, rb_intern("preExit"), 1, Qnil); // call Ruby code `preExit(nil)`
+  int state = 0;
+  rb_eval_string_protect("preExit", &state);
   on_fail_orig(errinfo);
 }
 int __wrap_exerb_main(int argc, char** argv, void (*on_init)(VALUE, VALUE, VALUE), void (*on_fail)(VALUE)) {

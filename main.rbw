@@ -84,7 +84,6 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
           quit()
         elsif diff < INTERVAL_REHOOK # twice
           next if !state or state==2 or $configDlg # TSW must be running; console/dialog must not be running
-          showMsgTxtbox(-1)
           HookProcAPI.rehookK
           msgboxTxt(12, MB_ICONASTERISK, $MPhookKeyName)
         elsif state
@@ -102,7 +101,6 @@ def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2
             Kai.main()
           else # nothing -> dialog
             HookProcAPI.abandon()
-            showMsgTxtbox(-1)
             Mod.showDialog(true)
           end
         elsif !state and !$CONshowStatusTip.nil? # show status tip window
@@ -135,8 +133,9 @@ loop do
   when 0 # TSW has quitted
     disposeRes()
     if $keybdinput_struct.ord == INPUT_KEYBOARD # there is at least one registered hotkeys
-      SendInput.call_r($keybdinput_num, $keybdinput_struct, INPUT_STRUCT_LEN) # we can "steal" the focus from the current foreground process by sending a systemwide hotkey event
-      $keybdinput_num |= 0x100 # to tell the msg loop no need to do extra stuff for this dummy hotkey event
+      unless SendInput.call($keybdinput_num, $keybdinput_struct, INPUT_STRUCT_LEN).zero? # we can "steal" the focus from the current foreground process by sending a systemwide hotkey event
+        $keybdinput_num |= 0x100 # to tell the msg loop no need to do extra stuff for this dummy hotkey event
+      end # see Issue #2: sometimes SendInput may fail, especially for Windows Workstation; if that's the case, do nothing; after all, failing to steel the focus is not a huge deal (better than crashing)
     end
     if $CONaskOnTSWquit then quit() if msgboxTxt(22, MB_ICONASTERISK|MB_YESNO) == IDNO end
     waitInit()

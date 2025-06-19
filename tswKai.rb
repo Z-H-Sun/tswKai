@@ -140,12 +140,15 @@ module Kai
       end
     elsif i == 4 # floor
       callFunc(DISP_ADDR)
+      showMsgTxtbox(-1)
       bgmID = readMemoryDWORD(BGM_ID_ADDR)
       return true if bgmID.zero? # disabled BGM
       callFunc(BGM_CHECK_ADDR)
       return true if bgmID == readMemoryDWORD(BGM_ID_ADDR) # disregard same BGM
       $console.print_posA(31, 4, '%2d', v)
       callFunc(BGM_PLAY_ADDR) # caution: changing BGM will cause game and this thread to freeze for a while if BGM is not taken over by tswBGM (i.e. using TSW's own BGM treatment)
+    elsif i == 6 or i == 7 # X / Y position
+      showMsgTxtbox(-1)
     end
     return true
   rescue TSWKaiError => e
