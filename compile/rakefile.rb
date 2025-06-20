@@ -9,7 +9,8 @@ require 'rake'
 CC = ENV['M32CC'] || RbConfig::CONFIG['CC'] || 'gcc' # this must be a 32bit GCC!
 MINGW32_PATH = ENV['M32DIR'] # the entire toolchain must be 32bit! Should specify path to these binary executables here, especially for 64bit Ruby, since `devkit` package will prepend 64bit ruby devkit path
 ENV['PATH'] = MINGW32_PATH+';'+ENV['PATH'] if MINGW32_PATH
-EXERB_CFLAGS = '-std=gnu99 -Os -g0 -s -mwindows -fcommon -DNDEBUG -DHAVE_STATIC_ZLIB  -Wl,--stack=0x02000000,--wrap=rb_require_safe,--wrap=rb_require,--wrap=Init_ExerbRuntime,--wrap=exerb_main' # -fcommon switch should be on for gcc > 10 (because variables `rb_load_path`, `rb_progname`, and `rb_argv0` in 'exerb.c' will conflict with those defined in Ruby static library); see https://stackoverflow.com/a/67272728/11979352
+EXERB_CFLAGS_RT = '-std=gnu99 -Os -g0 -s -mwindows -fcommon -DNDEBUG -Wl,--stack=0x02000000,--wrap=exerb_main' # -fcommon switch should be on for gcc > 10 (because variables `rb_load_path`, `rb_progname`, and `rb_argv0` in 'exerb.c' will conflict with those defined in Ruby static library); see https://stackoverflow.com/a/67272728/11979352
+EXERB_CFLAGS_EX = '-Wl,--wrap=rb_require_safe,--wrap=rb_require,--wrap=Init_ExerbRuntime -DHAVE_STATIC_ZLIB' # these extra wrap-function are only needed by the standalone tswKai3.exe, not the "playground" tswKai3_rt.exe
 
 # ================ Ruby
 RUBY_CFLAGS = '-std=gnu99 -Os -g0 -DNDEBUG -DRUBY_EXPORT -DFD_SETSIZE=256 -DIN_WINPTHREAD -w -fpermissive -fgnu89-inline' # defining `IN_WINPTHREAD` is because `clock_gettime` is not yet supported in this version of mingw-w64, so do not include 'pthread_time.h' (see https://bugs.launchpad.net/epics-base/+bug/1492884); the `-fpermissive` switch is added because high version gcc will by default turn the following warnings into error: implicit-function-declaration, incompatible-pointer-types, and implicit-int, which can be turned off by multiple `-Wno-error=XXX` individually (see https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html); the `-fgnu89-inline` switch is added to avoid high version gcc throwing "undefined reference to `rb_reserved_word'" error in 'parse.c' and 'lex.c' (see https://stackoverflow.com/a/12747536 and also https://github.com/ruby/all-ruby/pull/9)
@@ -97,10 +98,15 @@ task :default => '../vendor/exerb-mingw' do
   cp 'config.h', e_path
   $WRITE_EXA = true # see `mkexa.rb`; explicitly ask to output .exa file
   load('mkexa.rb', wrap=true)
+  puts 'Building tswKai3.exe...'
   sh "windres resource.rc res.o"
-  sh "#{CC} -Wall #{EXERB_CFLAGS} -I../vendor/ruby -I../vendor/ruby/missing -I../vendor/ruby/win32 -I../vendor/zlib -I. -L. -o ../tswKai3.exe #{e_path}/gui.c res.o #{e_path}/exerb.c #{e_path}/module.c #{e_path}/utility.c #{e_path}/patch.c ../vendor/exerb-mingw/vendor/zlib.c  ../vendor/win32/api.c -lruby187 -lz #{RUBY_LIBS}"
+  sh "#{CC} -Wall #{EXERB_CFLAGS_RT} #{EXERB_CFLAGS_EX} -I../vendor/ruby -I../vendor/ruby/missing -I../vendor/ruby/win32 -I../vendor/zlib -I. -L. -o ../tswKai3.exe #{e_path}/gui.c res.o #{e_path}/exerb.c #{e_path}/module.c #{e_path}/utility.c #{e_path}/patch.c ../vendor/exerb-mingw/vendor/zlib.c  ../vendor/win32/api.c -lruby187 -lz #{RUBY_LIBS}"
 # sh "strip -R .reloc ../tswKai3.exe" # stop doing `strip` here because the reduced size of the executable is minimal, yet this can sometimes cause a severe bug: for tswKai3.exe compiled by high version gcc, this will cause error 0xc0000005 during startup
   puts 'Generated ../tswKai3.exe successfully.'
+  puts 'Building tswKai3_rt.exe...'
+  sh "windres -DRUNTIME_EXE resource.rc res_rt.o"
+  sh "#{CC} -Wall #{EXERB_CFLAGS_RT} -DRUNTIME_EXE -I../vendor/ruby -I../vendor/ruby/missing -I../vendor/ruby/win32 -I../vendor/zlib -I. -L. -o ../tswKai3_rt.exe #{e_path}/gui.c res_rt.o #{e_path}/exerb.c #{e_path}/module.c #{e_path}/utility.c  ../vendor/win32/api.c -lruby187 #{RUBY_LIBS}"
+  puts 'Generated ../tswKai3_rt.exe successfully.'
 end
 
 if __FILE__ == $0
