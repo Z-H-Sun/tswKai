@@ -3,7 +3,7 @@
 # Author: Z.Sun
 
 ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
-CreateWindowEx = API.new('CreateWindowEx', 'LSSLIIIILLLL', 'L', 'user32')
+CreateWindowExW = API.new('CreateWindowExW', 'LSSLIIIILLLL', 'L', 'user32') # must create a Unicode window to allow showing non-ANSI unicode text in title; otherwise, even SetWindowTextW may not work properly (reference: https://stackoverflow.com/a/11515400/11979352)
 SendMessagePtr = API.new('SendMessageA', 'LLLL', 'L', 'user32')
 SetCapture = API.new('SetCapture', 'L', 'L', 'user32')
 ReleaseCapture = API.new('ReleaseCapture', 'V', 'L', 'user32')
@@ -47,10 +47,10 @@ SS_ICON = 3
 SS_RIGHT = 2
 STM_SETICON = 0x170
 LOGFONT_STRUCT = 'L5C8a32'
-DIALOG_CLASS_NAME = '#32770'
-STATIC_CLASS_NAME = 'Static'
-BUTTON_CLASS_NAME = 'Button'
-APP_MUTEX_TITLE = 'tswKai3_mutex'
+DIALOG_CLASS_NAME = Str.utf8toWChar('#32770')
+STATIC_CLASS_NAME = Str.utf8toWChar('Static')
+BUTTON_CLASS_NAME = Str.utf8toWChar('Button')
+APP_MUTEX_TITLE = Str.utf8toWChar('tswKai3_mutex')
 
 WINDOW_MOVE_THRESHOLD_PIXEL = 20 # only when you click and drag the mouse over this distance, the status window will then be moved (this design is to avoid misoperation)
 WINDOW_SCREEN_X, WINDOW_SCREEN_Y = 20, 20 # where the status tip window show on the screen
@@ -58,9 +58,9 @@ $CONshowStatusTip = true # whether to show status tip window when TSW is not run
 $CONaskOnTSWquit = true # if on, will ask whether to continue or not once TSW has quitted; if off, always continue
 
 $hIco = LoadImage.call($hMod, APP_ICON_ID, IMAGE_ICON, 48, 48, LR_SHARED)
-$hWndStatic1 = CreateWindowEx.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, STATIC_CLASS_NAME, nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, WINDOW_SCREEN_X, WINDOW_SCREEN_Y, 146, 56, 0, 0, 0, 0)
+$hWndStatic1 = CreateWindowExW.call_r(WS_EX_TOOLWINDOW|WS_EX_TOPMOST|WS_EX_DLGMODALFRAME, STATIC_CLASS_NAME, nil, WS_POPUP|WS_BORDER|SS_SUNKEN|SS_NOTIFY|SS_RIGHT, WINDOW_SCREEN_X, WINDOW_SCREEN_Y, 146, 56, 0, 0, 0, 0)
 $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be just 0x89 set as above; additional extended styles will be auto applied, e.g. WS_EX_WINDOWEDGE and WS_EX_STATICEDGE
-hWndStaticIco = CreateWindowEx.call_r(0, STATIC_CLASS_NAME, nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
+hWndStaticIco = CreateWindowExW.call_r(0, STATIC_CLASS_NAME, nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)
 
 unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found another instance; quit
@@ -69,7 +69,7 @@ unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found 
   send(msgbox, 29, MB_ICONERROR, $bufDWORD.unpack('L')[0])
   exit
 end
-$hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # this will be used as a 'mutex' preventing creation of multiple instances; this window has another use: see tswMod.rb
+$hWndDialogParent = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # this will be used as a 'mutex' preventing creation of multiple instances; this window has another use: see tswMod.rb
 
 $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (not initialized yet; within the msg loop, will be x,y = $lastMousePos.unpack('ll'))
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client

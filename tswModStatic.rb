@@ -116,7 +116,7 @@ rescue Errno::EACCES
   hPrc = $bufHWait.unpack(HANDLE_STRUCT)[0]
   TerminateProcess.call(hPrc, 0) # now that we have received the "success" message from the subprocess, we can safely kill it
   CloseHandle.call(hPrc)
-  $hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # re-create the parent window
+  $hWndDialogParent = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # re-create the parent window
   SetWindowLong.call($hWndDialog, GWL_HWNDOWNER, $hWndDialogParent)
 rescue
   send(msgbox, 44, MB_ICONERROR)

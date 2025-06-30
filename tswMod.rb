@@ -52,14 +52,14 @@ ReleaseDC.call(0, hDC_tmp)
 
 $hGUIFont2 = CreateFontIndirect.call_r(DIALOG_FONT.pack(LOGFONT_STRUCT))
 # the reason to create this hierarchy is to hide the following dialog window from the task bar
-$hWndDialog = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
+$hWndDialog = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
 SendMessagePtr.call($hWndDialog, WM_SETICON, ICON_BIG, $hIco)
 $hWndChkBoxes = Array.new(7)
 for i in 0...MOD_TOTAL_OPTION_COUNT
   if i < MOD_PATCH_OPTION_COUNT
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 10, i*36+12, MOD_DIALOG_WIDTH-12, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowExW.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 10, i*36+12, MOD_DIALOG_WIDTH-12, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
   else
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*87-425, 180, 87, 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowExW.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*87-425, 180, 87, 36, $hWndDialog, 0, 0, 0)
   end
   SendMessagePtr.call($hWndChkBoxes[i], WM_SETFONT, $hGUIFont2, 0)
 end

@@ -322,6 +322,7 @@ def preExit(msg=nil) # finalize
   DeleteObject.call($hPen || 0)
   DeleteObject.call($hPen2 || 0)
   DeleteObject.call($hGUIFont || 0)
+rescue Exception
 end
 def quit()
   preExit(13); exit
