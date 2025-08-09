@@ -785,23 +785,22 @@ BASE:7EBC4		push eax	; hFile
 BASE:7EBC5		push edi	; lpOverlapped (0)
 BASE:7EBC6		push ecx	; lpNumberOfBytesWritten
 BASE:7EBC7		push 1881	; nNumberOfBytesToWrite
-BASE:7EBCC		push offset BASE:B8934	; lpBuffer
-BASE:7EBD1		push eax	; hFile
+BASE:7EBCC		mov edx, offset BASE:B8934
+BASE:7EBD1		push edx	; lpBuffer
+BASE:7EBD2		push eax	; hFile
 		; up to here we have pushed all parameters for the first `WriteFile` call
-BASE:7EBD2		mov esi, offset TSW_BGM_ID	; esi will be restored at the end of `savework`
-BASE:7EBD7		xchg [esi], edi	; [TSW_BGM_ID] -> 0; edi -> old [TSW_BGM_ID]
+BASE:7EBD3		mov esi, offset TSW_BGM_ID	; esi will be restored at the end of `savework`
+BASE:7EBD8		xchg [esi], edi	; [TSW_BGM_ID] -> 0; edi -> old [TSW_BGM_ID]
 		; Another important thing about data saving is the checksum. TSW will refuse to load a data if the checksum is wrong, which indicates the data is corrupted. (In practice, before you load a data, TSW will save the current status to `save0.dat`, and then it loads the data: If the data is not alright, TSW will pop up a messagebox saying "Do not use this data," and then load back `save0.dat`)
 		; [TSW_DataCheck1] is the sum of 0xA4 dword variables starting from offset TSW_hero_status; [TSW_DataCheck2] adds up all odd-numbered variables in the range above, and then minuses all even-numbered variables
 		; TSW_BGM_ID is odd-numbered, so if we set it as 0, both [TSW_DataCheck1] and [TSW_DataCheck2] should be subtracted by its original value to ensure data integrity
-BASE:7EBD9		mov eax, offset TSW_DataCheck1
-BASE:7EBDE		sub [eax], edi	; subtract this value from this checksum (sum of all variables)
-BASE:7EBE0		sub [eax+4], edi	; [TSW_DataCheck2]; subtract this value from this checksum (sum of all odd-numbered variables minus all even-numbered variables)
-BASE:7EBE3		call kernel32.WriteFile
-BASE:7EBE8		call kernel32.WriteFile
-BASE:7EBED		call kernel32.CloseHandle
-BASE:7EBF2		mov [esi], edi	; restore [TSW_BGM_ID]
-BASE:7EBF4		mov byte ptr [BASE:8C58C], 86	; assign BYTE instead of DWORD can save 3-byte space (10->7 bytes of opcode); TSW_tedit8_msg_id = 0x86 ("Saved the game.")
-BASE:7EBFB		nop
+BASE:7EBDA		sub [edx-1C], edi	; [TSW_DataCheck1]; subtract this value from this checksum (sum of all variables)
+BASE:7EBDD		sub [edx-18], edi	; [TSW_DataCheck2]; subtract this value from this checksum (sum of all odd-numbered variables minus all even-numbered variables)
+BASE:7EBE0		call kernel32.WriteFile
+BASE:7EBE5		call kernel32.WriteFile
+BASE:7EBEA		call kernel32.CloseHandle
+BASE:7EBEF		mov [esi], edi	; restore [TSW_BGM_ID]
+BASE:7EBF1		nop
 		; ...
 		; Above, the treatments are for the case where a data file already exists, and new data will overwrite the old file
 		; Below, the treatments are for the case where no such data file was existent previously, so a new file will be created

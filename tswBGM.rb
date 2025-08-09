@@ -177,7 +177,6 @@ module BGM
     @_sub_resetTTimer4 = $lpNewAddr + 0xd0c
     @_sub_initBGM = $lpNewAddr + 0xd38
     @_sub_finalizeBGM = $lpNewAddr + 0xd90
-    @_sub_save_excludeBGM = $lpNewAddr + 0xdd8
 
     injBuf = bgm_filename.ljust(MAX_PATH, "\0") + BGM_PHANTOMFLOOR +
 [1, 0xff].pack('LL') + # 0B0C byte isInProlog; 0B10 byte last_bgmid

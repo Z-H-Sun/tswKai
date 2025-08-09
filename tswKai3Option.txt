@@ -42,6 +42,27 @@
 # Or, uncomment the following line to indicate no patching at all upon app startup
 #$CONmodStatus = [nil, nil, nil, nil, nil]
 
+# The following lines determine which *essential* patch to apply upon app startup
+# These patches are important, so it is recommended not to change them
+# For more information, such as why to do these patches, please see the documentation
+# By default, tswKai3 will fix the 49F sorcerer bug. Uncomment the following line to restore
+#$CONrevStatus[0] = false # Default: true
+# By default, tswKai3 will fix the 40F boss fight status bar display bug. Uncomment the following line to restore
+#$CONrevStatus[1] = false # Default: true
+# By default, tswKai3 will fix the 33F trap room bug. Uncomment the following line to restore
+#$CONrevStatus[2] = false # Default: true
+# By default, tswKai3 will fix the gold earning display bug when you defeat a strike-first monster with Lucky Gold in possession. Uncomment the following line to restore
+#$CONrevStatus[3] = false # Default: true
+# By default, tswKai3 will fix the BGM/WAV option bug when saving/loading data. Uncomment the following line to restore
+#$CONrevStatus[4] = false # Default: true
+# By default, tswKai3 will improve consecutive WAV sounds. Uncomment the following line to restore
+#$CONrevStatus[5] = false # Default: true
+# By default, tswKai3 will allow loading data during an animation event. Uncomment the following line to restore
+#$CONrevStatus[6] = false # Default: true
+# For any of them, if the value is set to be `nil`, then the corresponding item will be neglected
+# Or, uncomment the following line to indicate neglecting all items upon app startup
+#$CONrevStatus = [nil, nil, nil, nil, nil, nil, nil]
+
 # By default, tswKai3 will show the config dialog upon app startup. Uncomment the following line to cancel
 #$CONonTSWstartup = false # Default: true
 # By default, tswKai3 will show a tutorial message box upon app startup. Uncomment the following line to cancel

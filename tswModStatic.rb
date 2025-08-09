@@ -130,7 +130,11 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
   earlyQuit(staticIO) if msgboxTxt(46, MB_ICONASTERISK|MB_YESNO) == IDNO
   (MOD_PATCH_OPTION_COUNT...MOD_TOTAL_OPTION_COUNT).each {|i| ShowWindow.call($hWndChkBoxes[i], SW_HIDE)} # change dialog layout because the last 3 options are not meaningful in static mode
   Mod::Static.checkChkStates(staticIO)
-  Mod::MOD_PATCH_BYTES_1.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[3])} # must-do patches
+  Mod::MOD_PATCH_BYTES_1.each_with_index do |x, n| # must-do patches
+    next if $CONrevStatus[n].nil?
+    k = $CONrevStatus[n] ? 3 : 2
+    x.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[k])}
+  end
 
   GetClientRect.call_r(GetDesktopWindow.call(), $buf).zero? # center dialog on screen
   w, h = $buf[8, 8].unpack('ll')
