@@ -1,7 +1,6 @@
-// encoding: GBK
 #include "tswLauncher.h"
 #include "winresrc.h"
-#pragma code_page(936)
+#pragma code_page(65001)
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 
@@ -19,7 +18,7 @@ BEGIN
 		BLOCK "000004b0"
 		BEGIN
 			VALUE "CompanyName",	"Z.Sun"
-			VALUE "LegalCopyright",	"Copyright(C) Z.Sun, 2020-2024 All rights reserved."
+			VALUE "LegalCopyright",	"Copyright(C) Z.Sun, 2020-2025 All rights reserved."
 			VALUE "ProductName",	APP_TITLE
 		END
 	END
@@ -32,84 +31,90 @@ END
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 
 IDI_APP ICON DISCARDABLE "2.ico"
+IDI_OPEN ICON DISCARDABLE "101.ico"
+IDI_MGRT ICON DISCARDABLE "102.ico"
+IDI_INIT ICON DISCARDABLE "103.ico"
+IDI_CONF ICON DISCARDABLE "104.ico"
 
 LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
-IDD_APP DIALOG DISCARDABLE 0, 0, 200, 24
- STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_APP DIALOG DISCARDABLE 0, 0, 162, 44
+ STYLE DS_SETFONT | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
  CAPTION APP_TITLE
  FONT DLG_FONT_SIZE, "Tahoma"
 BEGIN
-	COMBOBOX	IDC_TYPE, 10, 5, 85, 200, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-	DEFPUSHBUTTON	"&Launch", IDC_OPEN, 105, 5, 40, 13
-	PUSHBUTTON	"&Initialize", IDC_INIT, 150, 5, 40, 13
+	COMBOBOX	IDC_TYPE, 10, 7, 92, 50, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+	DEFPUSHBUTTON	"&Launch", IDC_OPEN, 110, 5, 45, 15
+	PUSHBUTTON	"&Migrate", IDC_MGRT, 10, 22, 45, 15, WS_DISABLED
+	PUSHBUTTON	"&Initialize", IDC_INIT, 57, 22, 45, 15
+	PUSHBUTTON	"&Config", IDC_CONF, 110, 22, 45, 15
+END
+
+IDD_CONFIG DIALOG DISCARDABLE 0, 0, 233, 185
+ STYLE DS_SETFONT | DS_CENTER | DS_SETFOREGROUND | WS_POPUP | WS_CAPTION | WS_SYSMENU
+ EXSTYLE WS_EX_TOOLWINDOW
+ CAPTION TARGET_TITLE " Game Executable Patch Configuration"
+ FONT DLG_FONT_SIZE, "Tahoma"
+BEGIN
+	DEFPUSHBUTTON	"OK", IDC_CONF, 194, 7, 32, 12
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
-IDD_APP DIALOG DISCARDABLE 0, 0, 200, 24
- STYLE DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
+IDD_APP DIALOG DISCARDABLE 0, 0, 162, 44
+ STYLE DS_SETFONT | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU
  CAPTION APP_TITLE_CN
  FONT DLG_FONT_SIZE, "MS Shell Dlg 2"
 BEGIN
-	COMBOBOX	IDC_TYPE, 10, 6, 85, 50, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
-	DEFPUSHBUTTON	"Æô¶¯(&L)", IDC_OPEN, 105, 5, 40, 13
-	PUSHBUTTON	"³õÊ¼»¯(&I)", IDC_INIT, 150, 5, 40, 13
+	COMBOBOX	IDC_TYPE, 10, 7, 92, 50, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+	DEFPUSHBUTTON	"å¯åŠ¨(&L)", IDC_OPEN, 110, 5, 45, 15
+	PUSHBUTTON	"è¿ç§»(&M)", IDC_MGRT, 10, 22, 45, 15, WS_DISABLED
+	PUSHBUTTON	"åˆå§‹åŒ–(&I)", IDC_INIT, 57, 22, 45, 15
+	PUSHBUTTON	"é…ç½®(&C)", IDC_CONF, 110, 22, 45, 15
+END
+
+IDD_CONFIG DIALOG DISCARDABLE 0, 0, 233, 185
+ STYLE DS_SETFONT | DS_CENTER | DS_SETFOREGROUND | WS_POPUP | WS_CAPTION | WS_SYSMENU
+ EXSTYLE WS_EX_TOOLWINDOW
+ CAPTION TARGET_TITLE_CN "ç¨‹åºä¿®æ­£é…ç½®"
+ FONT DLG_FONT_SIZE, "MS Shell Dlg 2"
+BEGIN
+	DEFPUSHBUTTON	"ç¡®å®š(&O)", IDC_CONF, 194, 7, 32, 12
 END
 
 LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 
 STRINGTABLE
 BEGIN
-	IDS_TITLE	APP_TITLE " " APP_VERSION_STR " - "
-	IDS_ENTRY1	"English (Original)"
-	IDS_ENTRY2	"English (Revised)"
-	IDS_ENTRY3	"Chinese"
-	IDS_ENTRY4	"Chinese (Retranslated)"
-	IDS_TIP1	"Choose which " TARGET_TITLE " you would like to run"
-	IDS_TIP2	"Run the " TARGET_TITLE " specified in the dropdown list"
-	IDS_TIP3	"Initialize the " TARGET_TITLE " paths\n\nThe installation and data-save paths will be cleared, and they will be automatically populated the next time you run any " TARGET_TITLE " executable file"
-	IDS_ERR1	"Error: Cannot find " TARGET_TITLE " folder: ""." TSW_DIR """."
-	IDS_ERR2	"Error: The %%windir%% path is too long."
-	IDS_ERR3	"Error: The current app path is too long. Please move this whole folder to another location that has a shorter path."
-	IDS_ERR4	"Warning: Invalid initialization file: ""%%windir%%%s"",\nwhere the specified data-save path is invalid or too long:\n%s\n\nDo you want to remove this configuration and continue?"
-	IDS_ERR5	"Warning: Cannot delete file ""%%windir%%%s""."
-	IDS_ERR6	"Warning: Cannot rename file ""%%windir%%" TSW_INI """\nto ""%%windir%%" TSW_INI_BAK """. Continue anyway?"
-	IDS_ERR7	"Warning: Cannot write config file ""%%windir%%" TSW_INI """. Continue anyway?"
-	IDS_ERR8	"Warning: Cannot create folder ""." TSW_DIR DAT_DIR """."
-	IDS_ERR9	"Warning: Cannot run ""." TSW_DIR "%s""."
-	IDS_ERRA	"Internal error 0x%04x when calling %s."
-	IDS_ERRB	"Please select an item to launch in the dropdown list."
-	IDS_ERRC	"Are you sure to remove the configurations on the " TARGET_TITLE " installation and data-save paths?"
-	IDS_ERRD	"Another %s process has already been running (pID = %d)."
+	IDS_TITLE	APP_TITLE " " APP_VERSION_STR
+	IDS_ENTRY_TYPE_EN	"English (Original)"
+	IDS_ENTRY_TYPE_EN_REV	"English (Retranslated)"
+	IDS_ENTRY_TYPE_CN	"Chinese"
+	IDS_ENTRY_TYPE_CN_REV	"Chinese (Retranslated)"
+	IDS_TIP_TYPE	"Choose which " TARGET_TITLE " you would like to run"
+	IDS_TIP_OPEN	"Run the " TARGET_TITLE " specified in the dropdown list"
+	IDS_TIP_INIT	"Initialize the " TARGET_TITLE " paths\n\nThe installation and data-save paths will be cleared, and they will be automatically populated the next time you run any " TARGET_TITLE " executable file"
+	IDS_TIP_MGRT	"Another data-save path is found to be located under a different folder from the current game path\n\nClick this button to migrate the settings and game data therein to the current game installation path, and make it the new data-save path in the future"
+	IDS_TIP_CONF	"Configure patches to the " TARGET_TITLE " specified in the dropdown list"
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 
 STRINGTABLE
 BEGIN
-	IDS_TITLE	APP_TITLE_CN " " APP_VERSION_STR " - "
-	IDS_ENTRY1	"Ó¢Óï (Ô­°æ)"
-	IDS_ENTRY2	"Ó¢Óï (ĞŞÕı°æ)"
-	IDS_ENTRY3	"ºº»¯"
-	IDS_ENTRY4	"ºº»¯ (ÈÕÎÄ¾«Òë°æ)"
-	IDS_TIP1	"Ñ¡ÔñÏëÒªÔËĞĞµÄ" TARGET_TITLE_CN "°æ±¾"
-	IDS_TIP2	"ÔËĞĞÓÉ×ó²àÁĞ±íÖ¸¶¨µÄ" TARGET_TITLE_CN "ÓÎÏ·"
-	IDS_TIP3	"³õÊ¼»¯" TARGET_TITLE_CN "³ÌĞòµÄÏà¹ØÂ·¾¶\n\n½«»áÇå³ı" TARGET_TITLE_CN "³ÌĞòµÄ°²×°Â·¾¶ºÍÊı¾İ´æ´¢Â·¾¶£¬ÏÂ´ÎÔËĞĞÈÎÒâÒ»¸ö" TARGET_TITLE_CN "ÓÎÏ·µÄ³ÌĞòÎÄ¼şºó¾Í»á×Ô¶¯ÖØÉè"
-	IDS_ERR1	"´íÎó£ºÕÒ²»µ½" TARGET_TITLE_CN "ÓÎÏ·ÎÄ¼ş¼Ğ: ""." TSW_DIR """¡£"
-	IDS_ERR2	"´íÎó£ºÏµÍ³Â·¾¶ %%windir%% ¹ı³¤¡£"
-	IDS_ERR3	"´íÎó£ºµ±Ç°³ÌĞòÂ·¾¶¹ı³¤¡£Çë½«µ±Ç°Õû¸öÄ¿Â¼ÒÆ¶¯µ½ÆäËû¸ü¶ÌµÄÂ·¾¶ÏÂ¡£"
-	IDS_ERR4	"¾¯¸æ£ºÎŞĞ§µÄ³õÊ¼»¯ÎÄ¼ş£º""%%windir%%%s""£¬\nÆäÖĞËùÖ¸¶¨µÄÊı¾İ´æ´¢Â·¾¶¹ı³¤»òÕß²»´æÔÚ£º\n%s\n\nÊÇ·ñÒÆ³ı´ËÅäÖÃ²¢¼ÌĞø£¿"
-	IDS_ERR5	"¾¯¸æ£ºÎŞ·¨É¾³ıÎÄ¼ş ""%%windir%%%s""¡£"
-	IDS_ERR6	"¾¯¸æ£ºÎŞ·¨½«ÎÄ¼ş ""%%windir%%" TSW_INI """ ÖØÃüÃûÎª\n""%%windir%%" TSW_INI_BAK """¡£ÈÔÈ»¼ÌĞø£¿"
-	IDS_ERR7	"¾¯¸æ£ºÎŞ·¨Ğ´ÈëÅäÖÃÎÄ¼ş ""%%windir%%" TSW_INI """¡£ÈÔÈ»¼ÌĞø£¿"
-	IDS_ERR8	"¾¯¸æ£ºÎŞ·¨´´½¨Ä¿Â¼ ""." TSW_DIR DAT_DIR """¡£"
-	IDS_ERR9	"¾¯¸æ£ºÎŞ·¨Æô¶¯ ""." TSW_DIR "%s""¡£"
-	IDS_ERRA	"¾¯¸æ£ºÄÚ²¿´íÎó 0x%04x£¬µ÷ÓÃ %s Ê§°Ü¡£"
-	IDS_ERRB	"ÇëÔÚ×ó²àÁĞ±íÖĞÑ¡ÖĞÒ»ÏîÏëÒªÔËĞĞµÄ" TARGET_TITLE_CN "ÀàĞÍ¡£"
-	IDS_ERRC	"È·ÈÏÇå³ı" TARGET_TITLE_CN "µÄ³ÌĞò°²×°Â·¾¶ºÍÊı¾İ´æ´¢Â·¾¶µÄÅäÖÃÂğ£¿"
-	IDS_ERRD	"ÁíÒ»¸ö%s½ø³ÌÒÑÕıÔÚÔËĞĞÖĞ (pID = %d)¡£"
+	IDS_TITLE	APP_TITLE_CN " " APP_VERSION_STR
+	IDS_ENTRY_TYPE_EN	"è‹±è¯­ (åŸç‰ˆ)"
+	IDS_ENTRY_TYPE_EN_REV	"è‹±è¯­ (é‡è¯‘ç‰ˆ)"
+	IDS_ENTRY_TYPE_CN	"æ±‰åŒ–"
+	IDS_ENTRY_TYPE_CN_REV	"æ±‰åŒ– (æ—¥æ–‡ç²¾è¯‘ç‰ˆ)"
+	IDS_TIP_TYPE	"é€‰æ‹©æƒ³è¦è¿è¡Œçš„" TARGET_TITLE_CN "ç‰ˆæœ¬"
+	IDS_TIP_OPEN	"è¿è¡Œç”±å·¦ä¾§åˆ—è¡¨æŒ‡å®šçš„" TARGET_TITLE_CN "æ¸¸æˆ"
+	IDS_TIP_INIT	"åˆå§‹åŒ–" TARGET_TITLE_CN "ç¨‹åºçš„ç›¸å…³è·¯å¾„\n\nå°†ä¼šæ¸…é™¤" TARGET_TITLE_CN "ç¨‹åºçš„å®‰è£…è·¯å¾„å’Œæ•°æ®å­˜å‚¨è·¯å¾„ï¼Œä¸‹æ¬¡è¿è¡Œä»»æ„ä¸€ä¸ª" TARGET_TITLE_CN "æ¸¸æˆçš„ç¨‹åºæ–‡ä»¶åå°±ä¼šè‡ªåŠ¨é‡è®¾"
+	IDS_TIP_MGRT	"ç°æœ‰è®¾ç½®ä¸­çš„æ•°æ®å­˜å‚¨è·¯å¾„å¹¶éå¤„åœ¨å½“å‰æ¸¸æˆå®‰è£…è·¯å¾„ä¸‹\n\nå•å‡»æ­¤æŒ‰é’®ä»¥å°†å…¶ä¸­çš„é€‰é¡¹å’Œå­˜æ¡£è¿ç§»è‡³å½“å‰æ¸¸æˆå®‰è£…æ–‡ä»¶å¤¹ä¸‹ï¼Œå¹¶å°†ä¹‹é‡è®¾ä¸ºæ–°çš„æ•°æ®å­˜å‚¨è·¯å¾„"
+	IDS_TIP_CONF	"å¯¹å·¦ä¾§åˆ—è¡¨æŒ‡å®šçš„" TARGET_TITLE_CN "æ¸¸æˆè¿›è¡Œä¿®æ­£é…ç½®"
 END
+
+#include "msg.rc" // will be generated by MC processing of 'msg.mc'
 
 LANGUAGE LANG_NEUTRAL, SUBLANG_DEFAULT
 

@@ -1,0 +1,156 @@
+// This is not the final message text file "msg.mc"; rather, it will be preprocessed by `cpp` which will automatically generate an up-to-date "msg.mc"
+// cpp options:
+//   -P: do not generate linemarkers at the beginning of the generated "msg.mc" file
+//   -fno-extended-identifiers: by default, CPP will view the strings below as identifiers and turn chinese characters into UTF16 "\U..." chars; do not do that (reference: https://gcc.gnu.org/onlinedocs/cpp/Character-sets.html)
+//   -x assembler-with-cpp: by default, CPP will throw the following warning for the line `#define __QUOTE__ "`: warning: missing terminating " character; do not do that (reference: https://stackoverflow.com/a/30174912/11979352)
+// windmc options:
+//   -C 65001: use UTF-8 as input text encoding
+//   -O 65001: use UTF-8 as output text encoding
+//   -U: use UTF-16 as output bin encoding (default)
+//   -F pe-i386: use 32-bit PE binary format (default)
+//   -e hc: the generated header file will have a ".hc" extension, which is to avoid overwriting the currently existing "msg.h" file
+//   -h %TEMP%: no need to generate "msg.h" (which is empty) in the current folder
+//   -n: do not add \r\n at the end of each string (but rather \0)
+
+#include "msg.h"
+// avoid CPP from ignoring macros within quote signs
+#define __QUOTE__ "
+// avoid CPP from removing empty lines
+#define __EMPTY_LINE__
+// piecing a macro with its preceding text without a space in between
+#define __CONCAT(...) __CONCAT2(__VA_ARGS__)
+#define __CONCAT2(a, b) a ## b
+
+MessageIdTypedef=WORD
+SeverityNames=(DummyS=0) // no need for severity levels
+FacilityNames=(DummyF=0) // no need for facility sources
+LanguageNames=(EN=0x409:MSG0409)
+LanguageNames=(CH=0x804:MSG0804)
+
+MessageId=IDS_ERR_WINAPI
+Severity=DummyS
+Facility=DummyF
+Language=EN
+Warning: Internal error 0x%1!04x! when calling %2.
+.
+Language=CH
+警告：内部错误 0x%1!04x!，调用 %2 失败。
+.
+
+MessageId=IDS_ERR_GAME_PATH_MISSING
+Language=EN
+Error: Cannot find __TARGET_TITLE__ folder: __QUOTE__./__TSW_DIR__".
+.
+Language=CH
+__CONCAT(错误：找不到, __TARGET_TITLE_CN__)游戏文件夹：__QUOTE__./__TSW_DIR__"。
+.
+
+MessageId=IDS_ERR_SAVEDIR_MISSING
+Language=EN
+Error: Cannot find data-save path folder: __QUOTE__./__TSW_DIR__/__DAT_DIR__".
+.
+Language=CH
+错误：找不到数据存储文件夹：__QUOTE__./__TSW_DIR__/__DAT_DIR__"。
+.
+
+MessageId=IDS_ERR_WINDIR_INVALID
+Language=EN
+Error: The %%windir%% path is too long or contains invalid characters.
+.
+Language=CH
+错误：系统路径 %%windir%% 过长或包含无效字符。
+.
+
+MessageId=IDS_ERR_APPDIR_INVALID
+Language=EN
+Error: The current app path is too long or contains invalid characters.
+__EMPTY_LINE__
+Please move or rename its parent folder.
+.
+Language=CH
+错误：当前程序路径过长或包含无效字符。
+__EMPTY_LINE__
+请移动或重命名上级文件夹。
+.
+
+MessageId=IDS_ERR_SAVEDIR_INVALID
+Language=EN
+Warning: Invalid initialization file: "%%windir%%/%1",
+where the specified data-save path is invalid or too long:
+%2!S! // %S means that this is a ANSI string (because we are using the UNICODE version "FormatMessageW"), similar below
+__EMPTY_LINE__
+Do you want to remove this configuration and continue?
+.
+Language=CH
+警告：无效的初始化文件："%%windir%%/%1"，
+其中所指定的数据存储路径过长或者不存在：
+%2!S!
+__EMPTY_LINE__
+是否移除此配置并继续？
+.
+
+MessageId=IDS_ERR_CANT_DELETE
+Language=EN
+Warning: Cannot delete file "%%windir%%/%1".
+.
+Language=CH
+警告：无法删除文件 "%%windir%%/%1"。
+.
+
+MessageId=IDS_ERR_CANT_RENAME
+Language=EN
+Warning: Cannot rename file __QUOTE__%%windir%%/__TSW_INI__"
+to __QUOTE__%%windir%%/__TSW_INI_BAK__". Continue anyway?
+.
+Language=CH
+警告：无法将文件 __QUOTE__%%windir%%/__TSW_INI__" 重命名为
+__QUOTE__%%windir%%/__TSW_INI_BAK__"。仍然继续？
+.
+
+MessageId=IDS_ERR_CANT_WRITE
+Language=EN
+Warning: Cannot write config file __QUOTE__%%windir%%/__TSW_INI__". Continue anyway?
+.
+Language=CH
+警告：无法写入配置文件 __QUOTE__%%windir%%/__TSW_INI__"。仍然继续？
+.
+
+MessageId=IDS_ERR_CANT_RUN
+Language=EN
+Warning: Cannot run __QUOTE__./__TSW_DIR__/%1!S!".
+.
+Language=CH
+警告：无法启动 __QUOTE__./__TSW_DIR__/%1!S!"。
+.
+
+MessageId=IDS_ERR_APP_RUNNING
+Language=EN
+Another %1 process has already been running (pID = %2!d!).
+.
+Language=CH
+另一个%1进程已正在运行中 (pID = %2!d!)。
+.
+
+MessageId=IDS_ERR_SELECTION
+Language=EN
+Please select an item to %1 in the dropdown list.
+.
+Language=CH
+__CONCAT(请在左侧列表中选中一项想要%1的, __TARGET_TITLE_CN__)类型。
+.
+
+MessageId=IDS_INFO_INITIALIZE
+Language=EN
+Are you sure to remove the configurations on the __TARGET_TITLE__ installation and data-save paths?
+.
+Language=CH
+__CONCAT(确认清除, __TARGET_TITLE_CN__)的程序安装路径和数据存储路径的配置吗？
+.
+
+MessageId=IDS_INFO_INITIALIZE_OK
+Language=EN
+Initialization completed successfully.
+.
+Language=CH
+已成功初始化完成。
+.
