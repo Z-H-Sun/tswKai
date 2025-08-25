@@ -20,25 +20,21 @@ IF exist "%CCPATH%" (
   FOR /F "delims=" %%I IN ("%CCPATH%") DO set "CCPATH=%%~$PATH:I"
   IF NOT defined CCPATH (
     echo No C compiler found.
-    pause
-    exit /b 1
+    goto END
   )
 )
 
 REM Check dependencies
 FOR %%I IN (CPP WINDMC WINDRES) DO (
   set FOUNDPATH=
-  REM Get only the first line of WHERE outputs
-  FOR /F "delims=" %%J IN ('where %%I 2^>nul') DO (
+  IF exist "%%I.exe" (
+    FOR /F "delims=" %%J IN ("%%I.exe") DO set "FOUNDPATH=1" & set "%%IPATH=%%~fJ"
+  ) ELSE (
+    FOR /F "delims=" %%J IN ("%%I.exe") DO set "FOUNDPATH=1" & set "%%IPATH=%%~$PATH:J"
     IF NOT defined FOUNDPATH (
-      set "FOUNDPATH=1"
-      set "%%IPATH=%%J"
+      echo No %%I found.
+      goto END
     )
-  )
-  IF NOT defined FOUNDPATH (
-    echo No %%I found.
-    pause
-    exit /b 1
   )
 )
 
@@ -68,6 +64,8 @@ pause
 cpp -P -fno-extended-identifiers -x assembler-with-cpp msg.mcp msg.mc && windmc -C 65001 -O 65001 -U -F pe-i386 -e hc -h %TEMP% -n msg.mc && windres res.rc res.o && "%CCPATH%" -std=gnu99 -s -g0 -DNDEBUG -Os -Wall -mwindows -o tswLauncher.exe gui.c tswLauncher.c res.o -lgdi32 -lshlwapi
 @echo off
 echo.
+
+:END
 set CCPATH=
 set CPPPATH=
 set WINDMCPATH=

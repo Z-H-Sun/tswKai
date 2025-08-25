@@ -154,3 +154,51 @@ Initialization completed successfully.
 Language=CH
 已成功初始化完成。
 .
+
+MessageId=IDS_ERR_MIGRATION
+Language=EN
+Migration did not complete successfully.
+.
+Language=CH
+迁移未能成功完成。
+.
+
+MessageId=IDS_INFO_MIGRATION_OK
+Language=EN
+Migration completed successfully.
+__EMPTY_LINE__
+Now it's safe to delete the old game folder.
+.
+Language=CH
+已成功迁移完成。
+__EMPTY_LINE__
+之后如有必要，可放心删除旧的游戏文件夹。
+.
+
+MessageId=IDS_INFO_SUGGEST_MIGRATION
+Language=EN
+Another version of __TARGET_TITLE__ is found to be installed at
+%1!S!
+which contains its data-save path. It is recommended to back
+up and migrate those data to the current game folder.
+__EMPTY_LINE__
+Do you want to start migrating now?
+.
+Language=CH
+%1!S!
+__CONCAT(中发现另一版本的, __TARGET_TITLE_CN__)程序，且数据存储路径在此文件夹下。
+推荐将该处的选项和存档数据备份并迁移到当前游戏路径下。
+__EMPTY_LINE__
+是否现在就进行迁移？
+.
+
+MessageId=IDS_INFO_MIGRATION
+Language=EN
+Are you sure to migrate game data from the following path:
+%1!S!
+to the current game folder?
+.
+Language=CH
+确认将游戏数据从下列路径迁移到当前游戏文件夹下？
+%1!S!
+.

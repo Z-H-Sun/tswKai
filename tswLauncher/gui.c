@@ -250,6 +250,10 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
     }
 
     return TRUE;
+  case WM_MIGRATE: // delayed processing for startup migration
+    ShowWindow(hwnd, SW_SHOWNOACTIVATE); // make sure dialog window is visible
+    migrate_data();
+    return TRUE;
   case WM_DESTROY:
     pre_exit();
     return TRUE;
@@ -292,7 +296,10 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
         EndDialog(hwnd, IDOK); // quit if successful
       return TRUE;
     case IDC_MGRT:
-      // TODO
+      if (msgbox(hwnd, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_MIGRATION, data_path) == IDNO)
+        return TRUE;
+      if (migrate_data())
+        SetFocusedItemAsync(IDC_TYPE);
       return TRUE;
     case IDC_INIT: // initialize
       if (msgbox(hwnd, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_INITIALIZE) == IDNO)

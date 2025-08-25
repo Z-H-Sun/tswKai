@@ -91,11 +91,30 @@ static void get_full_path(char *fname, int *p_len) { // normalize filename
   }
 }
 
+static BOOL write_ini() {
+  FILE* file_tsw_ini = fopen(tsw_ini_path, "w");
+  if (!file_tsw_ini)
+    return FALSE;
+  cur_path[cur_path_len] = '\n';
+  data_path[data_path_len] = '\n';
+  if (fwrite(data_path, 1, data_path_len + 1, file_tsw_ini) < data_path_len+1 ||
+      fwrite(cur_path, 1, cur_path_len + 1, file_tsw_ini) < cur_path_len+1) {
+    fclose(file_tsw_ini);
+    return FALSE;
+  }
+  cur_path[cur_path_len] = '\0';
+  data_path[data_path_len] = '\0';
+  fclose(file_tsw_ini);
+  return TRUE;
+}
+
 void init_path() { // dirty work about the old paths in old .ini
 // If valid .bak exists: use old data-save path in this file & current installation path; overwrite .ini file and ignore configs therein
 // ElseIf valid .ini exists: use old data-save path in this file & current installation path; overwrite .ini file, and when its old installation path differs from the current one, make a backup copy of it as .bak
 // Else : use current data-save path and current installation path
   FILE *file_tsw_ini = NULL;
+  char tsw_path[MAX_PATH]; // old installation path
+  int tsw_path_len = 0;
 
   if (ini_state == 2) {
     get_app_path(); // initial path checks
@@ -108,11 +127,10 @@ void init_path() { // dirty work about the old paths in old .ini
     file_tsw_ini = fopen(tsw_ini_bak_path, "r"); // first check if there is a backup .ini file
     if (!file_tsw_ini) // file not found
       ini_state--;
-    else {
-      if (!fgets(data_path, MAX_PATH, file_tsw_ini)) // empty file
-        ini_state--;
+    else if (!fgets(data_path, MAX_PATH, file_tsw_ini)) { // empty file
+      ini_state--;
       fclose(file_tsw_ini);
-    }
+    } // otherwise, do not close yet, will read the second line as `tsw_path`
   }
 
   if (ini_state == 1) {
@@ -122,13 +140,12 @@ void init_path() { // dirty work about the old paths in old .ini
     else if (!fgets(data_path, MAX_PATH, file_tsw_ini)) {
       ini_state--;
       fclose(file_tsw_ini);
-    }
-  } // otherwise, do not close yet, will read the second line as `tsw_path`
+    } // otherwise, do not close yet, will read the second line as `tsw_path`
+  }
 
   if (ini_state == 0) {
     memcpy(data_path, cur_path, cur_path_len);
-    data_path[cur_path_len] = '\\';
-    memcpy(data_path + cur_path_len+1, DAT_DIR, sizeof(DAT_DIR)); // use `{cur_path}\\Savedat` as new `data_path`
+    memcpy(data_path + cur_path_len, "\\" DAT_DIR, sizeof(DAT_DIR)+1); // use `{cur_path}\\Savedat` as new `data_path`
     data_path_len = cur_path_len+1 + sizeof(DAT_DIR)-1;
     if (!PathIsDirectory(data_path)) {
       msgbox(HWND_TOPMOST, MB_ICONERROR, IDS_ERR_SAVEDIR_MISSING);
@@ -144,73 +161,123 @@ void init_path() { // dirty work about the old paths in old .ini
       get_full_path(data_path, &data_path_len);
 
     if (!data_path_len) { // fail
-      if (ini_state == 1)
-        fclose(file_tsw_ini);
+      fclose(file_tsw_ini);
       if (msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONEXCLAMATION, IDS_ERR_SAVEDIR_INVALID, (ini_state == 1) ? WT(TSW_INI) : WT(TSW_INI_BAK), data_path) == IDNO) {
         MessageBeep(MB_ICONEXCLAMATION);
         safe_exit(1);
       } else { // try next `ini_state`
-        if (ini_state == 2 && !DeleteFile(tsw_ini_bak_path)) // remove the .bak file
-          msgbox(HWND_TOPMOST, MB_ICONEXCLAMATION, IDS_ERR_CANT_DELETE, WT(TSW_INI_BAK));
+        if (ini_state == 2) { // remove the .bak file
+          SetFileAttributes(tsw_ini_bak_path, FILE_ATTRIBUTE_NORMAL); // remove readonly attribute
+          if (!DeleteFile(tsw_ini_bak_path))
+            msgbox(HWND_TOPMOST, MB_ICONEXCLAMATION, IDS_ERR_CANT_DELETE, WT(TSW_INI_BAK));
+        }
         ini_state--;
         init_path();
         return;
       }
     }
 
-    if (ini_state == 1) {
-      char tsw_path[MAX_PATH] = {0};
-      int tsw_path_len;
+    if (ini_state) {
       fgets(tsw_path, MAX_PATH, file_tsw_ini);
       fclose(file_tsw_ini);
       tsw_path_len = strlen(tsw_path);
       if (tsw_path_len && tsw_path[tsw_path_len-1] == '\n') // remove the trailing \n
         tsw_path_len--;
       get_full_path(tsw_path, &tsw_path_len);
-      if (tsw_path_len != cur_path_len || memicmp(tsw_path, cur_path, tsw_path_len)) { // when 0: same installation path; skip
-        DeleteFile(tsw_ini_bak_path); // TSW12.INI -> TSW12.BAK.INI
-        if (!MoveFile(tsw_ini_path, tsw_ini_bak_path) && msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONEXCLAMATION, IDS_ERR_CANT_RENAME) == IDNO) {
-          MessageBeep(MB_ICONEXCLAMATION);
-          safe_exit(1);
+      if (tsw_path_len != cur_path_len || memicmp(tsw_path, cur_path, cur_path_len)) { // different installation path
+        if (ini_state == 1) { // TSW12.INI -> TSW12.BAK.INI
+          DeleteFile(tsw_ini_bak_path);
+          if (!MoveFile(tsw_ini_path, tsw_ini_bak_path) && msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONEXCLAMATION, IDS_ERR_CANT_RENAME) == IDNO) {
+            MessageBeep(MB_ICONEXCLAMATION);
+            safe_exit(1);
+          }
         }
-      } else
-        ini_state--; // there will be no .bak file
+        if (data_path[tsw_path_len] != '\\' ||
+            memicmp(data_path, tsw_path, tsw_path_len))
+          tsw_path_len = 0; // no migration recommendation
+        // otherwise: old data-save path is under old installation path: recommend migration
+      } else { // same installation path
+        tsw_path_len = 0; // no migration recommendation
+        ini_state--; // if `ini_state` was 1, it will become 0, indicating there is no .bak file (so no need to delete the .bak file in `delete_ini`)
+      }
+
+      if (tsw_path_len || // recommend migration; bypass check below
+          memicmp(data_path, cur_path, cur_path_len) || // dirname is different, or
+          memicmp(data_path+cur_path_len, "\\" DAT_DIR, sizeof(DAT_DIR)+1)) // basename is different
+        EnableItem(IDC_MGRT, TRUE); // enable migration button
     }
   }
 
-  file_tsw_ini = fopen(tsw_ini_path, "w"); // now overwrite .ini file
-  if (!file_tsw_ini) {
-    if (msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONEXCLAMATION, IDS_ERR_CANT_WRITE) == IDYES)
-      return;
+  if (!write_ini() && // now overwrite .ini file
+      msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONEXCLAMATION, IDS_ERR_CANT_WRITE) == IDNO) {
     MessageBeep(MB_ICONEXCLAMATION);
     safe_exit(1);
   }
-  cur_path[cur_path_len] = '\n';
-  data_path[data_path_len] = '\n';
-  fwrite(data_path, 1, data_path_len + 1, file_tsw_ini);
-  fwrite(cur_path, 1, cur_path_len + 1, file_tsw_ini);
-  cur_path[cur_path_len] = '\0';
-  data_path[data_path_len] = '\0';
-  fclose(file_tsw_ini);
+
+  if (tsw_path_len) { // recommend migration
+    if (msgbox(HWND_TOPMOST, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_SUGGEST_MIGRATION, tsw_path) == IDNO)
+      return;
+    PostMessage(hwnd, WM_MIGRATE, 0, 0); // delay migration until dialog shown
+  }
 }
 
 BOOL delete_ini() {
   BOOL success = TRUE;
-  if (msgbox(hwnd, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_INITIALIZE) == IDNO)
-    return FALSE;
   if (ini_state) { // delete the .bak file only when `ini_state` is not 0
-    if (DeleteFile(tsw_ini_bak_path))
+    SetFileAttributes(tsw_ini_bak_path, FILE_ATTRIBUTE_NORMAL); // remove readonly attribute
+    if (!PathFileExists(tsw_ini_bak_path) || // ignore if the file no longer exists
+        DeleteFile(tsw_ini_bak_path))
       ini_state = 0; // no need to delete .bak file the next time this function is called
     else {
       msgbox(hwnd, MB_ICONEXCLAMATION, IDS_ERR_CANT_DELETE, WT(TSW_INI_BAK));
       success = FALSE;
     }
   }
-  if (!DeleteFile(tsw_ini_path)) { // always need to delete the .ini file
+  SetFileAttributes(tsw_ini_path, FILE_ATTRIBUTE_NORMAL); // remove readonly attribute
+  if (PathFileExists(tsw_ini_path) && // ignore if the file no longer exists
+      !DeleteFile(tsw_ini_path)) { // always need to delete the .ini file
     msgbox(hwnd, MB_ICONEXCLAMATION, IDS_ERR_CANT_DELETE, WT(TSW_INI));
     success = FALSE;
   }
   return success;
+}
+
+BOOL migrate_data() {
+  if (data_path_len >= MAX_PATH-1) // too long [SHFILEOPSTRUCT requires f.pFrom is double-\0 terminated, so the length should not exceed 258 (previous check in `get_full_path` only checks if the length exceeds 259)]
+    goto migrate_fail;
+
+  if (!delete_ini())
+    goto migrate_fail;
+
+  // show fake progress bar
+  HWND hwndProgress = GetDlgItem(hwnd, IDC_PROGRESS);
+  ShowWindow(hwndProgress, SW_SHOWNOACTIVATE);
+  SendMessageW(hwndProgress, PBM_SETMARQUEE, TRUE, 0);
+  EnableWindow(hwnd, FALSE); // disallow user input while copying files. Strangely, even if `SHFILEOPSTRUCT.hwnd` is set, the progress dialog window won't use it as the parent window, so need to disable the main window manually
+
+  data_path[data_path_len+1] = '\0'; // SHFILEOPSTRUCT requires f.pFrom being double-\0 terminated
+  cur_path[cur_path_len+1] = '\0'; // SHFILEOPSTRUCT requires f.pTo being double-\0 terminated
+  SHFILEOPSTRUCT f = {hwnd, FO_COPY, data_path, cur_path, FOF_NOCONFIRMATION | FOF_NOCONFIRMMKDIR | FOF_NOCOPYSECURITYATTRIBS};
+  int ret = SHFileOperation(&f);
+  f.fAnyOperationsAborted = ret || f.fAnyOperationsAborted; // if `ret` is non-zero, it also indicates failure
+
+  EnableWindow(hwnd, TRUE);
+  ShowWindow(hwndProgress, SW_HIDE);
+  SendMessageW(hwndProgress, PBM_SETMARQUEE, FALSE, 0);
+  if (f.fAnyOperationsAborted)
+    goto migrate_fail;
+
+  EnableItem(IDC_MGRT, FALSE); // migration button no longer useful
+  memcpy(data_path, cur_path, cur_path_len); // use `{cur_path}\\Savedat` as new `data_path`
+  memcpy(data_path + cur_path_len, "\\" DAT_DIR, sizeof(DAT_DIR)+1);
+  data_path_len = cur_path_len+1 + sizeof(DAT_DIR)-1;
+  if (!write_ini()) { // now overwrite .ini file
+migrate_fail:
+    msgbox(hwnd, MB_ICONEXCLAMATION, IDS_ERR_MIGRATION);
+    return FALSE;
+  }
+  msgbox(hwnd, MB_ICONINFORMATION, IDS_INFO_MIGRATION_OK);
+  return TRUE;
 }
 
 static BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void *lpOut) {

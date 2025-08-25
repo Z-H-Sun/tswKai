@@ -59,15 +59,25 @@
 #define IDC_INIT 104
 #define IDC_CONF 105
 #define IDC_END IDC_CONF
+#define IDC_PROGRESS 199
 
 #define IDM_MANIFEST 1
 #define DLG_FONT_SIZE 9
+
+#define WM_MIGRATE WM_APP+0
 
 #define WINVER 0x0501 // minimum windows xp
 #define _WIN32_IE 0x0600 // minimal version 6.0 for common control
 #undef UNICODE // must use ASNI code page to read/write TSW.INI file, because TSW is not unicode-compatible
 #include <windows.h>
 #include <commctrl.h>
+// in case the marquee progress bar style is not defined
+#ifndef PBS_MARQUEE
+#define PBS_MARQUEE 0x8
+#endif
+#ifndef PBM_SETMARQUEE
+#define PBM_SETMARQUEE (WM_USER+10)
+#endif
 
 #include <stdio.h>
 #include <stdint.h>
@@ -76,6 +86,7 @@ int msgbox(HWND hwnd, unsigned int uType, unsigned int uID, ...);
 void centerTSW(HWND hwndTSW);
 void safe_exit(int status);
 void init_path();
+BOOL migrate_data();
 BOOL delete_ini();
 BOOL launch_tsw(int type);
 
@@ -84,3 +95,4 @@ BOOL launch_tsw(int type);
 #define SetFocusedItemSync(id) SendMessageW(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd, id), TRUE) // this will cause the thread to wait until the set-focus message is processed
 #define GetComboboxVal(id) SendDlgItemMessageW(hwnd, id, CB_GETCURSEL, 0, 0)
 #define SetComboboxVal(id, val) SendDlgItemMessageW(hwnd, id, CB_SETCURSEL, (WPARAM)(val), 0)
+#define EnableItem(id, state) EnableWindow(GetDlgItem(hwnd, id), state)
