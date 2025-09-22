@@ -61,7 +61,7 @@ echo.
 pause
 
 @echo on
-cpp -P -fno-extended-identifiers -x assembler-with-cpp msg.mcp msg.mc && windmc -C 65001 -O 65001 -U -F pe-i386 -e hc -h %TEMP% -n msg.mc && windres res.rc res.o && "%CCPATH%" -std=gnu99 -s -g0 -DNDEBUG -Os -Wall -mwindows -o tswLauncher.exe gui.c tswLauncher.c res.o -lgdi32 -lshlwapi
+cpp -P -fno-extended-identifiers -x assembler-with-cpp msg.mcp msg.mc && windmc -C 65001 -O 65001 -U -F pe-i386 -e hc -n msg.mc && windres res.rc res.o && "%CCPATH%" -std=gnu99 -s -g0 -DNDEBUG -Os -Wall -mwindows -o tswLauncher.exe gui.c patch.c tswLauncher.c res.o -lgdi32 -lcomdlg32 -lshlwapi
 @echo off
 echo.
 

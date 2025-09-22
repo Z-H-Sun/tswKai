@@ -18,7 +18,7 @@ BEGIN
 		BLOCK "000004b0"
 		BEGIN
 			VALUE "CompanyName",	"Z.Sun"
-			VALUE "LegalCopyright",	"Copyright(C) Z.Sun, 2020-2025 All rights reserved."
+			VALUE "LegalCopyright",	"Copyright(C) Z.Sun, 2020-2026 All rights reserved."
 			VALUE "ProductName",	APP_TITLE
 		END
 	END
@@ -54,10 +54,77 @@ END
 IDD_CONFIG DIALOG DISCARDABLE 0, 0, 233, 185
  STYLE DS_SETFONT | DS_CENTER | DS_SETFOREGROUND | WS_POPUP | WS_CAPTION | WS_SYSMENU
  EXSTYLE WS_EX_TOOLWINDOW
- CAPTION TARGET_TITLE " Game Executable Patch Configuration"
+ CAPTION APP_CONF_TITLE
  FONT DLG_FONT_SIZE, "Tahoma"
 BEGIN
-	DEFPUSHBUTTON	"OK", IDC_CONF, 194, 7, 32, 12
+	EDITTEXT	IDC_CONF_EDIT_EXE_NAME, 6, 7, 164, 12, ES_AUTOHSCROLL | ES_READONLY
+	PUSHBUTTON	"...", IDC_CONF_BUTTON_EXE_MORE, 170, 7, 14, 12
+	DEFPUSHBUTTON	"&OK", IDC_CONF_BUTTON_OK, 194, 7, 32, 12
+	GROUPBOX	"Speed presets", IDC_STATIC, 6, 22, 220, 90
+	CTEXT	"Interval\n(ms)", IDC_CONF_STATIC_INTV, 10, 33, 30, 16, SS_NOTIFY
+	STATE3	"&Super", IDC_CONF_CHECK_SUPER, 11, 54, 30, 8, WS_TABSTOP
+	CTEXT	"&Tile\nrefresh", IDC_CONF_STATIC_TILE, 42, 33, 32, 16, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_SUP, 43, 53, 20, 12, WS_DISABLED
+	CONTROL	"", IDC_CONF_SPIN_TILE_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | WS_DISABLED, 63, 53, 12, 12
+	CTEXT	"&High", IDC_CONF_STATIC_HIGH, 12, 67, 25, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_HIGH, 43, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 66, 12, 12
+	CTEXT	"&Middle", IDC_CONF_STATIC_MID, 12, 80, 25, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_MID, 43, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 79, 12, 12
+	CTEXT	"&Low", IDC_CONF_STATIC_LOW, 12, 93, 25, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_LOW, 43, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 92, 12, 12
+	CTEXT	"&Event\nframe", IDC_CONF_STATIC_EVENT, 78, 33, 32, 16, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_EVENT_SUP, 79, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_HIGH, 79, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_MID, 79, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_LOW, 79, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 92, 12, 12
+	STATE3	"Mo&ve\nframe", IDC_CONF_CHECK_MOVE, 114, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	EDITTEXT	IDC_CONF_EDIT_MOVE_SUP, 115, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_HIGH, 115, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_MID, 115, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_LOW, 115, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 92, 12, 12
+	STATE3	"&Keybd\nrepeat", IDC_CONF_CHECK_KEYBD, 150, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_SUP, 151, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_HIGH, 151, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_MID, 151, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_LOW, 151, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 92, 12, 12
+	STATE3	"&Anti- \nmisop", IDC_CONF_CHECK_MISOP, 186, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_SUP, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 54, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_HIGH, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 67, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_MID, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 80, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_LOW, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 93, 36, 10
+	GROUPBOX	"Animation", IDC_STATIC, 6, 116, 102, 62
+	STATE3	"Better &battle animation", IDC_CONF_CHECK_BATTLE, 15, 128, 90, 8, WS_TABSTOP
+	STATE3	"Faster &door-opening\nanimation", IDC_CONF_CHECK_DOOR, 15, 138, 90, 16, BS_TOP | BS_MULTILINE | WS_TABSTOP
+	STATE3	"Faster &up/downstairs\ntransition animation", IDC_CONF_CHECK_STAIR, 15, 156, 90, 16, BS_TOP | BS_MULTILINE | WS_TABSTOP
+	GROUPBOX	"User interface", IDC_STATIC, 118, 116, 108, 48
+	STATE3	"Better &window position", IDC_CONF_CHECK_WINDOW, 126, 128, 90, 8, WS_TABSTOP
+	LTEXT	"Message box &font", IDC_CONF_STATIC_FONT, 126, 138, 90, 8, SS_NOTIFY
+	COMBOBOX	IDC_CONF_COMBO_FONT, 126, 148, 92, 200, CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP | CBS_AUTOHSCROLL | CBS_DISABLENOSCROLL // | NOT CBS_SORT
+	STATE3	"Fix &prolog bug", IDC_CONF_CHECK_PROLOG, 118, 169, 60, 8, WS_TABSTOP
+	AUTOCHECKBOX	"More fi&xes...", IDC_CONF_BUTTON_MORE, 178, 167, 48, 12, BS_PUSHLIKE
+	GROUPBOX	"Other bug fixes", IDC_CONF_STATIC_BUG, 6, 182, 220, 55, SS_NOTIFY | NOT WS_VISIBLE
+	STATE3	"Fix 4&9F boss fight bug", IDC_CONF_CHECK_49F, 11, 194, 85, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Fix 4&0F boss fight display bug", IDC_CONF_CHECK_40F, 98, 194, 113, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Fix &33F trap room bug", IDC_CONF_CHECK_33F, 11, 204, 85, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Fix lucky &gold earning display bug", IDC_CONF_CHECK_GOLD, 98, 204, 125, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Fix BGM/WAV op-\ntio&n loading bug", IDC_CONF_CHECK_BGM, 11, 214, 72, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Allow &consecu-\ntive WAV sounds", IDC_CONF_CHECK_SE, 88, 214, 68, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"Allow &loading\nduring an event", IDC_CONF_CHECK_LOAD, 160, 214, 64, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
@@ -78,10 +145,77 @@ END
 IDD_CONFIG DIALOG DISCARDABLE 0, 0, 233, 185
  STYLE DS_SETFONT | DS_CENTER | DS_SETFOREGROUND | WS_POPUP | WS_CAPTION | WS_SYSMENU
  EXSTYLE WS_EX_TOOLWINDOW
- CAPTION TARGET_TITLE_CN "程序修正配置"
+ CAPTION APP_CONF_TITLE_CN
  FONT DLG_FONT_SIZE, "MS Shell Dlg 2"
 BEGIN
-	DEFPUSHBUTTON	"确定(&O)", IDC_CONF, 194, 7, 32, 12
+	EDITTEXT	IDC_CONF_EDIT_EXE_NAME, 6, 7, 164, 12, ES_AUTOHSCROLL | ES_READONLY
+	PUSHBUTTON	"…", IDC_CONF_BUTTON_EXE_MORE, 170, 7, 14, 12
+	DEFPUSHBUTTON	"确定(&O)", IDC_CONF_BUTTON_OK, 194, 7, 32, 12
+	GROUPBOX	"速度预设", IDC_STATIC, 6, 22, 220, 90
+	CTEXT	"间隔\n(毫秒)", IDC_CONF_STATIC_INTV, 8, 33, 35, 16, SS_NOTIFY
+	STATE3	"极速(&S)", IDC_CONF_CHECK_SUPER, 8, 54, 35, 8, WS_TABSTOP
+	CTEXT	"图块\n刷新(&T)", IDC_CONF_STATIC_TILE, 42, 33, 32, 16, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_SUP, 43, 53, 20, 12, WS_DISABLED
+	CONTROL	"", IDC_CONF_SPIN_TILE_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | WS_DISABLED, 63, 53, 12, 12
+	CTEXT	"高速(&H)", IDC_CONF_STATIC_HIGH, 8, 67, 35, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_HIGH, 43, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 66, 12, 12
+	CTEXT	"中速(&M)", IDC_CONF_STATIC_MID, 8, 80, 35, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_MID, 43, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 79, 12, 12
+	CTEXT	"低速(&L)", IDC_CONF_STATIC_LOW, 8, 93, 35, 8, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_TILE_LOW, 43, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_TILE_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 63, 92, 12, 12
+	CTEXT	"事件\n帧(&E)", IDC_CONF_STATIC_EVENT, 78, 33, 32, 16, SS_NOTIFY
+	EDITTEXT	IDC_CONF_EDIT_EVENT_SUP, 79, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_HIGH, 79, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_MID, 79, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_EVENT_LOW, 79, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_EVENT_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 99, 92, 12, 12
+	STATE3	"移动\n帧(&V)", IDC_CONF_CHECK_MOVE, 114, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	EDITTEXT	IDC_CONF_EDIT_MOVE_SUP, 115, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_HIGH, 115, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_MID, 115, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_MOVE_LOW, 115, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_MOVE_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 135, 92, 12, 12
+	STATE3	"长按\n键(&K)", IDC_CONF_CHECK_KEYBD, 150, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_SUP, 151, 53, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_SUP, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 53, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_HIGH, 151, 66, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_HIGH, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 66, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_MID, 151, 79, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_MID, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 79, 12, 12
+	EDITTEXT	IDC_CONF_EDIT_KEYBD_LOW, 151, 92, 20, 12, ES_AUTOHSCROLL | ES_NUMBER
+	CONTROL	"", IDC_CONF_SPIN_KEYBD_LOW, UPDOWN_CLASS, UDS_SETBUDDYINT | UDS_AUTOBUDDY | UDS_ARROWKEYS | UDS_HOTTRACK, 171, 92, 12, 12
+	STATE3	"防误\n触(&A)", IDC_CONF_CHECK_MISOP, 186, 33, 32, 16, BS_CENTER | BS_MULTILINE | WS_TABSTOP
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_SUP, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 54, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_HIGH, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 67, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_MID, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 80, 36, 10
+	CONTROL	"", IDC_CONF_SLIDER_MISOP_LOW, TRACKBAR_CLASS, TBS_AUTOTICKS | TBS_TOOLTIPS | TBS_DOWNISLEFT | TBS_NOTIFYBEFOREMOVE | WS_TABSTOP, 184, 93, 36, 10
+	GROUPBOX	"动画演出", IDC_STATIC, 6, 116, 102, 62
+	STATE3	"优化战斗动画(&B)", IDC_CONF_CHECK_BATTLE, 15, 128, 90, 8, WS_TABSTOP
+	STATE3	"加速开门动画(&D)\n仅限极速和高速模式", IDC_CONF_CHECK_DOOR, 15, 138, 90, 16, BS_TOP | BS_MULTILINE | WS_TABSTOP
+	STATE3	"加速楼层过场画面(&U)\n仅限极速和高速模式", IDC_CONF_CHECK_STAIR, 15, 156, 90, 16, BS_TOP | BS_MULTILINE | WS_TABSTOP
+	GROUPBOX	"用户界面", IDC_STATIC, 118, 116, 108, 48
+	STATE3	"优化默认窗口位置(&W)", IDC_CONF_CHECK_WINDOW, 126, 128, 90, 8, WS_TABSTOP
+	LTEXT	"消息框字体(&F)", IDC_CONF_STATIC_FONT, 126, 138, 90, 8, SS_NOTIFY
+	COMBOBOX	IDC_CONF_COMBO_FONT, 126, 148, 92, 200, CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP | CBS_AUTOHSCROLL | CBS_DISABLENOSCROLL // | NOT CBS_SORT
+	STATE3	"修正序章(&P)", IDC_CONF_CHECK_PROLOG, 118, 169, 52, 8, WS_TABSTOP
+	AUTOCHECKBOX	"更多修正(&X)…", IDC_CONF_BUTTON_MORE, 172, 167, 54, 12, BS_PUSHLIKE
+	GROUPBOX	"其他 Bug 修正", IDC_CONF_STATIC_BUG, 6, 182, 220, 55, NOT WS_VISIBLE
+	STATE3	"修正 49F 头目战(&9)", IDC_CONF_CHECK_49F, 11, 194, 80, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"修正 40F 头目战显示错误(&0)", IDC_CONF_CHECK_40F, 93, 194, 113, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"修正 33F 陷阱房(&3)", IDC_CONF_CHECK_33F, 11, 204, 80, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"修正获得先攻怪物金币显示错误(&G)", IDC_CONF_CHECK_GOLD, 93, 204, 132, 8, WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"修正背景音乐/音效\n设置的读取问题(&N)", IDC_CONF_CHECK_BGM, 11, 214, 80, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"允许短时间内连续\n多次播放音效(&C)", IDC_CONF_CHECK_SE, 93, 214, 75, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
+	STATE3	"允许在事件\n中读档(&L)", IDC_CONF_CHECK_LOAD, 172, 214, 50, 18, BS_TOP | BS_MULTILINE | WS_TABSTOP | NOT WS_VISIBLE
 END
 
 LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
@@ -89,15 +223,46 @@ LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 STRINGTABLE
 BEGIN
 	IDS_TITLE	APP_TITLE " " APP_VERSION_STR
-	IDS_ENTRY_TYPE_EN	"English (Original)"
-	IDS_ENTRY_TYPE_EN_REV	"English (Retranslated)"
-	IDS_ENTRY_TYPE_CN	"Chinese"
-	IDS_ENTRY_TYPE_CN_REV	"Chinese (Retranslated)"
+	IDS_CONF_TITLE	APP_CONF_TITLE
+	IDS_ENTRY_TYPE_CUSTOM	"Custom Executable"
+	IDS_ENTRY_TYPE_EN	"English (Original Ver)"
+	IDS_ENTRY_TYPE_EN_REV	"English (Retranslated Ver)"
+	IDS_ENTRY_TYPE_CN	"Chinese Version"
+	IDS_ENTRY_TYPE_CN_REV	"Chinese (Retranslated Ver)"
 	IDS_TIP_TYPE	"Choose which " TARGET_TITLE " you would like to run"
 	IDS_TIP_OPEN	"Run the " TARGET_TITLE " specified in the dropdown list"
 	IDS_TIP_INIT	"Initialize the " TARGET_TITLE " paths\n\nThe installation and data-save paths will be cleared, and they will be automatically populated the next time you run any " TARGET_TITLE " executable file"
 	IDS_TIP_MGRT	"Another data-save path is found to be located under a different folder from the current game path\n\nClick this button to migrate the settings and game data therein to the current game installation path, and make it the new data-save path in the future"
 	IDS_TIP_CONF	"Configure patches to the " TARGET_TITLE " specified in the dropdown list"
+	IDS_TIP_(EDIT_EXE_NAME)	"Path to the " TARGET_TITLE " executable file to be configured\n\nUse the button on the right to choose a new executable, or drag-and-drop the new executable to this window to configure it"
+	IDS_TIP_(BUTTON_EXE_MORE)	"Choose a new " TARGET_TITLE " executable file to configure\n\nOr drag-and-drop the new executable to this window to configure it"
+	IDS_TIP_BUTTON_OK_2	"Save changed configurations to the current " TARGET_TITLE " executable and close this window"
+	IDS_TIP_(BUTTON_OK)	"Close this window (No changes made)"
+	IDS_TIP_(STATIC_INTV)	"Intervals of different items in each column for different speed presets in each row, in milliseconds (except for the ""Anti-misop"" column)\n\nNote: Although settings here can be adjusted in increments of 1 ms, generally, Windows system timers cannot achieve ms-level precision; the actual resolution is around 16 ms"
+	IDS_TIP_(STATIC_TILE)	"Duration for displaying each frame of animated tile\n\nTypically, each animated tile consists of 2 keyframes that will display alternately on game map refreshing"
+	IDS_TIP_(STATIC_EVENT)	"Interval between adjacent keyframes in an event animation\n\nTypically, each event contains multiple keyframes"
+	IDS_TIP_(CHECK_MOVE)	"Duration for the player, a monster, or an NPC move each step on the game map\n\nWhen ticked: Each step of a character moving towards the next cell will be animated with 4 tween frames; otherwise, they will always ""jump"" to the next cell when moving, which is less smooth (In this case, the duration is determined by the Event-frame-interval)"
+	IDS_TIP_(CHECK_KEYBD)	"Keyboard delay when holding down an arrow key\n\nThe smaller this value is, the faster the player's movement speed (but may also make it harder to control). When unticked, the player's movement speed is fixed and is only determined by the ""Keyboard repeat delay"" and ""Keyboard repeat rate"" system settings; furthermore, when holding down keys, there will be a significant lag after the first move"
+	IDS_TIP_(CHECK_MISOP)	"Whether to pause briefly before a door or monster tile to prevent misoperation when holding down an arrow key \n\nWhen ticked: The ""cool-down"" period is equal to the set value multiplied by the Keyboard-repeat-interval (thus 0 means no cool-down, and larger values indicate higher levels of prevention against misop)\n\nWhether ticked or not, no pausing will occur if an arrow key is pressed for the first time (i.e., not held down) or the encountered tile is not a door or a monster"
+	IDS_TIP_(CHECK_SUPER)	"Enable/Disable the Super-High speed mode\n\nNote: It is not recommended to disable this mode; rather, choose another speed mode in settings if you wish. Otherwise, when the game's previously saved speed mode is ""Super-High,"" the game may become laggy due to incompatibility\n\nIn this speed mode, due to a short keyboard repeat interval, it is recommended to increase the Anti-Misop level if you find keyboard control too sensitive"
+	IDS_TIP_(STATIC_HIGH)	"Adjust configurations on the right for the High speed mode\n\nIn this speed mode, due to a short keyboard repeat interval, it is recommended to increase the Anti-Misop level if you find keyboard control too sensitive"
+	IDS_TIP_(STATIC_MID)	"Adjust configurations on the right for the Middle speed mode"
+	IDS_TIP_(STATIC_LOW)	"Adjust configurations on the right for the Low speed mode"
+	IDS_TIP_(CHECK_BATTLE)	"Originally: The ""hit"" animation tile is always shown throught the battle event, making it difficult to tell when the next battle round starts\n\nWhen ticked: The ""hit"" animation will be on and off alternately, clearly marking each battle round"
+	IDS_TIP_(CHECK_DOOR)	"Originally: All speed modes have equal duration for door-opening animations (~0.2 second)\n\nWhen ticked: The animation for High and Super-High speed modes will be accelerated to 2x and 4x respectively (Other speed modes will remain unchanged)"
+	IDS_TIP_(CHECK_STAIR)	"Originally: All speed modes have equal duration for up-/downstairs animations (~1.2 second)\n\nWhen ticked: The animation for High and Super-High speed modes will be accelerated to 2x and 4x respectively (Other speed modes will remain unchanged)"
+	IDS_TIP_(CHECK_WINDOW)	"Originally: The game window will appear at the top left corner of the screen upon startup and resizing (Note: If the system taskbar is on the left side of the screen, it will overlap with the game window)\n\nWhen ticked: The game window will be centered on screen on startup, and on resizing, it will expand/shrink from the center of the current position (but will not exceed the screen work area)"
+	IDS_TIP_(STATIC_FONT)	"Select or enter the desired font name in the dropdown box\n\nNote: This font is only used for displaying pop-up messages; the font of the main window will not be affected"
+	IDS_TIP_(CHECK_PROLOG)	"Originally: A prolog is always shown at the start of the game regardless of whether the ""Prologue"" option is enabled\n\nWhen ticked: Disabling the ""Prologue"" option allows skipping the prolog upon game startup"
+	IDS_TIP_(BUTTON_MORE)	"Show/Hide more bug fix options\n\nNote: tswKai3 will fix these bugs by default, so even if unticked here, they will be overridden when tswKai3 starts running"
+	IDS_TIP_(STATIC_BUG)	"Bugs in this groupbox significantly affect the gaming experience; it is recommended to tick all patches here\n\nNote: tswKai3 will fix these bugs by default, so even if unticked here, they will be overridden when tswKai3 starts running"
+	IDS_TIP_(CHECK_49F)	"Severe bug: If you have previously experienced a relatively long event before the 49F boss fight with Sorcerers, there is a chance that an additional non-existent event will be mistakenly triggered\n\nTick the checkbox to fix the bug"
+	IDS_TIP_(CHECK_40F)	"Severe bug: After you clear the 40F boss fight with Golden Knight, the bottom status bar will mistakenly display ""Opened a (yellow) door""\n\nTick the checkbox to fix the bug"
+	IDS_TIP_(CHECK_33F)	"Severe bug: If you enter the 33F trap room of Soldiers from the lower side, the Gate will not be correctly triggered; in such a case, if you defeat the 4 gate-keeping monsters directly, you will be trapped there forever\n\nTick the checkbox to fix the bug"
+	IDS_TIP_(CHECK_GOLD)	"Severe bug: When you have Lucky Gold in possesion, you will earn 2x gold after defeating a monster, including strike-first monsters; however, the bottom status bar shows the amount of gold earned for strike-first monsters to be just 1x gold, which is incorrect\n\nTick the checkbox to fix the bug"
+	IDS_TIP_(CHECK_BGM)	"Severe bug: If you previously saved a game data with BGM and/or WAV on, the current BGM and/or WAV options will be overridden upon loading that data \n\nTick the checkbox to fix the bug"
+	IDS_TIP_(CHECK_SE)	"Originally: In high speed modes, ""battle"" and ""get"" WAV sounds cannot play too frequently (i.e., the next sound will play only after the last one finishes)\n\nWhen ticked: Whenever necessary, the current WAV sound can stop immediately to play the next one, ensuring the correct number of sounds played"
+	IDS_TIP_(CHECK_LOAD)	"Originally: You cannot load data during an event\n\nWhen ticked: It is allowed to load data even midway through an event, which can be particularly useful for undoing a mistakenly triggered, lengthy event"
 END
 
 LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
@@ -105,15 +270,46 @@ LANGUAGE LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
 STRINGTABLE
 BEGIN
 	IDS_TITLE	APP_TITLE_CN " " APP_VERSION_STR
+	IDS_CONF_TITLE	APP_CONF_TITLE_CN
+	IDS_ENTRY_TYPE_CUSTOM	"自定义程序"
 	IDS_ENTRY_TYPE_EN	"英语 (原版)"
 	IDS_ENTRY_TYPE_EN_REV	"英语 (重译版)"
-	IDS_ENTRY_TYPE_CN	"汉化"
+	IDS_ENTRY_TYPE_CN	"汉化版"
 	IDS_ENTRY_TYPE_CN_REV	"汉化 (日文精译版)"
 	IDS_TIP_TYPE	"选择想要运行的" TARGET_TITLE_CN "版本"
 	IDS_TIP_OPEN	"运行由左侧列表指定的" TARGET_TITLE_CN "游戏"
 	IDS_TIP_INIT	"初始化" TARGET_TITLE_CN "程序的相关路径\n\n将会清除" TARGET_TITLE_CN "程序的安装路径和数据存储路径，下次运行任意一个" TARGET_TITLE_CN "游戏的程序文件后就会自动重设"
 	IDS_TIP_MGRT	"现有设置中的数据存储路径并非处在当前游戏安装路径下\n\n单击此按钮以将其中的选项和存档迁移至当前游戏安装文件夹下，并将之重设为新的数据存储路径"
 	IDS_TIP_CONF	"对左侧列表指定的" TARGET_TITLE_CN "游戏进行修正配置"
+	IDS_TIP_(EDIT_EXE_NAME)	"目前正在配置的" TARGET_TITLE_CN "可执行文件路径\n\n可通过右侧按钮选择新文件，或将新文件拖放至本窗口进行配置"
+	IDS_TIP_(BUTTON_EXE_MORE)	"选择一个新的需要进行配置的" TARGET_TITLE_CN "可执行文件\n\n或者也可以将其拖放至本窗口进行配置"
+	IDS_TIP_(BUTTON_OK)	"关闭本窗口（当前配置未更改）"
+	IDS_TIP_BUTTON_OK_2	"为当前" TARGET_TITLE_CN "可执行文件保存配置并关闭本窗口"
+	IDS_TIP_(STATIC_INTV)	"下列各行中不同速度预设下，每一列各项的时间间隔，单位为毫秒（“防误触”一项除外）\n\n注意：虽然此处设置精确到毫秒，但 Windows 的计时器一般并不能达到毫秒级精度，实际分辨率在 16 毫秒左右"
+	IDS_TIP_(STATIC_TILE)	"图块动画每次刷新的时长\n\n游戏地图上的动画图块一般有 2 个关键帧，并在此之间切换"
+	IDS_TIP_(STATIC_EVENT)	"事件动画相邻关键帧之间的时长\n\n一般而言，每个事件都包含若干个关键帧"
+	IDS_TIP_(CHECK_MOVE)	"主角或怪物、NPC 在地图上移动一格距离的时长\n\n勾选后，角色从某一格走向下一格时将有 4 帧补间动画；未勾选时，角色只会“跳着”移动，非常生硬（此时的时长由事件帧间隔决定）"
+	IDS_TIP_(CHECK_KEYBD)	"长按方向键时的键盘等待间隔\n\n该值越小，主角移动速率越快（但可能会更难控制）。未勾选时，主角移动速度无法更改，仅由“键盘重复延迟”和“键盘重复速度”系统设置决定；且在长按时，移动有明显“顿挫感”"
+	IDS_TIP_(CHECK_MISOP)	"长按方向键时，若遇门或怪物，是否停顿一会以防误触\n\n勾选后，停顿的时长等于设置的数值乘以长按键等待间隔（因此 0 表示无停顿；值越大表明防误触等级越高）\n\n无论是否勾选，首次按下某个方向键时（即不处于长按状态下）或遇到的图块不是门或怪物时，都不会引发停顿"
+	IDS_TIP_(CHECK_SUPER)	"启用 / 禁用“极速”模式\n\n注意：不建议完全禁用该模式（建议可选其他速度模式，而不必禁用极速模式），否则，若之前游戏保存的速度选项为“极速”时，可能会因不兼容而变得卡顿\n\n因在极速模式下，长按方向键时键盘等待间隔较短，若觉得难以精准操作，推荐调大防误触等级"
+	IDS_TIP_(STATIC_HIGH)	"在右侧各项中，调整高速模式的配置\n\n因在高速模式下，长按方向键时键盘等待间隔较短，若觉得难以精准操作，推荐调大防误触等级"
+	IDS_TIP_(STATIC_MID)	"在右侧各项中，调整中速模式的配置"
+	IDS_TIP_(STATIC_LOW)	"在右侧各项中，调整低速模式的配置"
+	IDS_TIP_(CHECK_BATTLE)	"原先在战斗时，会全程一直显示“击打”动画；\n勾选后，每回合战斗的“击打”动画之间有空挡，能更清晰地反映回合的界线"
+	IDS_TIP_(CHECK_DOOR)	"原先所有速度模式下开门动画时长都相同（~0.2 秒）；\n勾选后，高速、极速模式的开门动画分别加速 2 倍、4 倍"
+	IDS_TIP_(CHECK_STAIR)	"原先所有速度模式下上下楼动画时长都相同（~1.2 秒）；\n勾选后，高速、极速模式上下楼动画分别加速 2 倍、4 倍"
+	IDS_TIP_(CHECK_WINDOW)	"原先游戏窗口在启动时或改变尺寸时会显示在屏幕最左上角（若系统任务栏在屏幕左侧，则还会盖住游戏窗口）；\n勾选后，游戏启动时窗口显示在屏幕中央，改变尺寸时会从当前窗口位置中心缩放（但边界不超出屏幕工作区边缘）"
+	IDS_TIP_(STATIC_FONT)	"在下方组合框中选定或键入欲使用的字体名称\n\n注意：该字体仅用于显示游戏消息弹出框，不会对主界面字体产生影响"
+	IDS_TIP_(CHECK_PROLOG)	"原先无论是否启用“序章”选项，游戏开头都会显示序章；\n勾选后，取消“序章”选项可在开头跳过序章"
+	IDS_TIP_(BUTTON_MORE)	"显示 / 隐藏更多 Bug 修正选项\n\n注意：tswKai3 默认会修正这些 Bug，所以即使在此处取消，在 tswKai3 开启后也还是会回复"
+	IDS_TIP_(STATIC_BUG)	"此群组框中的 Bug 较为影响游戏体验，建议全部勾选修复\n\n注意：tswKai3 默认会修正这些 Bug，所以即使在此处取消，在 tswKai3 开启后也还是会回复"
+	IDS_TIP_(CHECK_49F)	"恶性 Bug：当该轮游戏此前经历过某次比较长的事件后，在 49F 头目战中「魔导师」出场动画前有概率会额外触发一个本不存在的事件；\n勾选后可修复此 Bug"
+	IDS_TIP_(CHECK_40F)	"恶性 Bug：当玩家结束 40F「金骑士」头目战后，底部状态栏会错误显示“（黄）门开了”；\n勾选后可修复此 Bug"
+	IDS_TIP_(CHECK_33F)	"恶性 Bug：当玩家从下方进入 33F 右侧「战士」陷阱房时，机关闸门未能主动启动，此时若先消灭四只守门怪物，则会永远被困陷阱房内；\n勾选后可修复此 Bug"
+	IDS_TIP_(CHECK_GOLD)	"恶性 Bug：当玩家持有「幸运金币」时，消灭先攻怪物时可获得双倍金币（和普通怪物一致），但底部状态栏却错误地将所获得金币数显示为一倍金币；\n勾选后可修复此 Bug"
+	IDS_TIP_(CHECK_BGM)	"恶性 Bug：若玩家在先前存档时开启了背景音乐和/或音效，则当玩家在读取该存档时，游戏会无视当前的背景音乐和/或音效设置，将其强制开启；\n勾选后可修复此 Bug"
+	IDS_TIP_(CHECK_SE)	"原先在较高的速度模式下，“战斗”和“拾取”音效不能高频率连续播放，只有播完上个音效后才会开始播放下一个；\n勾选后，这些音效可以在需要时立即中断并播放下一个，以确保播放的音效次数正确"
+	IDS_TIP_(CHECK_LOAD)	"原先在事件进行过程中无法读档；\n勾选后，可以在事件发生中途读档，这特别是在误触发某个冗长的事件而想要取消时会很有用"
 END
 
 #include "msg.rc" // will be generated by MC processing of 'msg.mc'

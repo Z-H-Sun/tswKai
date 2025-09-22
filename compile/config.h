@@ -65,7 +65,7 @@ VALUE exerb_rb_f_require_new(VALUE obj, VALUE fname) {
 }
 static BOOL check_stdout() { // allocate a console window if there is a `p`/`print`/`puts` call
   HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE); // by default, there is no stdout device because this is a GUI app
-  if (hOut) // however, there will be one if we already allocated a console window, or if stdout is redirected in the command line, then this will be a disk file handle
+  if (hOut && GetFileType(hOut)) // however, there will be one if we already allocated a console window, or if stdout is redirected in the command line, then this will be a disk file handle [According to MSDN, hOut will be NULL if no STDOUT handle is associated; however, on WinXP, the actual return value is an invalid handle, 65537, on my test virtual machine. So, need to check the validity of hOut even if it is non-NULL using `GetFileType` in this line (theoretically, the return value can also be INVALID_HANDLE_VALUE, 0xFFFFFFFF, but GetFileType of this invalid handle will also return 0, so it's OK)]
     return TRUE;
   if (!AllocConsole()) // alloc one
     return FALSE; // fail

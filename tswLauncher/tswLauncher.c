@@ -46,8 +46,8 @@ static void get_ini_path() { // %windir\\TSW12.ini
 static void get_app_path() { // .
   WCHAR cur_path_w[MAX_PATH];
   WCHAR* title_path = app_title+1+app_title[0]; // since `app_title` was initialized with '\0's, it is ensured that it's always terminated with '\0' without the need to manually do it (so `memcpy` also does not need to copy the trailing '\0')
-  memcpy(title_path, L" - ", 3*sizeof(WCHAR));
-  title_path += 3;
+  wmemcpy(title_path, WT(TITLE_SEPARATOR), sizeof(TITLE_SEPARATOR)-1);
+  title_path += sizeof(TITLE_SEPARATOR)-1;
   DWORD len_w = GetModuleFileNameW(NULL, cur_path_w, MAX_PATH);
   if (!len_w)
     goto app_path_fail;
@@ -57,14 +57,14 @@ static void get_app_path() { // .
   if (!basename_w)
     goto app_path_fail;
   len_w = (++basename_w)-cur_path_w + sizeof(TSW_DIR)-1;
-  if (app_title[0]+3+len_w >= MAX_PATH) { // make sure the title is not too long
+  if (app_title[0]+(sizeof(TITLE_SEPARATOR)-1)+len_w >= MAX_PATH-2) { // make sure the title is not too long (maximum is MAX_PATH minus the first WCHAR (which is the length of the unicode string but not part of it) plus the last WCHAR (trailing \0))
 app_path_too_long:
-    memcpy(title_path, cur_path_w, 64*sizeof(WCHAR)); // only copy part of the path
-    memcpy(title_path+64, L"...", 3*sizeof(WCHAR)); // then end it with ellipses
+    wmemcpy(title_path, cur_path_w, 64); // only copy part of the path
+    wmemcpy(title_path+64, L"...", 3); // then end it with ellipses
     goto app_path_fail;
   }
-  memcpy(basename_w, WT(TSW_DIR), sizeof(TSW_DIR)*sizeof(WCHAR)); // replace basename with TSW_DIR
-  memcpy(title_path, cur_path_w, len_w*sizeof(WCHAR));
+  wmemcpy(basename_w, WT(TSW_DIR), sizeof(TSW_DIR)); // replace basename with TSW_DIR
+  wmemcpy(title_path, cur_path_w, len_w);
   cur_path_len = unicode2ansi(cur_path_w, len_w, cur_path, MAX_PATH);
   if ((!cur_path_len) || (cur_path_len+1+strlen(TARGET_EXE_3) >= MAX_PATH)) { // make sure exe filename "./TSW1.2r3/TSW.CNJP.exe" is not too long
 app_path_fail:
