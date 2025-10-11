@@ -4,6 +4,7 @@
 
 ClientToScreen = API.new('ClientToScreen', 'LP', 'L', 'user32')
 CreateWindowExW = API.new('CreateWindowExW', 'LSSLIIIILLLL', 'L', 'user32') # must create a Unicode window to allow showing non-ANSI unicode text in title; otherwise, even SetWindowTextW may not work properly (reference: https://stackoverflow.com/a/11515400/11979352)
+FindWindowW = API.new('FindWindowW', 'SS', 'L', 'user32')
 SendMessagePtr = API.new('SendMessageA', 'LLLL', 'L', 'user32')
 SetCapture = API.new('SetCapture', 'L', 'L', 'user32')
 ReleaseCapture = API.new('ReleaseCapture', 'V', 'L', 'user32')
@@ -63,7 +64,7 @@ $stlStatic1 = GetWindowLong.call_r($hWndStatic1, GWL_EXSTYLE) # this won't be ju
 hWndStaticIco = CreateWindowExW.call_r(0, STATIC_CLASS_NAME, nil, WS_CHILD|WS_VISIBLE|SS_ICON, 1, 1, 48, 48, $hWndStatic1, 0, 0, 0) # a simpler method without the need of calling LoadImage is to set the title as '#1', but that cannot specify the icon size to be 48x48 (see commit `tswSL@eea9ca7`)
 SendMessagePtr.call(hWndStaticIco, STM_SETICON, $hIco, 0)
 
-unless (hWnd=FindWindow.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found another instance; quit
+unless (hWnd=FindWindowW.call(DIALOG_CLASS_NAME, APP_MUTEX_TITLE)).zero? # found another instance; quit
   GetWindowThreadProcessId.call(hWnd, $bufDWORD)
   initSettings(); msgbox = $isCHN ? :msgboxTxtW : :msgboxTxtA
   send(msgbox, 29, MB_ICONERROR, $bufDWORD.unpack('L')[0])
@@ -75,12 +76,14 @@ $lastMousePos = $bufDWORD * 2 # the mouse position when the msg is generated (no
 $movingStatic1 = false # indicate if currently using mouse to move the status window; if so, it will be [x0, y0] with respect to top left corner of the client
 
 def Static1_Show(show=$CONshowStatusTip)
+# Show the status banner window (By default, `show`=`$CONshowStatusTip`=true; otherwise do nothing).
   return unless show
   ShowWindow.call($hWndStatic1, SW_SHOW)
   SetForegroundWindow.call($hWndStatic1)
 end
 
 def Static1_3D(sunken) # when mouse/key down, sunken; up, raised
+# mimick the 3D effect of the status banner window by applying appropriate window styles. Returns true if the state changes; false otherwise.
   prev_sunken = ($stlStatic1 & WS_EX_DLGMODALFRAME).zero?
   return false if sunken == prev_sunken # no need to do the following if the state doesn't change
   if sunken then $stlStatic1 &= ~ WS_EX_DLGMODALFRAME else $stlStatic1 |= WS_EX_DLGMODALFRAME end
@@ -90,6 +93,10 @@ def Static1_3D(sunken) # when mouse/key down, sunken; up, raised
 end
 
 def Static1_CheckMsg(msg)
+# Process window messages for the status banner window (called in `checkMsg` in 'main.rbw').
+# - If mouse left/right button down or ESC/SPACE/RETN key down, apply sunken 3D effect. Mouse down also prepares for moving the window.
+# - If mouse move with left/right button down, remove sunken 3D effect and move the window accordingly (if the moving distance is large enough).
+# - If mouse left/right button up or ESC/SPACE/RETN key up, stop moving the window and remove sunken 3D effect; if not moving, ask whether to quit or just hide the window.
   case msg[1]
   when WM_LBUTTONDOWN, WM_RBUTTONDOWN, WM_KEYDOWN
     if msg[1] == WM_KEYDOWN # if keystroke, must be ESC or SPACE or RETN

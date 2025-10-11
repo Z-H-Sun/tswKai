@@ -13,6 +13,17 @@ struct __pascal_short_string {
 WCHAR readFontName_w[LF_FACESIZE]; // unicode
 INT_PTR readFontIndex; // initial index in dropbox
 
+/**
+ * Checks if the given Unicode font name is too long for compatibility with TSW's ANSI font creation.
+ *
+ * Windows truncates Unicode font names longer than 31 TCHARs, but TSW uses the ANSI API, where the
+ * ANSI-encoded font name may exceed 31 bytes if non-ASCII characters are present. In such cases,
+ * Windows cannot find the font by name. This function determines if the font name is too long to avoid
+ * this issue.
+ *
+ * @param fontName_w Pointer to a null-terminated Unicode (WCHAR) string representing the font name.
+ * @return TRUE if the font name is too long for ANSI compatibility; FALSE otherwise.
+ */
 BOOL isFontNameTooLong(WCHAR* fontName_w) { // when the Unicode font name is too long (>31 TCHARs), Windows will truncate the Unicode font name to 31 TCHARs, which is OK and Windows can still find this font; however, TSW uses the ANSI version API to create fonts, so the font name is stored in the ANSI encoding, and the ANSI font name can exceed 31 bytes if the 31-TCHAR-long Unicode font name contains non-ASCII characters, in which case Windows cannot find the font with this name, so we need to avoid these long-named fonts
   int len;
   if (!is_chinese_exe || // non-Chinese exe: use system code page for transcoding
@@ -23,6 +34,16 @@ BOOL isFontNameTooLong(WCHAR* fontName_w) { // when the Unicode font name is too
   return (len >= LF_FACESIZE);
 }
 
+/**
+ * This function is called by the Windows API during font enumeration.
+ * It processes information about each font found on the system.
+ *
+ * @param lpelfe Pointer to an ENUMLOGFONTW structure containing information about the logical font.
+ * @param lpntme Pointer to a NEWTEXTMETRICW structure containing information about the physical font.
+ * @param FontType Specifies the type of font (e.g., raster, device, or TrueType).
+ * @param lParam Application-defined value passed to the enumeration function.
+ * @return int Returns a nonzero value to continue enumeration, or zero to stop.
+ */
 static int CALLBACK EnumFontFamProc(ENUMLOGFONTW *lpelfe, NEWTEXTMETRICW *lpntme, DWORD FontType, LPARAM lParam) { // callback function for getting system-installed font list
   WCHAR* fontName = (WCHAR*)(lpelfe->elfLogFont.lfFaceName);
   if (fontName[0] == L'@' || // exclude vertically oriented fonts
@@ -65,6 +86,16 @@ static void checkFonts() { // get the game's default font (for messagbox, toolti
     SetDlgItemTextW(hwnd, IDC_CONF_COMBO_FONT, readFontName_w);
 }
 
+/**
+ * This function examines the patch at the specified index within the provided file pointer.
+ *
+ * @param f      Pointer to the file to be checked.
+ * @param index  Index of the patch to check.
+ * @return int   -1 if the check fails,
+ *                0 if the patch is in its original state,
+ *                1 if the patch is applied,
+ *                2 if the state is unknown.
+ */
 static int checkPatch(FILE* f, int index) { // check the state of a single patch; return val: -1=fail; 0=original; 1=patched; 2=unknown
   patchStruct* p = patches[index].patches;
   char read[MAX_LEN_PATCH_BYTES];
@@ -148,6 +179,13 @@ check_if_previous_patched:
   return ret;
 }
 
+/**
+ * This function checks the compatibility of the executable located at the given path.
+ * On success, it sets the global variables `is_chinese_exe` and `tsw_exe_conf_f` accordingly.
+ *
+ * @param exe_path Path to the executable file to check.
+ * @return TRUE if the compatibility check is successful, FALSE otherwise.
+ */
 BOOL checkInit(char* exe_path) { // initial compatibility check; return whether successful; on success, set `is_chinese_exe` and `tsw_exe_conf_f`
   BOOL is_chinese_exe_new;
   FILE* tsw_exe_conf_f_new = fopen(exe_path, "r+b");
@@ -216,6 +254,13 @@ fail_check_init:
   return TRUE;
 }
 
+/**
+ * This function is called when the "Super" checkbox is ticked or unticked.
+ * It performs necessary updates based on the checkbox state.
+ *
+ * @param chkState The current state of the "Super" checkbox (TRUE if checked, FALSE if unchecked).
+ * @param setAll   Indicates whether all related values should be set (TRUE during initialization, FALSE on user interaction).
+ */
 void checkSuper(BOOL chkState, BOOL setAll) { // follow-up work when the Super checkbox is ticked/unticked [`setAll` is only necessary during dialog initialization since all values need to be set; when user clicks the "Super" checkbox, `setAll` should be FALSE]
   // enable/disable "event:super" updown; set its value
   EnableItem(IDC_CONF_SPIN_EVENT_SUP, chkState);

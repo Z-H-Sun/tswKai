@@ -14,6 +14,15 @@ DLGTEMPLATE *pDlg_old[3] = {NULL}, *pDlg_new[3] = {NULL};
 DWORD szDlg[3], dimDlgWin[3];
 DWORD winVer;
 
+/**
+ * Displays a message box with a formatted message.
+ *
+ * @param hwnd   Handle to the owner window of the message box. Can be NULL: in this case, the main window or config window will be used if available; otherwise the message box will be topmost.
+ * @param uType  Specifies the behavior of the message box (see the uType parameter in the MessageBox Win32 API).
+ * @param uID    Resource ID of the message string to display.
+ * @param ...    Optional arguments for formatting the message string.
+ * @return       The result of the user's interaction with the message box (e.g., IDOK, IDYES).
+ */
 int msgbox(HWND hwnd, unsigned int uType, unsigned int uID, ...) {
   WCHAR buffer[512];
   DWORD lang = hWndConf ? APP_CONF_LANGUAGE : APP_LANGUAGE;
@@ -46,6 +55,7 @@ show_msgbox:
   return ret;
 }
 
+// Returns pointer to the static wide (Unicode) string in the resource table
 static WCHAR* _LoadStringLang(DWORD id, WORD lang) {
   HRSRC hrsrc = FindResourceEx(hIns, RT_STRING, MAKEINTRESOURCE(id / 16 + 1), lang); // String tables are broken up into "bundles" of 16 strings each
   if (!hrsrc) return NULL;
@@ -56,6 +66,15 @@ static WCHAR* _LoadStringLang(DWORD id, WORD lang) {
   return pWch;
 }
 
+/**
+ * Loads a localized wide (Unicode) string resource identified by the given ID and language.
+ *
+ * @param id   The resource identifier of the string to load.
+ * @param lang The language identifier specifying which language version to load.
+ * @param buf  Pointer to a buffer that will receive the loaded wide-character string.
+ *             Note: The buffer must be large enough to hold the string; no length checking is performed.
+ * @return     The number of wide characters copied into the buffer (excluding the null terminator).
+ */
 static size_t LoadStringLangW(DWORD id, WORD lang, WCHAR* buf) { // be careful: make sure `buf` is large enough; will not check length to copy to it
   WCHAR* pWch = _LoadStringLang(id, lang);
   if (!pWch) { msgbox(NULL, MB_ICONEXCLAMATION, IDS_ERR_WINAPI, GetLastError(), L"FindResourceEx"); buf[0] = L'\0'; return 0; } // fail
@@ -66,6 +85,7 @@ static size_t LoadStringLangW(DWORD id, WORD lang, WCHAR* buf) { // be careful: 
 }
 
 /*
+// Like above, but for ANSI string; not used currently
 static size_t LoadStringLangA(DWORD id, WORD lang, char buf[MAX_PATH]) { // be careful: the source string should be shorter than 260 bytes, and `buf` should be large enough; will not run checks
   WCHAR* pWch = _LoadStringLang(id, lang);
   if (!pWch) { msgbox(NULL, MB_ICONEXCLAMATION, IDS_ERR_WINAPI, GetLastError(), L"FindResourceEx"); buf[0] = '\0'; return 0; } // fail
@@ -78,6 +98,14 @@ static size_t LoadStringLangA(DWORD id, WORD lang, char buf[MAX_PATH]) { // be c
 }
 */
 
+/**
+ * Resets the font for a dialog template item.
+ *
+ * @param i           The index of the dialog item to set the font for.
+ * @param fontName    Pointer to a wide-character string containing the font name.
+ * @param fontNameLen The length of the font name string (in characters).
+ * @param fontSize    The size of the font (in logical units).
+ */
 static void setDlgFont(int i, WCHAR* fontName, size_t fontNameLen, WORD fontSize) { // inspired by CDialogTemplate::SetFont: https://github.com/mirror/winscp/blob/22fdfe5692ce9cf209807026d63a9d2be2279a72/libs/mfc/source/dlgtempl.cpp#L284
 // fontNameLen: in bytes, including the trailing \0\0
   WORD* pFont = (WORD*)(pDlg_old[i] + 1);
@@ -108,6 +136,7 @@ static void setDlgFont(int i, WCHAR* fontName, size_t fontNameLen, WORD fontSize
   memcpy(pNewControls - (char*)(pDlg_old[i]) + (char*)(pDlg_new[i]), pOldControls, szDlg[i] - (pOldControls - (char*)(pDlg_old[i])));
 }
 
+// Creates a shared mapped view of file to ensure only one instance of this app is running
 static void createMutex() {
   if (! (hMapFile = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, APP_MUTEX_BUFSIZE, APP_MUTEX)) ) {
     msgbox(HWND_TOPMOST, MB_ICONEXCLAMATION, IDS_ERR_WINAPI, GetLastError(), L"CreateFileMapping");
@@ -123,6 +152,7 @@ static void createMutex() {
   minfo->hwnd = hWndMain;
 }
 
+// Checks if another instance of this app is running by looking for the shared mapped view of file
 static void checkMutex() {
   if (! (hMapFile = OpenFileMapping(FILE_MAP_READ, FALSE, APP_MUTEX)) ) {
     createMutex(); // no other tswLauncher instance running
@@ -145,12 +175,14 @@ static void checkMutex() {
   safe_exit(1);
 }
 
+// Positions the TSW window to the center of the screen, by referencing to the initial position of the main dialog window
 void centerTSW(HWND hwndTSW) {
   RECT rcTSW;
   GetWindowRect(hwndTSW, &rcTSW);
   SetWindowPos(hwndTSW, 0, (rcDlg.left+rcDlg.right+rcTSW.left-rcTSW.right)/2, (rcDlg.top+rcDlg.bottom+rcTSW.top-rcTSW.bottom)/2, 0, 0, SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE);
 }
 
+// Checks if TSW is already running by looking for its main window; if found, shows a message box, gives focus to the existing TSW window, and returns TRUE; otherwise returns FALSE
 BOOL checkTSWrunning() {
   HWND hwndTSW = FindWindow(TARGET_CLS_NAME, NULL);
   DWORD pidTSW = 0;
@@ -167,6 +199,7 @@ BOOL checkTSWrunning() {
   return TRUE;
 }
 
+// Cleanup before exiting the app
 void pre_exit() {
   if (p_mutex) {
     UnmapViewOfFile(p_mutex);
@@ -177,32 +210,36 @@ void pre_exit() {
   if (pDlg_new[2]) free(pDlg_new[2]);
 }
 
+// Exits the app and do cleanup
 void safe_exit(int status) {
   pre_exit();
   exit(status);
 }
 
+// Dummy callback function for EnumFontFamiliesExW: When the font with the given criteria is found, the function will return 0 to stop enumeration, and the EnumFontFamiliesExW function will return 0; otherwise, the EnumFontFamiliesExW function returns non-zero, indicating no matching font found
 static int CALLBACK EnumFontFamProc(ENUMLOGFONTW *lpelfe, NEWTEXTMETRICW *lpntme, DWORD FontType, LPARAM lParam) {
-    return 0;
+  return 0;
 }
 
+// Creates a tooltip window and associates it with the given parent window `hWndParent` and tool information `p_toolInfo`; sets the tooltip properties; and returns the handle to the created tooltip window
 static HWND createTooltipWnd(HWND hWndParent, TOOLINFOW* p_toolInfo) {
-    HWND hWndTip = CreateWindowExW(0, WT(TOOLTIPS_CLASS), NULL, WS_POPUP | TTS_ALWAYSTIP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, hWndParent, NULL, hIns, NULL);
-    SendMessageW(hWndTip, TTM_SETMAXTIPWIDTH, 0, 320); // allow text wrap and multiline
-    SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_INITIAL, 0);
-    SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_RESHOW, 0);
-    SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, 0x7FFF); // largest possible delay because the HIWORD must be zero
-    p_toolInfo->hwnd = hWndParent;
-    p_toolInfo->uFlags = TTF_IDISHWND | TTF_SUBCLASS;
-    p_toolInfo->lpszText = LPSTR_TEXTCALLBACKW; // instead of setting a fixed description text here, this will send TTN_NEEDTEXTW notification, allowing dynamically changing icon / title, which is otherwise impossible (since after such changes, the tooltip window size needs to be recalculated, so intercepting TTN_SHOW is not enough; have to do this in an earlier stage)
-    // Ref: https://www.codeproject.com/Articles/12328/Displaying-a-Title-and-an-Icon-in-a-ToolTip-window
-    return hWndTip;
+  HWND hWndTip = CreateWindowExW(0, WT(TOOLTIPS_CLASS), NULL, WS_POPUP | TTS_ALWAYSTIP, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, CW_USEDEFAULT, hWndParent, NULL, hIns, NULL);
+  SendMessageW(hWndTip, TTM_SETMAXTIPWIDTH, 0, 320); // allow text wrap and multiline
+  SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_INITIAL, 0);
+  SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_RESHOW, 0);
+  SendMessageW(hWndTip, TTM_SETDELAYTIME, TTDT_AUTOPOP, 0x7FFF); // largest possible delay because the HIWORD must be zero
+  p_toolInfo->hwnd = hWndParent;
+  p_toolInfo->uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+  p_toolInfo->lpszText = LPSTR_TEXTCALLBACKW; // instead of setting a fixed description text here, this will send TTN_NEEDTEXTW notification, allowing dynamically changing icon / title, which is otherwise impossible (since after such changes, the tooltip window size needs to be recalculated, so intercepting TTN_SHOW is not enough; have to do this in an earlier stage)
+  // Ref: https://www.codeproject.com/Articles/12328/Displaying-a-Title-and-an-Icon-in-a-ToolTip-window
+  return hWndTip;
 }
 
+// Main dialog procedure for the configuration dialog
 static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
   WCHAR buf[MAX_PATH];
   switch ( message ) {
-  case WM_INITDIALOG:
+  case WM_INITDIALOG: // dialog initialization
     hWndConf = hwnd;
     TOOLINFOW toolInfo = {sizeof(toolInfo)};
     RECT *rct = &toolInfo.rect; // temporary RECT struct
@@ -228,6 +265,7 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
     }
     SetWindowTextW(hwnd, buf);
 
+    // initialize controls
     SetDlgItemText(hwnd, IDC_CONF_EDIT_EXE_NAME, tsw_exe_conf_path);
     SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_LIMITTEXT, (WPARAM)LF_FACESIZE-1, (LPARAM)0); // maximum font name length
     for (i = IDC_CONF_EDIT_BEGIN_2; i <= IDC_CONF_EDIT_END; ++i)
@@ -264,7 +302,7 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
     closeDlg(IDOK);
     return TRUE;
 
-  case WM_CLOSE:
+  case WM_CLOSE: // user clicks the close button of the dialog
     closeDlg(IDCANCEL);
     return TRUE;
 
@@ -277,7 +315,7 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
     }
     goto newExe;
 
-  case WM_NOTIFY:
+  case WM_NOTIFY: // there are several cases here: tooltip popped up (need to provide tooltip title and text), updown changed, trackbar changed
     ; // low version GCC doesn't allow a declaration immediately after a label (error: a label can only be part of a statement and a declaration is not a statement). Fine, let's make it happy
     NMHDR* nmh = (NMHDR*)lparam;
     UINT_PTR id = wparam; // or nmh->idFrom; they are the same
@@ -343,7 +381,7 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
     // trackbar changed
     if (nmh->code == TRBN_THUMBPOSCHANGING) // Note: this notification involves TBS_NOTIFYBEFOREMOVE which requires Windows Vista+ to work
       newState = ((NMTRBTHUMBPOSCHANGING*)lparam)->dwPos;
-    else if (LOWORD(winVer) < _WIN32_WINNT_VISTA && // for WinXP, must do this judgement in a more circuitous way
+    else if (HIWORD(winVer) < _WIN32_WINNT_VISTA && // for WinXP, must do this judgement in a more circuitous way
              nmh->code == NM_CUSTOMDRAW && // unfortunately, trackbar does not send NM_KILLFOCUS notification (one can find that by looking at the source code: https://github.com/tongzx/nt5src/blob/master/Source/XPSP1/NT/shell/comctl32/v6/trackbar.c, and compare it with other common controls like treeview (.../treeview.c) which send such notification), so we have to do some *hacky* tricks here by making use of the drawing notification
              id >= IDC_CONF_SLIDER_BEGIN && id <= IDC_CONF_SLIDER_END && // trackbar
              IsWindowEnabled(GetDlgItem(hwnd, id))) { // must be enabled
@@ -357,7 +395,7 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
       return TRUE;
     break; // item changed
 
-  case WM_COMMAND:
+  case WM_COMMAND: // button clicked, checkbox changed, textbox changed, combobox selection changed
     id = LOWORD(wparam);
 
     switch (id) {
@@ -522,24 +560,27 @@ defaultFontEntry:
   return TRUE;
 }
 
+// Main dialog procedure for the main dialog
 static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
   WCHAR buf[32]; // this buffer is used to load combobox items and button names, so 16 TCHARs is enough space
   switch ( message ) {
-  case WM_INITDIALOG:
-    GetWindowRect(hwnd, &rcDlg);
+  case WM_INITDIALOG: // dialog initialization
+    GetWindowRect(hwnd, &rcDlg); // get dialog window position; will be used when centering the TSW window
 
+    // initial checks: TSW already running? tswLauncher already running? path valid?
     checkTSWrunning();
     hWndMain = hwnd;
     checkMutex();
     init_path();
 
+    // set title and icon
     SendMessageW(hwnd, WM_SETICON, (WPARAM)ICON_BIG, // according to MSDN, icons loaded with LR_SHARED need not to be disposed of
       (LPARAM)LoadImage(hIns, MAKEINTRESOURCE(IDI_APP), IMAGE_ICON, 0, 0, LR_DEFAULTCOLOR | LR_DEFAULTSIZE | LR_SHARED));
     SetWindowTextW(hwnd, app_title+1);
 
     // set button image (this will only work for Windows Vista+, i.e., XP won't work)
     // comctl32 v6 can't add monochrome images, so make them 16-color (ref: https://www.virtualdub.org/blog2/entry_331.html)
-    if (LOWORD(winVer) >= _WIN32_WINNT_VISTA) {
+    if (HIWORD(winVer) >= _WIN32_WINNT_VISTA) {
       RECT btn_margin = {5, 1, 1, 1};
       for (int i = IDC_OPEN; i <= IDC_CONF; ++i) {
         SendDlgItemMessageW(hwnd, i, BM_SETIMAGE, (WPARAM)IMAGE_ICON,
@@ -571,10 +612,10 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
     ShowWindow(hwnd, SW_SHOWNOACTIVATE); // make sure dialog window is visible
     migrate_data();
     return TRUE;
-  case WM_DESTROY:
+  case WM_DESTROY: // window is being destroyed
     pre_exit();
     return TRUE;
-  case WM_CLOSE:
+  case WM_CLOSE: // user clicks the close button
     EndDialog(hwnd, IDCANCEL);
     return TRUE;
   case WM_NOTIFY: // tooltip pops up; provide tooltip title and text
@@ -593,7 +634,7 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
     LoadStringLangW(IDS_TIP_BEGIN-IDC_BEGIN + id, APP_LANGUAGE, tooltip_descr);
     info->lpszText = tooltip_descr;
     return TRUE;
-  case WM_COMMAND:
+  case WM_COMMAND: // button clicked
     switch (LOWORD(wparam)) {
     case IDCANCEL: // pressed ESC
       MessageBeep(MB_ICONINFORMATION);
@@ -612,7 +653,7 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
       if (launch_tsw(type))
         EndDialog(hwnd, IDOK); // quit if successful
       return TRUE;
-    case IDC_MGRT:
+    case IDC_MGRT: // migrate
       if (msgbox(hwnd, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_MIGRATION, data_path) == IDNO)
         return TRUE;
       if (migrate_data())
@@ -648,13 +689,25 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
   return FALSE;
 }
 
+/**
+ * @brief Entry point of the application.
+ *
+ * This function performs the following steps:
+ * - Loads the common controls library for compatibility with Windows XP.
+ * - Retrieves the Windows version and stores it in a global variable `winVer`.
+ * - Determines if the user's UI language is Chinese.
+ * - Initializes the application title string from resources.
+ * - Loads and locks dialog resources for both English and Chinese, as well as the main app dialog.
+ * - If the modern font (e.g., Segoe UI) is available, updates the dialog templates to use it.
+ * - Launches the main dialog window using the appropriate dialog template; displays an error message on failure.
+ */
 int main() {
-  LoadLibrary("comctl32"); // for winXP compatibility: comctl32.dll must be imported; otherwise no control will be shown (see https://stackoverflow.com/questions/2938313/c-win32-xp-visual-styles-no-controls-are-showing-up); alternatively, call `InitCommonControls()` from <commctrl.h> and link comctl32.lib, which is technically a no-op (but loads comctl32.dll so as to solve the issue)
+  LoadLibrary("comctl32"); // for winXP compatibility: comctl32.dll must be imported; otherwise no control will be shown (see https://stackoverflow.com/questions/2938313/c-win32-xp-visual-styles-no-controls-are-showing-up); alternatively, call `InitCommonControls()` from <commctrl.h> and link comctl32.lib, which is technically a no-op (but loads comctl32.dll so as to solve the issue) [a clearer explanation: https://devblogs.microsoft.com/oldnewthing/20050718-16/?p=34913]
   OSVERSIONINFOEX v;
   v.dwOSVersionInfoSize = sizeof(v);
   GetVersionEx((OSVERSIONINFO*)&v); // note: MSDN: for this function to work on Win 8.1+, compatibility.application.supportedOS should not be included in the manifest file "2.manifest"
   // a better idea is to call ntdll.RtlGetVersion, but just don't bother to do that
-  winVer = MAKELONG(MAKEWORD(v.dwMinorVersion, v.dwMajorVersion), v.wServicePackMajor);
+  winVer = MAKELONG(v.wServicePackMajor, MAKEWORD(v.dwMinorVersion, v.dwMajorVersion));
 
   is_chinese = ((GetUserDefaultUILanguage() & 0x3FF) == LANG_CHINESE); // lang = LANG_ID | (SUBLANG_ID << 10)
   hIns = GetModuleHandle(NULL);

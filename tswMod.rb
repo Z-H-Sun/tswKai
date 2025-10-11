@@ -51,6 +51,7 @@ enumFontCallBack = API::Callback.new('LLIL', 'I') {|lpelf, lpntm, font_type, lPa
 DIALOG_FONT[-1] = DIALOG_FONT_NAME_PREFERRED if EnumFontFamilies.call(hDC_tmp, DIALOG_FONT_NAME_PREFERRED, enumFontCallBack, 0).zero? # set it as the dialog font if found
 ReleaseDC.call(0, hDC_tmp)
 
+# create dialog window and draw its controls
 $hGUIFont2 = CreateFontIndirect.call_r(DIALOG_FONT.pack(LOGFONT_STRUCT))
 # the reason to create this hierarchy is to hide the following dialog window from the task bar
 $hWndDialog = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
@@ -66,6 +67,8 @@ for i in 0...MOD_TOTAL_OPTION_COUNT
 end
 
 def Dialog_CheckMsg(msg)
+# Process window messages for the tswMod dialog window (called in `checkMsg` in 'main.rbw').
+# - If the dialog receives WM_COMMAND with IDCANCEL (i.e., close through [x] button or sysmenu or Alt+F4), or WM_KEYDOWN with ESC/RETN key, stop the tswMod interface and hide the dialog window.
   case msg[1]
   when WM_COMMAND # close the dialog through [x] button or sysmenu or Alt+F4
     return if msg[2] != IDCANCEL
@@ -78,6 +81,9 @@ def Dialog_CheckMsg(msg)
 end
 
 def ChkBox_CheckMsg(index, msg)
+# Process window messages for the checkbox controls in the tswMod dialog window (called in `checkMsg` in 'main.rbw').
+# - If the checkbox receives WM_KEYDOWN with ESC/RETN key, stop the tswMod interface and hide the dialog window.
+# - If the checkbox receives WM_LBUTTONUP or WM_KEYUP with SPACE key, toggle the corresponding option, executes necessary patches, and then set focus to the next checkbox.
   msgType = msg[1]
   if msgType == WM_KEYDOWN
     return if msg[2] != VK_ESCAPE and msg[2] != VK_RETURN # if pressed ESC or RETN
@@ -127,6 +133,16 @@ def ChkBox_CheckMsg(index, msg)
 end
 
 module Mod
+# This module provides patching (applying memory patches to TSW) and Mod dialog management (updating UI elements based on patch status) functionality.
+
+# Methods:
+# - init: Initializes the module by applying essential patches, obtaining TSW control window handles (used in `replace45FmerchantDialog` and `replace2ndMagicianDialog` functions), and showing the config dialog if necessary.
+# - showDialog(active [Boolean], tswActive=true [Boolean]): Similar to `$console.show`: Shows or hides the configuration dialog window (according to `active`); handles focus, window positioning / state, etc. By default, additional operations are necessary to coordinate with TSW, but if `tswActive` is set to `false`, it indicates that TSW has already quitted, so no further operations involving TSW should be performed. Returns `true` if the operation is successful; `false` if the operation is unnecessary (e.g., trying to show an already shown console); `nil` if TSW is running with an active child window so the operation fails.
+# - checkChkStates: Checks the current state of each patch option and updates the corresponding UI checkbox.
+# - replace45FmerchantDialog(factor [Integer]): Updates the dialog entry for the 2nd round 45F merchant based on the given factor (typically 43, i.e., 44-1), ensuring correct HP and gold values.
+# - replace2ndMagicianDialog(factor [Integer]): Updates the dialog entries for the magic attack damage from the 2nd round magicians, replacing HP values as needed, based on the given factor (typically 43, i.e., 44-1).
+# - patch(i [Integer], s [Integer]): Applies or reverts a patch at the given index `i` based on the status `s` (1=enabled/0=disabled). Handles extra treatments for (2nd round 45F) merchant dialog and dialog margin changes.
+
   MOD_FOCUS_HWND_ADDR = 0x89bf8 + BASE_ADDRESS # there is 88-byte vacant space starting from 0x489ba8 through 0x489c00 (from which the space is reserved for future tswMP functions); the DWORD @ 0x489bfc is reserved by tswRev to store Kernel32.Sleep farproc; so we are using 0x489ba8-f8 to write asm codes for extra TTSW10 WndProc processing (see below); the DWORD @ 0x489bf8 is used to store the HWND of the dialog/console window to set focus to
   MOD_PATCH_BYTES_0 = [ # offset, len, original bytes, patched bytes
 [0x89ba8, 84, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", "\x8B\x0D\xF8\x9B\x48\x00\x31\xD2\x39\xD1\x74\x3E\x3B\x1D\x10\xC5\x48\x00\x75\x36\x83\xF8\x1C\x75\x05\x39\x56\x04\x75\x12\x83\xF8\x20\x75\x27\x8B\x46\x0A\x66\x2D\x01\x02\x74\x04\x3C\x03\x75\x18\x6A\x13\x52\x52\x52\x52\x51\xFF\xB3\xC0\x00\x00\x00\x51\xE8\xC1\xB5\xF7\xFF\xE8\x04\xB6\xF7\xFF\x8B\x06\x3D\x84\x00\x00\x00\xC3\0\0\0\0"], # extra TTSW10 WndProc processing + 4-byte HWND of the dialog/console window to set focus to
@@ -154,7 +170,7 @@ module Mod
 # ====================
 # Item from tswSL.asm (used to be an item in `SL::SL_PATCH_BYTES_1` treated in the SL module)
 [[0x5084d, 2, "\x33\xD2", "\xEB\x0B"]] # TTSW10.itemdel; enable loading during event
-  ] # this list: always patch
+  ] # this list: always patch (unless overridden by `$CONrevStatus`)
   MOD_PATCH_BYTES_2 = [ # N, [offset]*N, [len]*N, [original bytes, patched bytes]*N
 [6, [15, 11, 13, 13, 2, 2], # show only one-turn animation
  [0x4b494, 0x4a95e, 0x80030, 0x7fa6f, 0x52bf4, 0x52c64],
@@ -258,39 +274,39 @@ module Mod
     SendMessagePtr.call($hWndChkBoxes[7], BM_SETCHECK, $BGMtakeOver ? (BGM.bgm_path ? 1 : 2) : 0, 0)
   end
   def replace45FmerchantDialog(factor)
-    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    diff = SendMessage.call_r2($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
     if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
 
     newhp_str = (INT_45FMERCHANT_ADDHP * (factor+1)).to_s
-    len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
+    len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
     newentry = $buf[0, len]
     numindex = newentry.index(INT_45FMERCHANT_ADDHP.to_s)
     unless newentry.include?(STR_45FMERCHANT_GOLD) and numindex then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
     newentry[numindex, 4] = newhp_str
     if diff.zero? # need to add a new entry
-      SendMessage.call_r($hWndListBox, LB_ADDSTRING, 0, newentry)
+      SendMessage.call_r2($hWndListBox, LB_ADDSTRING, 0, newentry)
     else # new entry already exists
-      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
+      len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
       newentry2 = $buf[0, len]
       unless newentry2.include?(STR_45FMERCHANT_GOLD) then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_NEWENTRY_DIALOG_ID + newentry2, MB_ICONEXCLAMATION); return end
-      unless newentry2.include?(newhp_str) then SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_NEWENTRY_DIALOG_ID, nil); SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_NEWENTRY_DIALOG_ID, newentry) end # replace this entry when the HP value is incorrect
+      unless newentry2.include?(newhp_str) then SendMessage.call_r2($hWndListBox, LB_DELETESTRING, LISTBOX2_NEWENTRY_DIALOG_ID, nil); SendMessage.call_r2($hWndListBox, LB_INSERTSTRING, LISTBOX2_NEWENTRY_DIALOG_ID, newentry) end # replace this entry when the HP value is incorrect
     end
     return true
   end
   def replace2ndMagicianDialog(factor)
-    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    diff = SendMessage.call_r2($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
     if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
 
     (0..1).each do |i|
       hp_str = (INT_1STMAGICIAN_SUBHP[i] * (factor+1)).to_s
-      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], $buf)
+      len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], $buf)
       entry = $buf[0, len]
       numindex = (entry =~ /(\d+)/)
       unless numindex then API.msgbox($str::APP_TARGET_2ND_ERROR_STR % LISTBOX2_2NDMAGICIAN_DIALOG_ID[i] + entry, MB_ICONEXCLAMATION); return end
       unless entry.include?(hp_str) # replace this entry when the HP value is incorrect
         entry[numindex, $1.size] = hp_str
-        SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], nil)
-        SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], entry)
+        SendMessage.call_r2($hWndListBox, LB_DELETESTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], nil)
+        SendMessage.call_r2($hWndListBox, LB_INSERTSTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], entry)
       end
     end
     return true

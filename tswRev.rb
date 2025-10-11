@@ -120,6 +120,16 @@ class Rev
     "\xBF\xA3\x9B\x48\0\x80\x3F\0\x75\x0B\x8B\x83\x6C\4\0\0\xE8\xC8\xB6\xFD\xFF\xBA\xEC\x87\x4B\0\x8A\7\x88\2\x8A\x47\xFF\x84\xC0\x75\x17\x88\x42\4\xEB\x25"] # tswBGM_2 (15)
   ]
   def initialize(filename, chinese=false)
+=begin
+  Initializes a new instance with the given filename and language option.
+
+  @param filename [String] The path to the file to open in read/write binary mode.
+  @param chinese [Boolean] Whether to use the Chinese font (default: false).
+
+  - Selects the font based on the language option.
+  - Packs font size and font name into @ft.
+  - Prints file and state code information if $check is true.
+=end
     @f = open(filename, 'r+b')
     @c = chinese
     font = $font[@c ? 1 : 0]
@@ -130,6 +140,19 @@ class Rev
 [State codes: 0=original; 1=patched; -1=unknown]' % filename) if $check
   end
   def patch(mode, index, i, offset, offset0=-0xC00)
+=begin
+  Applies a patch to a file at a specified offset.
+
+  @param mode [Integer] Determines whether to write the old byte (0) or new byte (1).
+  @param index [Integer] Index to select the old/new byte arrays.
+  @param i [Integer] Sub-index within the old/new byte arrays.
+  @param offset [Integer] The base offset in the file where the patch should be applied.
+  @param offset0 [Integer] An additional offset to be added to the base offset (default: -0xC00).
+
+  The method seeks to the calculated offset in the file, checks the current bytes against the expected old and new values, and writes the appropriate bytes depending on the mode and global flags.
+  If $check is true, it prints the state of the patch (0: matches old, 1: matches new, -1: mismatch).
+  If $dryrun is false, it writes the bytes; otherwise, it only performs the check.
+=end
     @f.seek(offset+offset0)
     oldbyte = @@oldbyte[index][i]
     newbyte = @@newbyte[index][i]

@@ -258,9 +258,9 @@ __EMPTY_LINE__
 This app can try to rectify this error, but it is not guaranteed to work properly. Continue anyway?
 .
 Language=CH
-警告：该配置项对应的二进制数据不正确，这可能是由于之前版本修正不当所致。
+警告：该配置项对应的二进制数据不正确，可能是由之前版本修正不当所致。
 __EMPTY_LINE__
-本程序可以尝试修复这项错误，但无法完全保证后续能正常运行。仍然继续吗？
+本程序可以尝试修复这项错误，但无法完全保证后续能正常运行。仍然继续？
 .
 
 MessageId=IDS_ERR_FONT_TOO_LONG

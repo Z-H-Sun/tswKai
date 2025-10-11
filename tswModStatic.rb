@@ -28,6 +28,11 @@ end
 
 module Mod
   module Static
+  # Extension to the Mod module: Provides methods for "static" checking and patching in a TSW executable file.
+  # Methods:
+  # - checkChkStates(staticIO [IO object]): Similar to `Mod.checkChkStates`, checks the current state of each patch option in the executable and updates the corresponding UI checkbox.
+  # - patch(i, staticIO [IO object]): Similar to `Mod.patch`, toggles the patch state for the specified patch with an index of `i`, writes the appropriate bytes to the binary file, and sets the corresponding checkbox UI state. Special cases for certain options (2nd round 45F merchant patch) will also be handled. Unlike `Mod.patch`, this method does not take a `s` (new state) parameter, and the state is toggled automatically.
+
     @CONmodStatus = Array.new(5) # in replacement of $CONmodStatus
     module_function
     def checkChkStates(staticIO)
@@ -62,6 +67,9 @@ module Mod
   end
 end
 def earlyQuit(staticIO=nil, quit=true)
+# If the current static patching process is going to quit early (i.e. without continuing to the normal tswKai3 flow), cleanup of resources (GDI and IO objects) is needed.
+# @param staticIO [IO, nil] The IO object to close. If nil, no action is taken.
+# @param quit [Boolean] Whether to exit the program after cleaning up resources. Defaults to true.
   DeleteObject.call($hGUIFont2)
   staticIO.close if staticIO
   exit() if quit
@@ -102,7 +110,7 @@ rescue Errno::EACCES
   $bufHWait[0, POINTER_SIZE] = shellExecuteInfoBuf[-POINTER_SIZE, POINTER_SIZE]
   MOD_ADMIN_PATCH_MSG = RegisterWindowMessage.call_r(MOD_ADMIN_PATCH_SIGNATURE)
   loop do
-    earlyQuit() if MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_POSTMESSAGE).zero? # admin patch subprocess exited without sending the "success" message, then exit current process too
+    earlyQuit() if MsgWaitForMultipleObjects.call_r1(1, $bufHWait, 0, -1, QS_POSTMESSAGE).zero? # admin patch subprocess exited without sending the "success" message, then exit current process too
     while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
       msg = $buf.unpack(MSG_INFO_STRUCT)
       next unless msg[0] == $hWndDialog and msg[1] == MOD_ADMIN_PATCH_MSG # admin patch subprocess sent the "success" message right before exiting

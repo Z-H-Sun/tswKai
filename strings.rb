@@ -16,6 +16,11 @@ $isCHN = ((GetUserDefaultUILanguage.call() & 0x3FF) == LANG_CHINESE) # id = (lan
 $str = $isCHN ? Str::StrCN : Str::StrEN
 
 module Str
+# Strings, in English (StrEN submodule) and Chinese (StrCN submodule), used in this app.
+# The most used strings are $str::STRINGS[i] (or Str::StrCN/EN::STRINGS[i] if the string of a specific language is needed). For example, `msgboxTxt(i, ...)` and `showMsgTxtbox(i, ...)` will show the i-th string of $str::STRINGS in the current language in a messagebox or in the bottom status bar of TSW, repectively
+# LONGNAMES are used in the cheat console to show the full names of various stats and items
+# VKEYNAMES are the names of virtual key codes, used in `getKeyName` and `getRegKeyName` to show a friendly name of a key in e.g., a messagebox
+
   @strlen = 0
   module StrEN
     LONGNAMES = ['Life Pt (HP)', 'Offense(ATK)', 'Defense(DEF)', 'Gold Count', 'CurrentFloor', 'HighestFloor', 'X Coordinate', 'Y Coordinate', '(Yellow) Key', 'Blue Key', 'Red  Key', 'Altar Visits',
@@ -141,7 +146,14 @@ will hibernate until another TSW game is run; choosing
 "Cancel" will end this app.',
 'Can\'t run the specified TSW executable, as another TSW
 process has already been running (pID = %d).',
-'',
+'Can\'t resize the console window to the target dimension,
+possibly because it is in the full-screen mode, or because
+the screen resolution is insufficient.
+
+For the former case, press Alt+Enter to exit full-screen;
+for the latter case, try increasing the screen resolution
+or reducing the default font size of the console window.
+Otherwise, the console texts may not display correctly.',
 
 APP_VER+' Extensions - pID=%p', # 50
 ['[ ] Raise HP by paying gold to the highest altar visited', '[ ] Raise ATK by paying gold to the highest altar visited', '[ ] Raise DEF by paying gold to the highest altar visited', '[ ] Sell yellow keys to the 28F merchant to earn gold', '[ ] Clear accessible zero-damage monsters on this floor', '[ ] Clear all temporary data and reset snapshot count'],
@@ -298,7 +310,12 @@ APP_VER+' 设置（动态）- pID=%p',
 按“取消”则将退出本程序。',
 '无法启动当前魔塔程序，因为另一个魔塔进程已正在
 运行中 (pID = %d)。',
-'',
+'无法将控制台界面尺寸缩放至目标大小，可能是因为
+其处于全屏状态或屏幕分辨率不足。
+
+针对前者，请按 Alt+Enter 退出全屏；针对后者，请
+扩大屏幕分辨率或减小命令行界面的默认字体大小。
+否则，控制台界面将可能无法正确显示。',
 
 APP_VER+' 扩展功能 - pID=%p', # 50
 ['[ ] 供奉金币，提升数次生命力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次攻击力（使用目前所到访过的最高祭坛）', '[ ] 供奉金币，提升数次防御力（使用目前所到访过的最高祭坛）', '[ ] 向28层商人卖出指定数量的黄钥匙，赚取金币', '[ ] 清除当前楼层中可直接到达的所有零伤害怪物', '[ ] 清除所有临时存档，并重置临时存档节点编号'],
@@ -341,15 +358,21 @@ APP_VER+' 扩展功能 - pID=%p', # 50
 
   module_function
   def utf8toWChar(string)
+  # Converts a UTF-8 encoded Ruby string to a UTF-16LE Unicode wide character (WCHAR) binary string.
+  # @param string [String] The UTF-8 encoded input string.
+  # @return [String] The UTF-16LE encoded string, null-terminated (suitable for Windows APIs expecting wide strings).
+  # @note Sets the instance variable @strlen to the number of Unicode codepoints in the input string. Call strlen() to retrieve this value.
     arr = string.unpack('U*')
     @strlen = arr.size
     arr.push 0 # end by \0\0
     return arr.pack('S*')
   end
   def strlen() # last length
+  # Returns the length of the last string converted by utf8toWChar, in number of Unicode WCHARs.
     @strlen
   end
   def isCHN(static=nil) # `static`, if any, should be an IO object
+  # By default, detects whether the running TSW game is Chinese (returns true) or English (returns false), by reading its window title. If `static`<IO> is given (see 'tswModStatic.rb'), it reads from the executable file instead of the running process. If the language has been forced by the user, it will always return that language. If the language cannot be determined, it will show an error message and return nil.
     isCHN = nil
     if $isCHN == 1 # always use Chinese
       $str = Str::StrCN; isCHN = true
@@ -358,11 +381,11 @@ APP_VER+' 扩展功能 - pID=%p', # 50
     end
     if static
       static.seek(OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS_STATIC)
-      title = static.read(32) || 'NULL'
+      title = static.read(64) || 'NULL'
       $isRev = title.include?(REV_VER_WATERMARK)
     else
-      ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 32, 0)
-      title = $buf[0, 32]
+      ReadProcessMemory.call_r($hPrc, OFFSET_TTSW10_TITLE_STR+BASE_ADDRESS, $buf, 64, 0)
+      title = $buf[0, 64]
     end
     if title.include?(APP_TARGET_VERSION)
       if title.include?(StrEN::APP_TARGET_NAME)

@@ -2,6 +2,10 @@
 # encoding: ASCII-8Bit
 # Author: Z.Sun
 # asm codes: tswMPExt_*.asm
+# Note for developers:
+# For debugging purposes, one can directly try out the assembly codes in `tswMPExt_1/2/3.asm` by using CheatEngine's auto-assembler, but before doing so, make sure:
+# - Replace all semicolons (;) with double slashes (//) as CheatEngine won't recognize simicolons as comments
+# - Use CheatEngine 6.7. Higher versions are known to have bugs in auto-assembler, which tend to use longer opcodes for some specific assembly operations, and that will mess up everything
 
 # the first half of this script file deals with tswExt functions
 EXT_KEY = VK_RETURN # shortcut key for tswExt
@@ -20,10 +24,23 @@ module Math
 end
 
 module Ext
+# Extension CLI functions (e.g., convenient shops, clearing monsters, temp data deletion, etc.) when you press `Win+Enter`.
+
+# Submodules:
+#   Console - Enhanced I/O for ::Console (navigation, numeric input, position printing).
+
+# Classes:
+#   Common - Base workflow for Altar, Merchant, Monsters (status checks, prompts, post-processing).
+#   Altar, Merchant, Monsters - Specialized subclasses for convenient shops and clearing monsters actions.
+
+# Module Functions:
+#   need_init, ExtMain, initInterface, printDefaultDescr, main - Manage interface and main loop (see below for details).
+
   MAX_STATUS = 999999999 # to avoid int32 overflow
   MAX_VISITS = 9999
 
   HERO_FXYD_ADDR = 0x48c74c # a temporary variable for hero's current floor / x / y / facing direction (used when saving a temp data after using the "convience shop" function)
+  # for detailed explanations of the following addresses, see tswMPExt_3.asm
   SAVETEMP_PREP_ADDR = 0x480944 # preparations before saving a temp data (after using the "convience shop" function)
   POSTPROCESS_1_ADDR = 0x480980 # post processing after using the "convience shop" function
   POSTPROCESS_2_ADDR = 0x4809A8 # post processing after using the "clear monsters" function
@@ -40,6 +57,17 @@ module Ext
   module Console # extension to the ::Console class
     module_function
     def pause(curInd, prompt=nil, allowEnter=false) # in addition to "press any key to continue," you can press arrow / numeric keys to select a different item
+    # Pauses execution and waits for user input, allowing navigation or selection.
+    # - VK_LEFT, VK_UP: Move to previous item.
+    # - VK_RIGHT, VK_DOWN: Move to next item.
+    # - Numeric keys: Directly select item by index.
+    # - VK_SPACE, VK_RETURN: Confirm selection if allowEnter is true.
+    # - Any other key: Cancels and returns false.
+
+    # @param curInd [Integer] The current index of the selected item.
+    # @param prompt [String, nil] Optional prompt message to display on the CLI screen.
+    # @param allowEnter [Boolean] If true, pressing Enter or Space confirms the selection, otherwise it cancels.
+    # @return [Integer, Boolean] Returns the new index if navigation keys or numeric keys are pressed; true if selection is confirmed; or false if cancelled.
       case (c=$console.pause(prompt))
       when VK_LEFT, VK_UP
         return (curInd-1) % EXT_OPTIONS_LEN
@@ -57,6 +85,15 @@ module Ext
       return false
     end
     def get_num(max)
+    # Retrieves a numeric input from the user within the range [1, max].
+    # Displays a prompt to the user and handles input differently based on the value of `max`:
+    # - If `max` is less than 10, uses `$console.choice_num` for input.
+    # - If `max` is 10 or greater, determines the number of digits required and uses `$console.get_num`.
+    #   - If the user enters a number greater than `max`, the input is rectified to `max`.
+    #   - If the user enters zero, the operation is cancelled.
+
+    # @param max [Integer] The maximum allowed value for input.
+    # @return [Integer] The validated user input within [1, max]; 0 or -1 means cancellation.
       $console.show_cursor(true)
       $console.fprint(STYLE_B_YELLOW, '[1, %d]: ', max)
       if max < 10
@@ -93,11 +130,13 @@ module Ext
       $console.fprint(color, str.is_a?(Array) ? str[0] : str, *argv)
     end
     def descr_disabled(i, disable_reason, disable_str_index)
+    # Displays a disabled message for the current selection; user can cancel or navigate to another item, which defines the return value
       Ext::Console.fprint_pos(1, EXT_DESCR_LINE, FOREGROUND_INTENSITY, $str::STRINGS[disable_str_index][disable_reason])
       $console.fprint(STYLE_B_RED, $str::STRINGS[53][5], @a_n) if disable_str_index == 53 and disable_reason == 2 # prompt GOLD for next altar visit
       return Ext::Console.pause(i, $str::STRINGS[52][3])
     end
     def descr_avail(i, caveat, prompt_str_index, *prompt_str_arg)
+    # Displays detailed operation guidance for the current selection; returns user input value (for numeric inputs: returns valid input between 1 to max, or -1 to 0 meaning cancellation; for yes/no question: returns true if confirmed, false if cancelled, or integers meaning navigation to another item)
       $console.cursor(1, EXT_DESCR_LINE)
       prompt_str = $str::STRINGS[prompt_str_index]
       input_prompt(prompt_str, *prompt_str_arg) # in most cases, the 1st element of prompt_str_arg is the font color of the prompt
@@ -113,10 +152,12 @@ module Ext
       end
     end
     def descr_succ(prompt_str_line, prompt_str_index, *prompt_str_arg)
+    # Displays success message after an action taken
       $console.cls_pos(0, prompt_str_line-1, ::Console::CONSOLE_WIDTH*(::Console::CONSOLE_HEIGHT-prompt_str_line+1))
       Ext::Console.fprint_pos(1, prompt_str_line, STYLE_B_YELLOW, $str::STRINGS[prompt_str_index], *prompt_str_arg)
     end
     def post_shopping(temp_coord, temp_floor, var0_ind, var1_ind, prompt_str_line, prompt_str_index, *prompt_str_arg)
+    # Post-processing after using the "convience shop" function: save a temp data, update hero's status values, and show success message
       descr_succ(prompt_str_line, prompt_str_index, *prompt_str_arg)
       $console.SE.transaction()
       # when saving a temp data, temporarily teleport the player to the shop location, so when you load that temp data, you knows the temp data was saved before you used the "convience shop"
@@ -136,14 +177,18 @@ module Ext
   end
 
   class Altar < Common
+  # Subclass for processing convenient shops at altars (powering up HP/ATK/DEF).
+  # Checks for altar accessibility (`Connectivity` submodule), highest multiplier, and maximum possible visits based on current status.
+  # Performs the actual action of powering up, updating status values, and saving a temporary game state (`main` function).
     ALTAR_BLOCKS = [5, 4, 2, 1] # block numbers with altars; from high to low
     ALTAR_FLOORS = {5=>46, 4=>32, 2=>12, 1=>4} # block => floor
     ALTAR_TILE_ID = 16 # 16-th tile is Altar (middle part)
 
     # check whether an altar is accessible from the downstairs stair
     # ignore magic attack (in TSW, there is no such scenario en route to altars)
-    # DFS algorithm instead of BFS
+    # DFS algorithm instead of BFS (just a bit simpler to implement than BFS as in the ::Connectivity module)
     module Connectivity
+    # Usage: call `Ext::Altar::Connectivity.main(floorID)` to check whether the altar on `floorID` is accessible from the current position. If accessible, call `Ext::Altar::Connectivity.altar_pos` to get the altar's position index (0-120) on the 11x11 grid.
       module_function
       def altar_pos(); return @t_i; end
 
@@ -183,7 +228,7 @@ module Ext
       return maxVisits()
     end
 
-    def highestMultiplier()
+    def highestMultiplier() # return the altar of the highest multiplier you can access; nil if no altar is accessible
       highestFloor = $heroStatus[STATUS_INDEX[5]]
       ALTAR_BLOCKS.each {|i| return i if highestFloor >= (f = ALTAR_FLOORS[i]) && Ext::Altar::Connectivity.main(f)}
       return nil # no altar visited
@@ -219,6 +264,14 @@ module Ext
     end 
 
     def main(i) # 0=HP; 1=ATK; 2=DEF
+    # Handles the actual power-up operation in a convenient altar shop.
+    # Checks if the power-up is disabled for any reason. Otherwise:
+    # Calculates the maximum number of power-ups that can be applied to a hero's status (HP, ATK, or DEF)
+    # at an altar, considering current status, previous altar visits, and overflow limits.
+    # Finally, it prompts the user for the number of power-ups to apply, updates the hero's status, and does post-processing.
+
+    # @param i [Integer] The status index to power-up: 0 for HP, 1 for ATK, 2 for DEF.
+    # @return [nil, false, Integer] Returns nil after successful power-up; false if the operation is cancelled or invalid; or if this action is disabled and the user navigates to another menu item, the menu item index.
       disable_reason = @disable_reason
       n = $heroStatus[STATUS_INDEX[11]] # previous altar visits
       base = ::Monsters.statusFactor
@@ -268,6 +321,10 @@ module Ext
   end
 
   class Merchant < Common
+  # Subclass for processing convenient shops at 28F merchant (selling yellow keys).
+  # Checks for merchant accessibility and maximum possible visits based on current status.
+  # Performs the actual action of transaction, updating status values, and saving a temporary game state (`main` function).
+  # Temporary data deletion is also handled in this class (`temp_data_deletion_main` function).
     MERCHANT_FLOOR = 28
     MERCHANT_COORD = 40 # X=3, Y=7
     def check() # return value is nil if OK; otherwise the id of reason to disable
@@ -286,6 +343,13 @@ module Ext
     end
 
     def main(i)
+    # Handles the actual transaction operation at the 28F merchant convenient shop.
+    # Checks if selling yellow keys is disabled for any reason. Otherwise:
+    # Calculates the maximum number of keys that can be sold, considering current status and overflow limits.
+    # Finally, it prompts the user for the number of transactions to apply, updates the hero's status, and does post-processing.
+
+    # @param i [Integer] Only i=3 (sell yellow keys) is valid.
+    # @return [nil, false, Integer] Returns nil after successful transaction; false if the operation is cancelled or invalid; or if this action is disabled and the user navigates to another menu item, the menu item index.
       return descr_disabled(i, @disable_reason, 56) if @disable_reason
       return false if (k = descr_avail(i, @disable_reason==false, 57, STYLE_B_GREEN, @maxKeys)) <= 0 # cancel or enter 0
       post_shopping(MERCHANT_COORD, MERCHANT_FLOOR, 8, 3, EXT_DESCR_LINE+2, 58, k, k*100) # HERO_STATUS[8]=key_number -= k; HERO_STATUS[3]=gold_number += k*100
@@ -294,6 +358,10 @@ module Ext
     end
 
     def temp_data_deletion_main(i) # used to delete all temp data (not relevant to 28F merchant)
+    # Handles the deletion of all temporary game data.
+    # Prompts the user for confirmation before proceeding with the deletion.
+    # @param i [Integer] Only i=5 (delete temporary data) is valid.
+    # @return [nil, false, Integer] Returns nil after successful deletion; false if the operation is cancelled or invalid; or if the user navigates to another menu item, the menu item index.
       if (r = descr_avail(i, false, 62, STYLE_B_RED)) != true then return r end
       if msgboxTxt(62, MB_ICONEXCLAMATION | MB_YESNO | MB_DEFBUTTON2) == IDNO then $console.SE.cancellation(); return false end
 
@@ -306,6 +374,9 @@ module Ext
   end
 
   class Monsters < Common
+  # Subclass for processing clearing monsters action.
+  # Checks which monsters, if present, are accessible on this floor that causes zero damage.
+  # Performs the actual action of clearing monsters and updating status values (no temporary data will be saved).
     @@mapTilesRaw = "\0"*121
     def check() # return value is nil if OK; otherwise the id of reason to disable
       floor = $heroStatus[STATUS_INDEX[4]]
@@ -322,6 +393,8 @@ module Ext
     end
 
     def checkMon() # return value: whether any monster is detected
+    # Checks for monsters on the current floor that can be cleared without taking damage [returns true/false]. If so, update necessary instance variables and the class variable `@@mapTilesRaw` (so the monster is considered eliminated during the next `checkMon` call; however, the actual game map will not be modified until the user takes the actual action in `main`).
+    # This is done for only once. Called in `check` for an initial check. Also called iteratively in `checkMonIter` until no more monsters can be cleared.
       includeGiantMon_last = @includeGiantMon
       monsterCount_last = @monsterCount
       for i in 0...121
@@ -352,6 +425,7 @@ module Ext
     end
 
     def checkMonIter()
+    # Performs `checkMon` iteratively until no more monsters can be cleared. In each iteration, recalculates connectivity from the hero's current position and re-tags magic-damage positions.
       ox = $heroStatus[STATUS_INDEX[6]]
       oy = $heroStatus[STATUS_INDEX[7]]
       begin # clear monster iteratively (it is possible that some monsters are blocked by some other monsters)
@@ -363,6 +437,13 @@ module Ext
     end
 
     def main(i)
+    # Handles the actual clearing monsters operation.
+    # Checks if clearing monsters is disabled for any reason. Otherwise:
+    # Calculates the maximum number of monsters that can be cleared and the amount of gold that can be obtained.
+    # Finally, it prompts the user the information above, updates the hero's status, and does post-processing.
+
+    # @param i [Integer] Only i=4 (clear monsters) is valid.
+    # @return [nil, false, Integer] Returns nil after successful operation; false if the operation is cancelled or invalid; or if this action is disabled and the user navigates to another menu item, the menu item index.
       return descr_disabled(i, @disable_reason, 59) if @disable_reason
       if (r = descr_avail(i, false, 60, STYLE_B_GREEN, @monsterCount, @goldCount)) != true then return r end
 
@@ -382,9 +463,17 @@ module Ext
     end
   end
 
-  @need_init = true
+  @need_init = true # whether the interface needs to be initialized (redrawn)
   @curInd = 0 # current item index
   @nxtInd = nil # next item index (nil=not currently selected)
+
+# Module methods of ::Ext module (similar to those in ::Kai module):
+# - need_init: Sets @need_init to true, indicating the need to redraw the entire interface.
+# - ExtMain: Main logic for handling user selection and input, calls the corresponding methods in submodules, and updates UI.
+#   Returns true to continue after a successful operation, false if TSW has quitted, or nil if ESC (/ENTER/SPACE) is pressed in the main menu.
+# - initInterface: Initializes and draws the interface layout.
+# - printDefaultDescr: Draws the default description text.
+# - main: Entry point for the Ext module; manages initialization and main loop. Call `Ext.main()` to start this extensions console interface.
 
   module_function
   def need_init; @need_init = true; end
@@ -494,16 +583,32 @@ end
 # the second half of this script file deals with permanent on-map damage display, etc.
 require 'tswMPDat' # given the huge size of opcodes, it is stored in binary format in this separate file
 
-DRAW_HERO_ADDR = 0x4808b4
-DRAW_HERO_2_ADDR = 0x480908
-ERASE_AND_DRAW_HERO_ADDR = 0x480834
+# for detailed explanations of the following addresses, see tswMPExt_3.asm
+DRAW_HERO_ADDR = 0x4808b4 # draw hero overlay on the map (and clear bottom status bar text, and if necessary, erase Octopus or Dragon tiles other than its head tile when you defeat it)
+DRAW_HERO_2_ADDR = 0x480908 # similar to above, but do not clear bottom status bar text, and add more treatments to avoid malfunctioning of on-map damage overlay after going up-/downstairs. In most cases, calling the above subroutine suffices, but after an event is over (including going up-/downstairs), this subroutine is called instead
+ERASE_AND_DRAW_HERO_ADDR = 0x480834 # erase the hero overlay in the old position (by redrawing that tile) and draw hero overlay in the new position. This subroutine is more efficient than the above two, but it requires the knowledge of the old position, which needs to be provided in `LAST_I_ADDR` beforehand
 
-DPL_ADDR = 0x4bac68
-EPL_ADDR = 0x4bad0c
-POLYLINE_COUNT_ADDR = 0x489de5
-POLYLINE_VERTICES_ADDR = 0x489e00
+# for detailed explanations of the following addresses, see tswMPExt_2.asm and tswMPExt/dmg.dll.c
+DPL_ADDR = 0x4bac68 # draw poly line, connecting the starting point and the destination to teleport to
+EPL_ADDR = 0x4bad0c # erase poly line that was previously drawn by the above subroutine
+POLYLINE_COUNT_ADDR = 0x489de5 # 0-6th bit: number of segments (0-63; corresponding to 1-64 vertices); 7th bit: type of the destination cell [0=OK(green); 1=suspicious(yellow); 2=no-go(red)]. This information needs to be provided before calling the DPL_ADDR subroutine
+POLYLINE_VERTICES_ADDR = 0x489e00 # array of POINT structures, specifying x, y coordinates of the vertices in pixels, for drawing the poly line. The first vertex is the destination point; the last vertex is the starting point; intermediate vertices are the turning points. Each POINT structure takes 8 bytes (4 bytes for x coordinate, 4 bytes for y coordinate). The maximum number of vertices is 64 (63 segments), so this array takes up to 0x200 bytes. This information needs to be provided before calling the DPL_ADDR subroutine
 
 module MPExt
+# Provides extra methods for tswMP. Do not confuse with the Ext module, which provides tswExt console functionality.
+
+# Memory address constants:
+# - @_tswMPExt_enabled: pointer of [BYTE] indicating whether to use the new function for on-map overlay (tswMPExt). 0=disabled; 1=enabled
+#   @_always_show_overlay: pointer of [BYTE] indicating whether to always show/hide dmg overlay, regardless of OrbOfHero; 1=always show; -1=always hide; 0=depending on OrbOfHero
+#   @_sub_ini: pointer of subroutine to initialize tswMPExt; called upon tswKai3 startup
+#   @_sub_res: pointer of subroutine to clean up tswMPExt resources; called when the on-map damage overlay is no longer needed, e.g., when tswKai3 exits
+#   @_sub_fin: pointer of subroutine to finalize tswMPExt, which is similar to sub_res, but does not restore game bitmaps and is called when TSW exits. These codes are injected to some TSW subroutines but are not very useful in tswKai3
+
+# Methods:
+# - init: Applies necessary memory patches and calls necessary subroutines
+# - changeState: Updates on-map damage overlay visibility based on $MPshowMapDmg.
+# - finalize: Cleans up resources (unless tswMPExt is disabled)
+
   @_tswMPExt_enabled = 0x4ba1b5
   @_always_show_overlay = 0x4ba1b7
   @_sub_ini = 0x4ba558

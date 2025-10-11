@@ -151,6 +151,13 @@ module Win32
   FORMAT_MESSAGE_IGNORE_INSERTS = 0x200
   class API
     def self.focusTSW()
+    # Brings the TSW application window to the foreground and restores it if minimized.
+    # This method also determines which window handle (`hWnd`) should receive focus based on the current application state:
+    # - If a console window is active (`$console` is true), it uses the console window handle.
+    # - If the configuration dialog is open (`$configDlg`), it uses the dialog window handle.
+    # - Otherwise, it attempts to get the active popup window of the main TSW application window.
+    #   If there is no popup, it defaults to the main TSW application window handle.
+    # @return [Integer] The handle (`hWnd`) of the window that was brought to the foreground.
       if $console === true
         hWnd = $console.hConWin
       elsif $configDlg
@@ -167,6 +174,14 @@ module Win32
 # which will show prolog animation and restart the game! (can change the first opcode `push ebp` to `ret` to avoid)
     end
     def self.msgbox(text, flag=MB_ICONASTERISK, api=(ansi=true; MessageBox), title=$appTitle || APP_VER)
+    # Displays a message box with the specified text and options. In most cases, a more convenient wrapper function `msgboxTxt` can be used instead.
+    # If the main window is not available, creates a system-level message box and sets it as topmost.
+    # If a popup child window is focused, uses it as the parent for the message box to avoid focus issues.
+    # @param text [String] The message to display in the message box.
+    # @param flag [Integer] (default: MB_ICONASTERISK) Flags that specify the behavior of the message box.
+    # @param api [Method] (default: MessageBoxA) The API method to call for displaying the message box. If not specified, it defaults to the ANSI version of the `MessageBoxA` function; use `api=MessageBoxW` for the Unicode version message texts.
+    # @param title [String] (default: $appTitle (or APP_VER if $appTitle is not yet set)) The title of the message box window.
+    # @return [Integer] The result of the message box API call, typically indicating which button was pressed.
       if IsWindow.call($hWnd || 0).zero?
         hWnd = $hWnd = 0 # if the window has gone, create a system level msgbox
         flag |= MB_TOPMOST
@@ -181,7 +196,23 @@ module Win32
     unless defined?(self.last_error) # low version win32/api support
       def self.last_error; API.new('GetLastError', 'V', 'I', 'kernel32').call(); end
     end
-    def errMsg(errID)
+    def call_r(*argv) # provide more info if a win32api returns null
+      r = call(*argv)
+      return r if !r.zero? or $preExitProcessed # do not throw error if ready to exit
+      onFail(r, API::last_error, *argv)
+    end
+    def call_r1(*argv) # similar to above, but for functions like `MsgWaitForMultipleObjects`, `SetBkColor`, `SetTextColor`, and `SetDCBrushColor`, which return -1 on failure
+      r = call(*argv)
+      return r if r != -1 or $preExitProcessed # WAIT_FAILED = CLR_INVALID = (DWORD)0xFFFFFFFF
+      onFail(r, API::last_error, *argv)
+    end
+    def call_r2(*argv) # similar to above, but for the `SendMessageA` function, which returns -1 or -2 on failure
+      r = call(*argv)
+      return r if (r != -1 and r != -2) or $preExitProcessed # LB_ERR = -1; LB_ERRSPACE = -2
+      onFail(r, API::last_error, *argv)
+    end
+    private
+    def errMsg(errID) # return a string describing the error
       return "\r\n" if errID.zero?
       langid = $isCHN ? LANG_CHINESE : LANG_ENGLISH
       sublangid = $isCHN ? SUBLANG_CHINESE_SIMPLIFIED : SUBLANG_DEFAULT
@@ -190,18 +221,8 @@ module Win32
       return "\r\n" if len.zero?
       return $buf[0, len]
     end
-    def call_r(*argv) # provide more info if a win32api returns null
-      r = call(*argv)
-      return r if $preExitProcessed # do not throw error if ready to exit
-      if function_name == 'MsgWaitForMultipleObjects' or function_name == 'SetBkColor' or function_name == 'SetTextColor' or function_name == 'SetDCBrushColor'
-        return r if r != -1 # WAIT_FAILED = CLR_INVALID = (DWORD)0xFFFFFFFF
-      elsif function_name == 'SendMessageA'
-        return r if r != -1 and r != -2 # LB_ERR = -1; LB_ERRSPACE = -2
-      else
-        return r unless r.zero?
-      end
+    def onFail(r, err, *argv) # called by call_r* when a failed value is returned from a Win32API call
       $str = $isCHN ? Str::StrCN : Str::StrEN
-      err = API.last_error
       case function_name
       when 'OpenProcess', 'WriteProcessMemory', 'ReadProcessMemory', 'VirtualAllocEx', 'MsgWaitForMultipleObjects'
         reason = $str::ERR_MSG[2] % $pID
@@ -223,8 +244,10 @@ module Win32
 end
 
 class TSWKaiError < RuntimeError
+# used to process app-related events, mainly handled in the console loop (see `tswKai.rb` and `tswMPExt.rb`); child classes: TSWQuitedError, Console::STDINTimeoutError, Console::STDINCancelError (see `console.rb`)
 end
 class Win32APIError < RuntimeError
+# raised on failure of Win32API calls; see `Win32::API` class above
 end
 
 RUBY_HAVE_ENCODING = String.method_defined?(:encoding)
@@ -299,6 +322,7 @@ def disposeRes() # when switching to a new TSW process, hDC and hPrc will be reg
   CloseHandle.call($hPrc || 0)
 end
 def preExit(msg=nil) # finalize
+# cleanup before exit; msg: optional message to show before exit
   return if $preExitProcessed # do not exec twice
   $preExitProcessed = true
   begin
@@ -325,13 +349,16 @@ def preExit(msg=nil) # finalize
 rescue Exception
 end
 def quit()
+# quit tswKai3 gracefully
   preExit(13); exit
 end
 def raise_r(*argv)
+# raise an exception but ensure cleanup first
   preExit() # ensure all resources disposed
   raise(*argv)
 end
 def checkTSWsize()
+# check if TSW window size has changed; if so, update related info ($W, $H, $MAP_LEFT, $MAP_TOP; as well as $ITEMSBAR_LEFT, $ITEMSBAR_TOP, $TILE_SIZE, and $xxxRect etc. in `checkTSWrects` in 'tswMP.rb')
   GetClientRect.call_r($hWnd, $buf)
   w, h = $buf[8, 8].unpack('ll')
   return if w == $W and h == $H
@@ -342,6 +369,7 @@ def checkTSWsize()
   checkTSWrects()
 end
 def initLang()
+# initialize relevant values according to TSW language; set up aliases for text-related functions (i.e., whether to use the ANSI "A" or Unicode "W" version of the functions)
   if $regKeyName
     getRegKeyName()
     getHookKeyName()
@@ -362,10 +390,12 @@ def initLang()
   (0...MOD_TOTAL_OPTION_COUNT).each {|i| setTitle($hWndChkBoxes[i], 33+i)}
 end
 def initSettings()
+# load settings from 'tswKai3Option.txt'; if not exist or on error, use default settings
   load(File.exist?(APP_SETTINGS_FNAME) ? APP_SETTINGS_FNAME : File.join(APP_PATH, APP_SETTINGS_FNAME))
 rescue Exception
 end
 def updateSettings()
+# similar to above, but also update settings that can be changed on the fly (hotkeys). Unlike `initSettings` which is called during startup, this function is called everytime a new TSW process is attached
   mp_m, mp_k = MP_MODIFIER, MP_HOTKEY
   con_m, con_k = CON_MODIFIER, CON_HOTKEY
   initSettings()
@@ -379,6 +409,7 @@ def updateSettings()
   end
 end
 def waitForTSW()
+# If there is currently no (compatible) TSW process, return `nil` immediately. Otherwise, wait for the window to be ready, and then do some necessary patching (to allow `callFunc` to work) and update relevant info. Return `true` on success.
   $hWnd = FindWindow.call(TSW_CLS_NAME, nil)
   $tID = GetWindowThreadProcessId.call($hWnd, $bufDWORD)
   $pID = $bufDWORD.unpack('L')[0]
@@ -403,9 +434,11 @@ def waitForTSW()
   return true
 end
 def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles are not ready yet; need to wait
+# but during waiting, also need to process messages to keep the app responsive
+# return the DWORD value at the given address when it becomes non-zero; return nil if TSW quits during waiting
   r = readMemoryDWORD(addr)
   while r.zero?
-    case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
+    case MsgWaitForMultipleObjects.call_r1(1, $bufHWait, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
     when 0 # TSW quits during waiting
       disposeRes()
       return
@@ -418,10 +451,11 @@ def waitTillAvail(addr) # upon initialization of TSW, some pointers or handles a
   return r
 end
 def waitInit(waitForNextCompatibleTSW = false)
+# when there is no TSW process, wait until a new one is started and the window is ready; during waiting, show a banner window (unless disabled)  and also, need to process messages to keep the app responsive
   Static1_Show()
   loop do # waiting while processing messages
     if waitForNextCompatibleTSW # though unlikely, if current TSW is incompatible, wait till its end
-      case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
+      case MsgWaitForMultipleObjects.call_r1(1, $bufHWait, 0, -1, QS_ALLBUTTIMER)
       when 0 # incompatible TSW is ended
         CloseHandle.call($hPrc)
         waitForNextCompatibleTSW = false
@@ -429,7 +463,7 @@ def waitInit(waitForNextCompatibleTSW = false)
         checkMsg(false)
       end
     else
-      case MsgWaitForMultipleObjects.call_r(0, nil, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
+      case MsgWaitForMultipleObjects.call_r1(0, nil, 0, INTERVAL_TSW_RECHECK, QS_ALLBUTTIMER)
       when 0
         checkMsg(false)
       when WAIT_TIMEOUT
@@ -446,10 +480,12 @@ def waitInit(waitForNextCompatibleTSW = false)
 end
 
 def readMemoryDWORD(address)
+# return the DWORD value at the given address; raise error on failure
   ReadProcessMemory.call_r($hPrc, address, $bufDWORD, 4, 0)
   return $bufDWORD.unpack('l')[0]
 end
 def writeMemoryDWORD(address, dword)
+# write the given DWORD value to the given address; raise error on failure
   WriteProcessMemory.call_r($hPrc, address, [dword].pack('l'), 4, 0)
 end
 def callFunc(address) # execute the subroutine at the given address
@@ -465,6 +501,9 @@ def callFunc_noBlock(address) # this variant will not block the thread and wait 
   PostMessage.call_r($hWnd, WM_COMMAND, N9_MENUID, 0)
 end
 
+# text-related functions. In most cases, call aliases `msgboxTxt` and `setTitle`, unless there is a special need to specify which of the "A" or "W" version should be used
+# `msgboxTxt`: show a message box with the specified, formatted texts; `setTitle`: set window or control caption texts
+# @param textIndex [Integer] is the index of the text in `$str::STRINGS`; see 'strings.rb' for details
 def msgboxTxtA(textIndex, flag=MB_ICONASTERISK, *argv)
   API.msgbox(Str::StrEN::STRINGS[textIndex] % argv, flag)
 end
@@ -479,6 +518,7 @@ def setTitleW(hWnd, textIndex, *argv)
 end
 
 def getKeyName(modifier, key)
+# return a string describing the key combination; also prepare $keybdinput_struct and $keybdinput_num for simulating the key press
   return nil if key.zero?
   ctrl = !(modifier & 2).zero?
   shift = !(modifier & 4).zero?
@@ -508,6 +548,7 @@ def getKeyName(modifier, key)
   return res
 end
 def getRegKeyName()
+# update $regKeyName[0] and [1] for MP and CON hotkeys (default: F7 and F8) respectively
   $keybdinput_struct[0] = "\0" # indicate this needs updating
   $regKeyName[0] = getKeyName(MP_MODIFIER, MP_HOTKEY)
   $regKeyName[1] = getKeyName(CON_MODIFIER, CON_HOTKEY)

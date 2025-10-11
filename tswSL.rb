@@ -47,6 +47,26 @@ SL_HOTKEYS = [0x200 | 'L'.ord, 0x200 | 'S'.ord, 0x000 | VK_BACK, 0x400 | VK_BACK
 $SLautosave = true # whether to enable auto saving temp data
 
 module SL
+# This module provides functionality for patching and extending the save/load system of TSW.
+
+# Module Functions:
+# - savedat_path: Returns the current data-save directory path.
+# - _tmp_id: Returns the address of the current temporary data file index.
+# - _sub_init: Returns the address of the injected initialization subroutine.
+# - _sub_savetemp: Returns the address of the injected temporary data saving subroutine.
+# - _loc_load_temp_2: Returns the address of the injected temporary data loading subroutine.
+# - init: Initializes the save/load extension by:
+#   - Determining and normalizing the save data directory path
+#   - Writing the buffer into the TSW process memory
+#   - Applying compatibility patches and enabling/disabling autosave as needed
+#   - Calling the injected initialization routine
+# - compatibilizeExtSL(bEnable): Enables or disables the first set of patches (SL_PATCH_BYTES_1). Should be called with `bEnable=true` at the beginning of the tswKai3 program (by calling SL.init, which ensures the SL component, such as saving/loading arbitrary data, can function properly), and with `bEnable=false` when quitting the program (by calling SL.compatibilizeExtSL(false); which ensures that the TSW process is restored to its original state when the program exits).
+# - enableAutoSave(bEnable): Enables or disables the second set of patches (SL_PATCH_BYTES_2). Determines whether autosaving of temporary data is active.
+
+# Usage:
+# - Call SL.init at the beginning of the tswKai3 program, and call SL.compatibilizeExtSL(false) when quitting the program.
+# - Use SL.enableAutoSave(true) to enable auto saving of temporary data, or SL.enableAutoSave(false) to disable it.
+
   SL_PATCH_BYTES_1 = [ # address, len, original bytes, patched bytes, variable to insert into patched bytes
 [0x47eb56, 33, # savework_1
  "\xE8\x32\x5A\xF8\xFF\xE8\xB0\x3B\xF8\xFF\xB8\x00\xC6\x48\x00\xE8\x4E\x57\xF8\xFF\xE8\xA1\x3B\xF8\xFF\x6A\x00\x66\x8B\x0D\xA0\xEC\x47",
@@ -366,6 +386,7 @@ $str::MSG_LOAD.ljust(0x20, "\0") # 09B0...09D0  string msg_load
     SL_PATCH_BYTES_2.each {|i| WriteProcessMemory.call_r($hPrc, i[0], bEnable ? (i[3] % [instance_variable_get(i[4])-i[5]-i[0]].pack('l')) : i[2], i[1], 0)}
   end
   def raiseInvalDir(reason)
+  # Handles invalid data-save directory scenarios, prompting the user with a message box (text index given by `reason`) and resetting the data-save path by displaying the TSW's own directory selection dialog.
     if msgboxTxt(24, MB_ICONEXCLAMATION | MB_OKCANCEL, $str::STRINGS[reason]) == IDCANCEL
       quit()
     end

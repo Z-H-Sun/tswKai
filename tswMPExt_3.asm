@@ -1,5 +1,5 @@
 ; extension functions realized in addition to those achieved in the 'tswMPExt' subfolder
-; the assembly codes here can be loaded by CheatEngine's auto-assembler; before doing so, replace all semicolons (;) with double slashes (//) as CheatEngine won't recognize simicolons as comments
+; the assembly codes here can be loaded by CheatEngine's auto-assembler; before doing so, replace all semicolons (;) with double slashes (//) as CheatEngine won't recognize semicolons as comments
 ; use CheatEngine 6.7. Higher versions are known to have bugs in auto-assembler, which tend to use longer opcodes for some specific assembly operations, and that will mess up everything
 
 ;;;;;;;;;; Execute arbitrary code from tswKai3 in TSW ;;;;;;;;;;
@@ -291,7 +291,7 @@ sub_draw_hero_2:
 	push ebx
 	mov ebx, eax
 	call sub_draw_hero_on_game_bitmaps
-	loc_draw_hero_on_canvas_2:	; so far the codes are identical with sub_draw_hero_2
+	loc_draw_hero_on_canvas_2:	; so far the codes are identical with sub_draw_hero
 	; will first draw the next game bitmap and then the current game bitmap onto screen, so that the frame will not change (all animated tiles stays still)
 	mov eax, 48C514
 	lea edx, [eax+4]

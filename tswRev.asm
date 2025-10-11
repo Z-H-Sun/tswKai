@@ -551,7 +551,7 @@ BASE:894A6	; first byte=length; followed by string
 		; Therefore, I will do the following two changes here:
 		; * Sleep several milliseconds before drawing the next frame to make the transition animation appear more natural without noticeable lag (which also requires less CPU usage)
 		; * Cut down the number of interpolation frames to 4, because as discussed above, only 4 of them are useful (i.e., different from other bitmaps)
-		
+
 BASE:4C04C	TTSW10.idou	proc near	; rōmaji of 移動; movement; of hero
 		; ...
 BASE:4C0CD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)

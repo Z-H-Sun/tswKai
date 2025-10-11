@@ -11,6 +11,15 @@ char data_path[MAX_PATH] = {0}, cur_path[MAX_PATH] = {0}, tsw_exe_path[MAX_PATH]
 const char* tsw_exe[] = {TARGET_EXE_1, TARGET_EXE_2, TARGET_EXE_3, TARGET_EXE_4};
 int data_path_len, cur_path_len;
 
+/**
+ * Converts a Unicode wide character string (WCHAR*) to an ANSI character string (char*).
+ *
+ * @param u      Pointer to the source Unicode wide character string.
+ * @param uLen   Length of the source Unicode string (in WCHARs).
+ * @param a      Pointer to the destination buffer for the ANSI string.
+ * @param aLen   Size of the destination buffer (in CHARs).
+ * @return       The number of characters written to the ANSI buffer, or 0 if an invalid character is encountered.
+ */
 static size_t unicode2ansi(WCHAR* u, size_t uLen, char* a, size_t aLen) { // unicode wide char to ANSI char; returns 0 if there is an invalid char
   int acp = GetACP();
   BOOL invalid_char = FALSE;
@@ -23,7 +32,7 @@ static size_t unicode2ansi(WCHAR* u, size_t uLen, char* a, size_t aLen) { // uni
   return len;
 }
 
-static void get_ini_path() { // %windir\\TSW12.ini
+static void get_ini_path() { // Returns full path of %windir\\TSW12.ini (and TSW12.bak.ini)
 // Note: TSW saves the paths into a file under Windows dir, which is a privileged path: %windir%\\TSW12.ini
 // For Windows Vista and above, the UAC views TSW as a legacy program and will virtualize it and will thus redirect the file output to%LocalAppData%\\VirtualStore\\Windows\\TSW12.ini
 // Therefore, for our app, tswLauncher, to "see" the same file as TSW does, we need to meet several criteria:
@@ -43,7 +52,7 @@ static void get_ini_path() { // %windir\\TSW12.ini
   memcpy(tsw_ini_bak_path+len, TSW_INI_BAK, sizeof(TSW_INI_BAK));
 }
 
-static void get_app_path() { // .
+static void get_app_path() { // Returns full path of the current executable's directory and appends \\<TSW_DIR> at the end; makes sure the path is not too long, and that the directory name does not contain invalid chars
   WCHAR cur_path_w[MAX_PATH];
   WCHAR* title_path = app_title+1+app_title[0]; // since `app_title` was initialized with '\0's, it is ensured that it's always terminated with '\0' without the need to manually do it (so `memcpy` also does not need to copy the trailing '\0')
   wmemcpy(title_path, WT(TITLE_SEPARATOR), sizeof(TITLE_SEPARATOR)-1);
@@ -91,7 +100,7 @@ static void get_full_path(char *fname, int *p_len) { // normalize filename
   }
 }
 
-static BOOL write_ini() {
+static BOOL write_ini() { // overwrites the TSW .ini file with current paths; returns TRUE if successful
   FILE* file_tsw_ini = fopen(tsw_ini_path, "w");
   if (!file_tsw_ini)
     return FALSE;
@@ -221,7 +230,7 @@ void init_path() { // dirty work about the old paths in old .ini
   }
 }
 
-BOOL delete_ini() {
+BOOL delete_ini() { // deletes the TSW .ini file (and .bak.ini file if exists); returns TRUE if successful
   BOOL success = TRUE;
   if (ini_state) { // delete the .bak file only when `ini_state` is not 0
     SetFileAttributes(tsw_ini_bak_path, FILE_ATTRIBUTE_NORMAL); // remove readonly attribute
@@ -242,7 +251,7 @@ BOOL delete_ini() {
   return success;
 }
 
-BOOL migrate_data() {
+BOOL migrate_data() { // copies data files from old data-save path to current data-save path; returns TRUE if successful
   if (data_path_len >= MAX_PATH-1) // too long [SHFILEOPSTRUCT requires f.pFrom is double-\0 terminated, so the length should not exceed 258 (previous check in `get_full_path` only checks if the length exceeds 259)]
     goto migrate_fail;
 
@@ -280,6 +289,15 @@ migrate_fail:
   return TRUE;
 }
 
+/**
+ * Waits for a non-zero DWORD value to be read from the memory of a process.
+ * If the value remains zero after a specified number of attempts, the target process is terminated.
+ *
+ * @param p_pi    Pointer to a PROCESS_INFORMATION structure for the target process.
+ * @param lpAddr  Address in the target process's memory to read from.
+ * @param lpOut   Pointer (typically DWORD*) to receive the DWORD value read.
+ * @return        TRUE if the operation succeeds, FALSE otherwise.
+ */
 static BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void *lpOut) {
   int i;
   HANDLE hPrc = p_pi->hProcess;
@@ -298,7 +316,7 @@ static BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void 
   return FALSE; // timeout
 }
 
-BOOL launch_tsw(int type) {
+BOOL launch_tsw(int type) { // launches the TSW executable of the specified type (0-based index of the selected item in combobox), waits until the TSW game is ready (otherwise terminates it on failure), and centers the TSW window; returns TRUE if successful
   strcpy(tsw_exe_path+cur_path_len+1, tsw_exe[type]);
   STARTUPINFO si = {sizeof(si)};
   si.dwFlags = STARTF_FORCEONFEEDBACK;

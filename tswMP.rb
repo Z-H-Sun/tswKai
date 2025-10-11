@@ -89,6 +89,43 @@ $hPen2 = CreatePen.call_r(0, 3, HIGHLIGHT_COLOR[-2])
 # https://github.com/ffi/ffi/issues/283#issuecomment-24902987
 # https://github.com/undees/yesbut/blob/master/2008-11-13/hook.rb
 module HookProcAPI
+# This module provides low-level keyboard and mouse hook management and other tswMP-related (teleportation, item usage, and on-map damage display) functions.
+
+# Instance Variables:
+# - @hkhook, @hmhook [Numeric (pointer)]: Handles for keyboard and mouse hooks; nil if not hooked.
+# - @itemAvail [Array of Integer]: Array of available item indices.
+# - @winDown [nil or false or Integer]: State of MP_KEY1(by default, left WIN)/MP_KEY2(by default, TAB) keys [`nil` if not pressed, `false` if pressed but within an event (so no need to respond), `0`-`2` if pressed and active (0=both MP_KEY1 and MP_KEY2 pressed, so in sticky mode; 1=MP_KEY1 pressed, 2=MP_KEY2 pressed)].
+# - @lastIsInEvent [Boolean]: Whether `isInEvent` returned true (you were during an event when `isInEvent` was checked last time).
+# - @x_pos, @y_pos [Integer; -1-10]: Current cell coordinate (`0`-`10`) defined by the most recent mouse position on map; `-1` if out of range.
+# - @access [Integer or nil]: Accessibility of destination tile: `0` if the destination is directly accessible; a nonzero integer if a step is required (+1, -1, +11, or -11, indicating the direction); or `nil` if the destination is inaccessible or an error occurs.
+# - @flying [Integer or nil]: State for OrbOfFlight usage: `nil` if not currently using; otherwise, you are using OrbOfFlight: `0` if used normally; `2` if you cheated (you don't have access to a stair).
+# - @error [Exception or nil]: Stores exception from hook callback. `nil` if no exception.
+# - @lastArrow [Integer]: Last arrow key pressed. -1: none; 0: left/down; 1: right/up.
+# - @lastDraw: Whether highlight/polyline was previously drawn.
+
+# Methods:
+# - handleHookExceptions: Raises stored exception from hook callback; called after hook processing is complete.
+# - finally {<block code>}: A wrapper for a code block to allow using `break` to exit from the block.
+# - getFocusClassName [String]: Returns class name of the currently focused window.
+# - isButtonFocused [Boolean]: Checks if the currently focused control in TSW is a button (TButton).
+# - isSLActive [Boolean]: Checks if tswSL v2 is active (only used for compatibility with old version tswSL v2).
+# - isInEvent [Boolean]: Determines if currently during an event. Extra treatments are done when event status changes: if an event just started, item bar highlights are cleared and message bar is updated; if an event just ended, item bar and map teleportation overlay are redrawn.
+# - initHDC: Initializes device context (DC) with appropriate settings for drawing.
+# - disposeHDC: Releases device context (DC) resources.
+# - abandon: Cancels current teleportation and/or item (e.g., OrbOfFlight) operations and cleans up.
+# - recalcStatus: Reads hero and map status from memory and updates them.
+# - drawMapDmg(init [Boolean]): After an event is over, updates game map and, if the legacy on-map damage drawing mode is used, draws map damage overlay (on-map damage drawing will be automatically updated in the new drawing mode). The parameter `init` is only used for re-checking the map, and indicates whether all properties of monsters and magic attacks should be recalculated.
+# - drawDmg(x, y [Integer], dmg [String], cri [nil or false or String], danger [Boolean]): Draws damage text on map (this method is only used in the legacy on-map damage drawing mode). `cri` is `nil` if no further critical value; `false` if magic attack; or a string if normal critical value. `danger` indicates whether the damage is may cause death.
+# - drawItemsBar: Highlights items and labels their corresponding hotkeys. Also draws the last cell in the item bar for the tswExt console.
+# - _msHook(nCode, wParam, lParam): Mouse hook callback; for teleportation (mouse click) and connectivity preview (mouse move). Return value dictates whether to block the mouse input.
+# - _keyHook(nCode, wParam, lParam): Keyboard hook callback; for item usage and tswMP function activation (including the sticky mode). Return value dictates whether to block the keyboard input.
+# - hookK: Installs keyboard hook.
+# - unhookK: Removes keyboard hook.
+# - rehookK: Reinstalls keyboard hook.
+# - hookM: Installs mouse hook.
+# - unhookM(stopClipCursor=true): Removes mouse hook and takes further actions (e.g., stopping cursor clipping if `stopClipCursor` is true; undo polyline and highlight drawing; restoring TSW UI, etc.).
+# - noHighlightRect: Clears item/message bar/sticky mode drawings.
+
   SetWindowsHookEx = API.new('SetWindowsHookEx', 'IKII', 'I', 'user32')
   UnhookWindowsHookEx = API.new('UnhookWindowsHookEx', 'I', 'I', 'user32')
   CallNextHookEx = API.new('CallNextHookEx', 'ILLL', 'I', 'user32')
@@ -165,9 +202,9 @@ module HookProcAPI
     SelectObject.call_r($hDC, $hBr) # hDC returned by GetDC above will, every time, reset to default DC parameters, so need to set them accordingly
     SelectObject.call_r($hDC, $hPen)
     SetROP2.call_r($hDC, R2_XORPEN)
-    SetBkColor.call_r($hDC, HIGHLIGHT_COLOR[-2])
+    SetBkColor.call_r1($hDC, HIGHLIGHT_COLOR[-2])
     SetBkMode.call_r($hDC, 1) # transparent
-    SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
+    SetTextColor.call_r1($hDC, HIGHLIGHT_COLOR.last)
     SetStretchBltMode.call_r($hDC, COLORONCOLOR)
   end
   def disposeHDC()
@@ -237,7 +274,7 @@ module HookProcAPI
   end
   def drawDmg(x, y, dmg, cri, danger)
     if danger
-      SetTextColor.call_r($hDC, HIGHLIGHT_COLOR[2])
+      SetTextColor.call_r1($hDC, HIGHLIGHT_COLOR[2])
       SetROP2.call_r($hDC, R2_WHITE)
     end
     BeginPath.call_r($hDC)
@@ -267,7 +304,7 @@ module HookProcAPI
       TextOutW.call_r($hDC, x, y, dmg_u, dmg_s)
     end
     if danger
-      SetTextColor.call_r($hDC, HIGHLIGHT_COLOR.last)
+      SetTextColor.call_r1($hDC, HIGHLIGHT_COLOR.last)
       SetROP2.call_r($hDC, R2_COPYPEN)
     end
   end
@@ -276,7 +313,7 @@ module HookProcAPI
     @itemAvail = []
     drawTxt($msgRect2, 64) if @winDown == 0 # sticky mode
     SetBkMode.call_r($hDC, 2) # opaque
-    SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[3])
+    SetDCBrushColor.call_r1($hDC, HIGHLIGHT_COLOR[3])
     for i in 0..11 # check what items you have
       j = CONSUMABLES['position'][i]
       count = $heroItems[ITEM_INDEX[2+j]] # note the first 2 are sword and shield
@@ -442,7 +479,7 @@ module HookProcAPI
         x_left = r[0] - ($TILE_SIZE >> 1)
         y_top = r[1] - ($TILE_SIZE >> 1)
         BitBlt.call_r($hMemDC, 0, 40, $TILE_SIZE, $TILE_SIZE, $hDC, x_left, y_top, RASTER_S) # store the current bitmap for future redraw
-        SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
+        SetDCBrushColor.call_r1($hDC, HIGHLIGHT_COLOR[colorIndex])
         PatBlt.call_r($hDC, x_left, y_top, $TILE_SIZE, $TILE_SIZE, RASTER_DPo)
         Polyline.call_r($hDC, r.pack('l*'), s) if s > 1
       end
@@ -632,11 +669,16 @@ module HookProcAPI
     InvalidateRect.call($hWnd, $msgRect, 0) # clear message bar
     InvalidateRect.call($hWnd, $msgRect2, 0) # clear sticky mode prompt
   end
-  private :_msHook
-  private :_keyHook
 end
 
 def checkTSWrects()
+# Calculates and sets TSW UI-related global variables:
+# - $ITEMSBAR_LEFT/TOP: Left/Top position of the items bar.
+# - $itemsRect: Rectangle for the items bar (packed as 'l4' String).
+# - $TILE_SIZE: Width/height of a tile cell.
+# - $OrbFlyRect: Array of rectangles (packed as 'l4' String) for orb fly areas [left half (0), right half (1), and full size (2 or -1)].
+# - $msgRect: Rectangle for the message prompt area (packed as 'l4' String).
+# - $msgRect2: Rectangle for the sticky mode prompt area (packed as 'l4' String).
   $ITEMSBAR_LEFT = readMemoryDWORD($IMAGE6+OFFSET_CTL_LEFT)
   $ITEMSBAR_TOP = readMemoryDWORD($IMAGE6+OFFSET_CTL_TOP)
   $TILE_SIZE = readMemoryDWORD($IMAGE6+OFFSET_CTL_WIDTH)
@@ -652,10 +694,14 @@ def checkTSWrects()
   $msgRect2 = [0, 0, $W-2, $MAP_TOP].pack('l4') # for sticky mode prompt
 end
 
+# Drawing functions below. In most cases, call aliases `drawTxt`, `showMsg` and `showMsgTxtbox`, unless there is a special need to specify which of the "A" or "W" version should be used
+# `drawTxt`: draws the specified, formatted texts in the message prompt region; `showMsg`: in addition to above, also draws a solid-color background behind the text; `showMsgTxtbox`: shows texts in the status bar textbox
+# @param textIndex [Integer] is the index of the text in `$str::STRINGS`; see 'strings.rb' for details
+# @param colorIndex [Integer] is the index of the color in `HIGHLIGHT_COLOR`
 def drawTxtA(msgRect, textIndex, *argv); DrawText.call_r($hDC, Str::StrEN::STRINGS[textIndex] % argv, -1, msgRect, DT_CENTERBOTH); end
 def drawTxtW(msgRect, textIndex, *argv); DrawTextW.call_r($hDC, Str.utf8toWChar(Str::StrCN::STRINGS[textIndex] % argv), -1, msgRect, DT_CENTERBOTH); end
 def showMsg(colorIndex, textIndex, *argv)
-  SetDCBrushColor.call_r($hDC, HIGHLIGHT_COLOR[colorIndex])
+  SetDCBrushColor.call_r1($hDC, HIGHLIGHT_COLOR[colorIndex])
   FillRect.call_r($hDC, $msgRect, $hBr)
   drawTxt($msgRect, textIndex, *argv)
 end
@@ -667,6 +713,7 @@ def showMsgTxtboxW(textIndex, *argv)
 end
 
 def getHookKeyName()
+# sets the string describing the shortcut keys for activating tswMP
   raise_r($str::ERR_MSG[1]) if MP_KEY1.zero?
   $MPhookKeyName = '[' + getKeyName(0, MP_KEY1) + ']'
   $MPhookKeyName << ' / [' + getKeyName(0, MP_KEY2) + ']' unless MP_KEY2.zero?

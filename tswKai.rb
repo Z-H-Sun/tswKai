@@ -16,6 +16,19 @@ CON_MODIFIER = 0 # hotkey and modifier for showing configs
 CON_HOTKEY = 119 # F8
 
 module Kai
+# This module provides the main interface logic for the tswKai cheating console functions.
+# It manages the console UI, handles user input, and updates hero status and items.
+
+# Methods:
+# - need_init: Sets both @need_init and @need_update to true, indicating the need to redraw the entire interface.
+# - need_update: Sets @need_update to true, indicating the need to redraw the shortcut keys.
+# - reeval: Re-evaluation: Reads hero status and items from memory, updates console display.
+# - KaiMain: Main logic for handling user selection and input, rewrites memory, executes necessary subroutines, and updates UI.
+#   Returns true to continue after a successful operation, false if TSW has quitted, or nil if ESC (/ENTER/SPACE) is pressed in the main menu.
+# - initInterface: Initializes and draws the table headers and interface layout.
+# - drawShortcutKeys: Draws shortcut keys on the console with optional `style`.
+# - main: Entry point for the Kai module; manages initialization and main loop. Call `Kai.main()` to start this cheating console interface.
+
   @need_init = true # if true, need to redraw the whole console interface
   @need_update = true # if true, need to redraw the shortcut keys
   @curInd = 0 # current item index

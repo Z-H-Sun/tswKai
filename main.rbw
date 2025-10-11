@@ -23,6 +23,7 @@ INTERVAL_QUIT = 50 # for quit (in msec)
 INTERVAL_TSW_RECHECK = 500 # in msec: when TSW is not running, check every 500 ms if a new TSW instance has started up
 
 def init()
+# initialize main components of tswKai3 if a valid TSW instance is detected. Returns `true` on success; `false` if TSW is incompatible; `nil` if no TSW instance is detected
   return nil unless waitForTSW()
   $IMAGE6 = readMemoryDWORD($TTSW+OFFSET_IMAGE6)
   $hWndMemo = [] # reset as empty here and will be assigned later, because during prologue, these textboxes' hWnd are not assigned yet (a potential workaround is to `mov eax, TTSW10.TMemo1/2/3` and `call TWinControl.HandleNeeded`, but I'm lazy and it is really not worth the trouble)
@@ -51,6 +52,7 @@ def init()
   return true
 end
 def showWelcomingMsg()
+# show welcoming message box upon TSW startup if `$CONmsgOnTSWstartup` is on, which includes some useful hotkey info. Also show some brief info in the bottom status bar of the TSW window
   showMsgTxtbox(9, $pID, $hWnd)
   unless $CONmsgOnTSWstartup
     API.focusTSW()
@@ -61,6 +63,7 @@ def showWelcomingMsg()
   msgboxTxt(11, MB_ICONASTERISK, $MPhookKeyName, MP_KEY2.zero? ? '' : $str::STRINGS[65][0], getKeyName(0, EXT_KEY), keySL[0], keySL[1], keySL[2], keySL[3], getKeyName(0, MP_KEY1)+'+'+getKeyName(0, SL_HOTKEYS[2] & 0xFF), $regKeyName[1], $regKeyName[1], $regKeyName[0], $regKeyName[0], $regKeyName[0])
 end
 def checkMsg(state=1) # state: false=TSW not running; otherwise, 1=no console; 2=console
+# Process window messages for the main thread, including those for the status banner window, the config dialog and console window (if any), and hotkey events
   while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
     msg = $buf.unpack(MSG_INFO_STRUCT)
     hWnd = msg[0]
@@ -138,8 +141,9 @@ RegisterHotKey.call_r(0, 1, CON_MODIFIER, CON_HOTKEY)
 res = init()
 waitInit(!res.nil?) unless res
 
+# main loop of the program
 loop do
-  case MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, $configDlg ? QS_ALLINPUT : QS_ALLBUTTIMER) # For XP-style checkboxes, there is an animation with changed checked state, so WM_TIMER should still be processed for redrawing the checkboxes
+  case MsgWaitForMultipleObjects.call_r1(1, $bufHWait, 0, -1, $configDlg ? QS_ALLINPUT : QS_ALLBUTTIMER) # For XP-style checkboxes, there is an animation with changed checked state, so WM_TIMER should still be processed for redrawing the checkboxes
   when 0 # TSW has quitted
     disposeRes()
     if $keybdinput_struct.ord == INPUT_KEYBOARD # there is at least one registered hotkeys
