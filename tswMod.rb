@@ -44,27 +44,31 @@ DIALOG_FONT = [-12, 0, 0, 0, 0, 0, 0, 0, DEFAULT_CHARSET, 0, 0, 0, 0, DIALOG_FON
 $CONonTSWstartup = true # whether to show config window and apply default config on TSW startup
 $CONmsgOnTSWstartup = true # whether to show tutorial message on TSW startup
 $CONmodStatus = [true, true, true, true, true] # if `$CONonTSWstartup`, this specifies the default config
+$CONrevStatus = [true, true, true, true, true, true, true] # whether to patch additional important bug fixes
 
 hDC_tmp = GetDC.call(0)
-enumFontCallBack = API::Callback.new('LLIL', 'I') {|lpelf, lpntm, font_type, lParam| DIALOG_FONT[-1] = DIALOG_FONT_NAME_PREFERRED; 0} # once find this font, set it as the dialog font, and then return immediately
-EnumFontFamilies.call(hDC_tmp, DIALOG_FONT_NAME_PREFERRED, enumFontCallBack, 0)
+enumFontCallBack = API::Callback.new('LLIL', 'I') {|lpelf, lpntm, font_type, lParam| 0} # once find this font, and then return 0 immediately; otherwise, EnumFontFamilies will return 1 in the end
+DIALOG_FONT[-1] = DIALOG_FONT_NAME_PREFERRED if EnumFontFamilies.call(hDC_tmp, DIALOG_FONT_NAME_PREFERRED, enumFontCallBack, 0).zero? # set it as the dialog font if found
 ReleaseDC.call(0, hDC_tmp)
 
+# create dialog window and draw its controls
 $hGUIFont2 = CreateFontIndirect.call_r(DIALOG_FONT.pack(LOGFONT_STRUCT))
 # the reason to create this hierarchy is to hide the following dialog window from the task bar
-$hWndDialog = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
+$hWndDialog = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, nil, WS_SYSMENU, 100, 100, MOD_DIALOG_WIDTH, MOD_DIALOG_HEIGHT, $hWndDialogParent, 0, 0, 0) # see https://learn.microsoft.com/en-us/windows/win32/shell/taskbar#managing-taskbar-buttons
 SendMessagePtr.call($hWndDialog, WM_SETICON, ICON_BIG, $hIco)
 $hWndChkBoxes = Array.new(7)
 for i in 0...MOD_TOTAL_OPTION_COUNT
   if i < MOD_PATCH_OPTION_COUNT
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 10, i*36+12, MOD_DIALOG_WIDTH-12, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowExW.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, 10, i*36+12, MOD_DIALOG_WIDTH-12, i==4 ? 18 : 36, $hWndDialog, 0, 0, 0)
   else
-    $hWndChkBoxes[i] = CreateWindowEx.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*87-425, 180, 87, 36, $hWndDialog, 0, 0, 0)
+    $hWndChkBoxes[i] = CreateWindowExW.call_r(0, BUTTON_CLASS_NAME, nil, BS_TSWCON, i*87-425, 180, 87, 36, $hWndDialog, 0, 0, 0)
   end
   SendMessagePtr.call($hWndChkBoxes[i], WM_SETFONT, $hGUIFont2, 0)
 end
 
 def Dialog_CheckMsg(msg)
+# Process window messages for the tswMod dialog window (called in `checkMsg` in 'main.rbw').
+# - If the dialog receives WM_COMMAND with IDCANCEL (i.e., close through [x] button or sysmenu or Alt+F4), or WM_KEYDOWN with ESC/RETN key, stop the tswMod interface and hide the dialog window.
   case msg[1]
   when WM_COMMAND # close the dialog through [x] button or sysmenu or Alt+F4
     return if msg[2] != IDCANCEL
@@ -77,6 +81,9 @@ def Dialog_CheckMsg(msg)
 end
 
 def ChkBox_CheckMsg(index, msg)
+# Process window messages for the checkbox controls in the tswMod dialog window (called in `checkMsg` in 'main.rbw').
+# - If the checkbox receives WM_KEYDOWN with ESC/RETN key, stop the tswMod interface and hide the dialog window.
+# - If the checkbox receives WM_LBUTTONUP or WM_KEYUP with SPACE key, toggle the corresponding option, executes necessary patches, and then set focus to the next checkbox.
   msgType = msg[1]
   if msgType == WM_KEYDOWN
     return if msg[2] != VK_ESCAPE and msg[2] != VK_RETURN # if pressed ESC or RETN
@@ -125,34 +132,44 @@ def ChkBox_CheckMsg(index, msg)
 end
 
 module Mod
+# This module provides patching (applying memory patches to TSW) and Mod dialog management (updating UI elements based on patch status) functionality.
+
+# Methods:
+# - init: Initializes the module by applying essential patches, obtaining TSW control window handles (used in `replace45FmerchantDialog` and `replace2ndMagicianDialog` functions), and showing the config dialog if necessary.
+# - showDialog(active [Boolean], tswActive=true [Boolean]): Similar to `$console.show`: Shows or hides the configuration dialog window (according to `active`); handles focus, window positioning / state, etc. By default, additional operations are necessary to coordinate with TSW, but if `tswActive` is set to `false`, it indicates that TSW has already quitted, so no further operations involving TSW should be performed. Returns `true` if the operation is successful; `false` if the operation is unnecessary (e.g., trying to show an already shown console); `nil` if TSW is running with an active child window so the operation fails.
+# - checkChkStates: Checks the current state of each patch option and updates the corresponding UI checkbox.
+# - replace45FmerchantDialog(factor [Integer]): Updates the dialog entry for the 2nd round 45F merchant based on the given factor (typically 43, i.e., 44-1), ensuring correct HP and gold values.
+# - replace2ndMagicianDialog(factor [Integer]): Updates the dialog entries for the magic attack damage from the 2nd round magicians, replacing HP values as needed, based on the given factor (typically 43, i.e., 44-1).
+# - patch(i [Integer], s [Integer]): Applies or reverts a patch at the given index `i` based on the status `s` (1=enabled/0=disabled). Handles extra treatments for (2nd round 45F) merchant dialog and dialog margin changes.
+
   MOD_FOCUS_HWND_ADDR = 0x89bf8 + BASE_ADDRESS # there is 88-byte vacant space starting from 0x489ba8 through 0x489c00 (from which the space is reserved for future tswMP functions); the DWORD @ 0x489bfc is reserved by tswRev to store Kernel32.Sleep farproc; so we are using 0x489ba8-f8 to write asm codes for extra TTSW10 WndProc processing (see below); the DWORD @ 0x489bf8 is used to store the HWND of the dialog/console window to set focus to
   MOD_PATCH_BYTES_0 = [ # offset, len, original bytes, patched bytes
 [0x89ba8, 84, "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0", "\x8B\x0D\xF8\x9B\x48\x00\x31\xD2\x39\xD1\x74\x3E\x3B\x1D\x10\xC5\x48\x00\x75\x36\x83\xF8\x1C\x75\x05\x39\x56\x04\x75\x12\x83\xF8\x20\x75\x27\x8B\x46\x0A\x66\x2D\x01\x02\x74\x04\x3C\x03\x75\x18\x6A\x13\x52\x52\x52\x52\x51\xFF\xB3\xC0\x00\x00\x00\x51\xE8\xC1\xB5\xF7\xFF\xE8\x04\xB6\xF7\xFF\x8B\x06\x3D\x84\x00\x00\x00\xC3\0\0\0\0"], # extra TTSW10 WndProc processing + 4-byte HWND of the dialog/console window to set focus to
 [0x154a8, 5, "\x3D\x84\0\0\0", "\xE8\xFB\x46\7\0"] # TWinControl.WndProc
   ] # this list: extra function to add to compatibilize dialog/console window display (see Entry #-1 of tswMod.asm)
   MOD_PATCH_BYTES_1 = [ # offset, len, original bytes, patched bytes
-[0x637dd, 2, "\xFF\3", "\x90\x90"], # TTSW10.madoushi2; fix 49F Zeno animation bug (see Entry #0 of tswMod.asm)
-
-# ====================
-# Item from tswSL.asm (used to be an item in `SL::SL_PATCH_BYTES_1` treated in the SL module)
-[0x5084d, 2, "\x33\xD2", "\xEB\x0B"], # TTSW10.itemdel; enable loading during event
-
-# ====================
-# List from tswBGM.asm (used to be `BGM::BGM_PATCH_BYTES_0` treated in the BGM module)
-[0x312cb, 65, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0\x80\xBB\xE4\1\0\0\0\x74\x18\x83\x8B\xDC\1\0\0\4\x8B\x83\xF0\1\0\0\x89\x44\x24\4\xC6\x83\xE4\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x74\x3D\x31\xD2\x89\x54\x24\4\5\x64\4\0\0\x3B\x18\x74\x1F\x3B\x58\xFC\xB2\4\x74\2\xB2\x40\xB8\x3B\xA1\x4B\0\x8A\x08\x39\x15\xAC\xC5\x48\0\x0F\x9F\0\x7F\x0C\x84\xC9\x75\x08\x83\x8B\xDC\1\0\0\4\x90"], # TMediaPlayer.Play; improve consecutive sound effects
-
-[0x7ebad, 79, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\x91\x56\xF8\xFF\xE8\x48\x3B\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\x76\x56\xF8\xFF\xE8\x2D\x3B\xF8\xFF\xB8\0\xC6\x48\0\xE8\xCB\x56\xF8\xFF\xE8\x1E\x3B\xF8\xFF\xC7\5\x8C\xC5\x48\0\x86\0\0\0", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\x68\x34\x89\x4B\0\x50\xBE\xF0\x87\x4B\0\x87\x3E\xB8\x18\x89\x4B\0\x29\x38\x29\x78\4\xE8\xA8\x26\xF8\xFF\xE8\xA3\x26\xF8\xFF\xE8\x36\x26\xF8\xFF\x89\x3E\xC6\5\x8C\xC5\x48\0\x86\x90"], # TTSW10.savework; do not save BGM_ID into data
-[0x7ec3a, 79, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\4\x56\xF8\xFF\xE8\xBB\x3A\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\xE9\x55\xF8\xFF\xE8\xA0\x3A\xF8\xFF\xB8\0\xC6\x48\0\xE8\x3E\x56\xF8\xFF\xE8\x91\x3A\xF8\xFF\xC7\5\x8C\xC5\x48\0\x86\0\0\0", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\x68\x34\x89\x4B\0\x50\xBE\xF0\x87\x4B\0\x87\x3E\xB8\x18\x89\x4B\0\x29\x38\x29\x78\4\xE8\x1B\x26\xF8\xFF\xE8\x16\x26\xF8\xFF\xE8\xA9\x25\xF8\xFF\x89\x3E\xC6\5\x8C\xC5\x48\0\x86\x90"], # same above
-[0x55aab, 42, "\x83\xBE\x64\1\0\0\0\x75\x0D\xB2\1\x8B\x83\x2C\3\0\0\xE8\x2F\xA8\xFB\xFF\x83\xBE\x68\1\0\0\0\x74\x14\xB2\1\x8B\x83\x30\3\0\0\xE8\x19\xA8", "\xBF\xA3\x9B\x48\0\x80\x3F\0\x75\x0B\x8B\x83\x6C\4\0\0\xE8\xC8\xB6\xFD\xFF\xBA\xEC\x87\x4B\0\x8A\7\x88\2\x8A\x47\xFF\x84\xC0\x75\x17\x88\x42\4\xEB\x25"], # TTSW10.syokidata2_0; WAV and BGM after load; stop previous sound effect
+[[0x637dd, 2, "\xFF\3", "\x90\x90"]], # TTSW10.madoushi2; fix 49F Zeno animation bug (see Entry #0 of tswMod.asm)
 
 # ====================
 # List from tswRev.asm (selected ones that are most critical, not all)
-[0x54e0b, 34, "\x33\xD2\x8B\x83\xCC\1\0\0\xE8\xE8\xE6\xFB\xFF\x33\xD2\x8B\x83\xD0\1\0\0\xE8\xDB\xE6\xFB\xFF\x33\xD2\x8B\x83\xD4\1\0\0", "\x31\xFF\x31\xD2\x8B\x84\xBB\xCC\1\0\0\xE8\xE5\xE6\xFB\xFF\x47\x83\xFF\3\x75\xEC\xA0\x46\x99\x4B\0\xA2\x5C\x99\x4B\0\xEB\5"], # Rev 8; Fix a bug of the 33F trap room on the right
-[0x73723, 27, "\x66\xC7\4\x46\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46\2\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46", "\x8D\4\x46\x31\xD2\x89\x10\x66\x89\x50\4\xC6\5\x46\x99\x4B\0\6\xC6\5\x5C\x99\x4B\0\6\xEB\3"], # Rev 8; same above
-[0x740be, 2, "\x66\xC7", "\xEB\x48"], # Rev8-b; Fix the wrong prompt after finishing the 40F boss battle
+[[0x740be, 2, "\x66\xC7", "\xEB\x48"]], # Rev8-b; Fix the wrong prompt after finishing the 40F boss battle
+[[0x54e0b, 34, "\x33\xD2\x8B\x83\xCC\1\0\0\xE8\xE8\xE6\xFB\xFF\x33\xD2\x8B\x83\xD0\1\0\0\xE8\xDB\xE6\xFB\xFF\x33\xD2\x8B\x83\xD4\1\0\0", "\x31\xFF\x31\xD2\x8B\x84\xBB\xCC\1\0\0\xE8\xE5\xE6\xFB\xFF\x47\x83\xFF\3\x75\xEC\xA0\x46\x99\x4B\0\xA2\x5C\x99\x4B\0\xEB\5"], # Rev 8; Fix a bug of the 33F trap room on the right
+ [0x73723, 27, "\x66\xC7\4\x46\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46\2\0\0\x8B\3\x8D\4\x40\x66\xC7\x44\x46", "\x8D\4\x46\x31\xD2\x89\x10\x66\x89\x50\4\xC6\5\x46\x99\x4B\0\6\xC6\5\x5C\x99\x4B\0\6\xEB\3"]], # Rev 8; same above
 
-[0x7ff54, 54, "\xFF\x57\x0C\xFF\x75\xF4\x68\x7C\2\x48\0\x8D\x55\xF0\xA1\xB8\xC5\x48\0\3\xC0\x8B\4\xC5\x1C\x99\x48\0\xE8\xF7\x5B\xF8\xFF\xFF\x75\xF0\x8D\x4D\xEC\x8B\x45\xFC\x8B\x80\x4C\4\0\0\x8B\x80\0\1\0\0", "\x89\x45\xEC\xFF\x57\x0C\xFF\x75\xF4\x68\x7C\2\x48\0\xA1\xB8\xC5\x48\0\1\xC0\x8B\4\xC5\x1C\x99\x48\0\x8B\x15\4\x87\x4B\0\x42\xF7\xE2\x8D\x55\xF0\xE8\xEB\x5B\xF8\xFF\xFF\x75\xF0\x8D\x4D\xEC\x8B\1\x90"] # Rev9; Fix the wrong GOLD income prompt after defeating a "strike-first" monster
-  ] # this list: always patch
+[[0x7ff54, 54, "\xFF\x57\x0C\xFF\x75\xF4\x68\x7C\2\x48\0\x8D\x55\xF0\xA1\xB8\xC5\x48\0\3\xC0\x8B\4\xC5\x1C\x99\x48\0\xE8\xF7\x5B\xF8\xFF\xFF\x75\xF0\x8D\x4D\xEC\x8B\x45\xFC\x8B\x80\x4C\4\0\0\x8B\x80\0\1\0\0", "\x89\x45\xEC\xFF\x57\x0C\xFF\x75\xF4\x68\x7C\2\x48\0\xA1\xB8\xC5\x48\0\1\xC0\x8B\4\xC5\x1C\x99\x48\0\x8B\x15\4\x87\x4B\0\x42\xF7\xE2\x8D\x55\xF0\xE8\xEB\x5B\xF8\xFF\xFF\x75\xF0\x8D\x4D\xEC\x8B\1\x90"]], # Rev9; Fix the wrong GOLD income prompt after defeating a "strike-first" monster
+
+# ====================
+# List from tswBGM.asm (used to be `BGM::BGM_PATCH_BYTES_0` treated in the BGM module)
+[[0x7ebad, 69, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\x91\x56\xF8\xFF\xE8\x48\x3B\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\x76\x56\xF8\xFF\xE8\x2D\x3B\xF8\xFF\xB8\0\xC6\x48\0\xE8\xCB\x56\xF8\xFF\xE8\x1E\x3B\xF8\xFF", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\xBA\x34\x89\x4B\0\x52\x50\xBE\xF0\x87\x4B\0\x87\x3E\x29\x7A\xE4\x29\x7A\xE8\xE8\xAB\x26\xF8\xFF\xE8\xA6\x26\xF8\xFF\xE8\x39\x26\xF8\xFF\x89\x3E\x90"], # TTSW10.savework; do not save BGM_ID into data
+ [0x7ec3a, 69, "\x6A\0\xBA\x34\x89\x4B\0\xB9\x81\x18\0\0\xB8\0\xC6\x48\0\xE8\4\x56\xF8\xFF\xE8\xBB\x3A\xF8\xFF\x6A\0\xBA\x88\x86\x4B\0\xB9\xAC\2\0\0\xB8\0\xC6\x48\0\xE8\xE9\x55\xF8\xFF\xE8\xA0\x3A\xF8\xFF\xB8\0\xC6\x48\0\xE8\x3E\x56\xF8\xFF\xE8\x91\x3A\xF8\xFF", "\x31\xFF\xA1\0\xC6\x48\0\x50\x8D\x4D\xF8\x57\x51\x68\xAC\2\0\0\x68\x88\x86\x4B\0\x50\x57\x51\x68\x81\x18\0\0\xBA\x34\x89\x4B\0\x52\x50\xBE\xF0\x87\x4B\0\x87\x3E\x29\x7A\xE4\x29\x7A\xE8\xE8\x1E\x26\xF8\xFF\xE8\x19\x26\xF8\xFF\xE8\xAC\x25\xF8\xFF\x89\x3E\x90"], # same above
+ [0x55aab, 42, "\x83\xBE\x64\1\0\0\0\x75\x0D\xB2\1\x8B\x83\x2C\3\0\0\xE8\x2F\xA8\xFB\xFF\x83\xBE\x68\1\0\0\0\x74\x14\xB2\1\x8B\x83\x30\3\0\0\xE8\x19\xA8", "\xBF\xA3\x9B\x48\0\x80\x3F\0\x75\x0B\x8B\x83\x6C\4\0\0\xE8\xC8\xB6\xFD\xFF\xBA\xEC\x87\x4B\0\x8A\7\x88\2\x8A\x47\xFF\x84\xC0\x75\x17\x88\x42\4\xEB\x25"]], # TTSW10.syokidata2_0; WAV and BGM after load; stop previous sound effect
+
+[[0x312cb, 65, "\x80\xBB\xE2\1\0\0\0\x74\x17\x80\xBB\xE0\1\0\0\0\x74\7\x83\x8B\xDC\1\0\0\2\xC6\x83\xE2\1\0\0\0\x80\xBB\xE4\1\0\0\0\x74\x18\x83\x8B\xDC\1\0\0\4\x8B\x83\xF0\1\0\0\x89\x44\x24\4\xC6\x83\xE4\1\0\0\0", "\x8B\x43\4\x3B\x98\xD8\2\0\0\x74\x3D\x31\xD2\x89\x54\x24\4\5\x64\4\0\0\x3B\x18\x74\x1F\x3B\x58\xFC\xB2\4\x74\2\xB2\x40\xB8\x3B\xA1\x4B\0\x8A\x08\x39\x15\xAC\xC5\x48\0\x0F\x9F\0\x7F\x0C\x84\xC9\x75\x08\x83\x8B\xDC\1\0\0\4\x90"]], # TMediaPlayer.Play; improve consecutive sound effects
+
+# ====================
+# Item from tswSL.asm (used to be an item in `SL::SL_PATCH_BYTES_1` treated in the SL module)
+[[0x5084d, 2, "\x33\xD2", "\xEB\x0B"]] # TTSW10.itemdel; enable loading during event
+  ] # this list: always patch (unless overridden by `$CONrevStatus`)
   MOD_PATCH_BYTES_2 = [ # N, [offset]*N, [len]*N, [original bytes, patched bytes]*N
 [6, [15, 11, 13, 13, 2, 2], # show only one-turn animation
  [0x4b494, 0x4a95e, 0x80030, 0x7fa6f, 0x52bf4, 0x52c64],
@@ -192,7 +209,12 @@ module Mod
 
   module_function
   def init
-    (MOD_PATCH_BYTES_0+MOD_PATCH_BYTES_1).each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)} # must-do and compatibilizing patches
+    MOD_PATCH_BYTES_0.each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[3], i[1], 0)} # compatibilizing patches
+    MOD_PATCH_BYTES_1.each_with_index do |x, n| # must-do patches
+      next if $CONrevStatus[n].nil?
+      k = $CONrevStatus[n] ? 3 : 2
+      x.each {|i| WriteProcessMemory.call_r($hPrc, i[0]+BASE_ADDRESS, i[k], i[1], 0)}
+    end
     $hWndListBox = readMemoryDWORD(readMemoryDWORD($TTSW+OFFSET_LISTBOX2)+OFFSET_HWND)
     $RichEdit1 = readMemoryDWORD($TTSW+OFFSET_RICHEDIT1)
     $hWndRichEdit = readMemoryDWORD($RichEdit1+OFFSET_HWND)
@@ -251,39 +273,39 @@ module Mod
     SendMessagePtr.call($hWndChkBoxes[7], BM_SETCHECK, $BGMtakeOver ? (BGM.bgm_path ? 1 : 2) : 0, 0)
   end
   def replace45FmerchantDialog(factor)
-    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    diff = SendMessage.call_r2($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
     if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
 
     newhp_str = (INT_45FMERCHANT_ADDHP * (factor+1)).to_s
-    len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
+    len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_45FMERCHANT_DIALOG_ID, $buf)
     newentry = $buf[0, len]
     numindex = newentry.index(INT_45FMERCHANT_ADDHP.to_s)
     unless newentry.include?(STR_45FMERCHANT_GOLD) and numindex then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_45FMERCHANT_DIALOG_ID + newentry, MB_ICONEXCLAMATION); return end
     newentry[numindex, 4] = newhp_str
     if diff.zero? # need to add a new entry
-      SendMessage.call_r($hWndListBox, LB_ADDSTRING, 0, newentry)
+      SendMessage.call_r2($hWndListBox, LB_ADDSTRING, 0, newentry)
     else # new entry already exists
-      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
+      len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_NEWENTRY_DIALOG_ID, $buf)
       newentry2 = $buf[0, len]
       unless newentry2.include?(STR_45FMERCHANT_GOLD) then API.msgbox($str::APP_TARGET_45F_ERROR_STR % LISTBOX2_NEWENTRY_DIALOG_ID + newentry2, MB_ICONEXCLAMATION); return end
-      unless newentry2.include?(newhp_str) then SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_NEWENTRY_DIALOG_ID, nil); SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_NEWENTRY_DIALOG_ID, newentry) end # replace this entry when the HP value is incorrect
+      unless newentry2.include?(newhp_str) then SendMessage.call_r2($hWndListBox, LB_DELETESTRING, LISTBOX2_NEWENTRY_DIALOG_ID, nil); SendMessage.call_r2($hWndListBox, LB_INSERTSTRING, LISTBOX2_NEWENTRY_DIALOG_ID, newentry) end # replace this entry when the HP value is incorrect
     end
     return true
   end
   def replace2ndMagicianDialog(factor)
-    diff = SendMessage.call_r($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
+    diff = SendMessage.call_r2($hWndListBox, LB_GETCOUNT, 0, nil) - LISTBOX2_NEWENTRY_DIALOG_ID
     if diff < 0 or diff > 1 then msgboxTxt(42, MB_ICONEXCLAMATION, diff); return end
 
     (0..1).each do |i|
       hp_str = (INT_1STMAGICIAN_SUBHP[i] * (factor+1)).to_s
-      len = SendMessage.call_r($hWndListBox, LB_GETTEXT, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], $buf)
+      len = SendMessage.call_r2($hWndListBox, LB_GETTEXT, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], $buf)
       entry = $buf[0, len]
       numindex = (entry =~ /(\d+)/)
       unless numindex then API.msgbox($str::APP_TARGET_2ND_ERROR_STR % LISTBOX2_2NDMAGICIAN_DIALOG_ID[i] + entry, MB_ICONEXCLAMATION); return end
       unless entry.include?(hp_str) # replace this entry when the HP value is incorrect
         entry[numindex, $1.size] = hp_str
-        SendMessage.call_r($hWndListBox, LB_DELETESTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], nil)
-        SendMessage.call_r($hWndListBox, LB_INSERTSTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], entry)
+        SendMessage.call_r2($hWndListBox, LB_DELETESTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], nil)
+        SendMessage.call_r2($hWndListBox, LB_INSERTSTRING, LISTBOX2_2NDMAGICIAN_DIALOG_ID[i], entry)
       end
     end
     return true

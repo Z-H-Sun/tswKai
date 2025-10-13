@@ -69,18 +69,65 @@ ShowScrollBar = API.new('ShowScrollBar', 'LII', 'L', 'user32')
 SB_BOTH = 3
 
 class TSWQuitedError < TSWKaiError
+# raised when TSW is quited while console is active; tells the CLI loop to break
 end
 
 class Console
+# The Console class provides an interface for managing and interacting with a Windows console window (see details for each method below),
+# including input handling, output formatting, window manipulation, and sound effects via MIDI (`SoundEffect` subclass).
+
   class STDINTimeoutError < TSWKaiError
+  # raised when no key is pressed within the timeout period; tells the CLI loop to continue
   end
   class STDINCancelError < TSWKaiError # arrow key pressed
+  # raised when an arrow key is pressed; tells the CLI loop to cancel current action and return to main menu. The virtual key code of the specific arrow key pressed is stored in `#arrow` attribute of the exception object
     attr_reader :arrow
     def initialize(msg) # raise(STDINCancelError, <arrow>)
       @arrow = msg
       super(nil)
     end
   end
+
+# Instance Variables of ::Console class:
+# - @hConIn [Readable]: Handle to the console input buffer.
+# - @hConOut [Readable]: Handle to the console output buffer.
+# - @hConWin [Readable]: Handle to the console window.
+# - @conWidth [Readable]: Number of the console screen columns.
+# - @conHeight [Readable]: Number of the console screen rows.
+# - @need_free [Readable/Writable]: Flag indicating if `FreeConsole` should be called when the program exits.
+# - @active [Readable/Writable]: Flag indicating if the console is shown.
+
+# Instance Methods of ::Console class:
+# - ::new(conWidth=60, conHeight=16): Initializes the console window with default properties. `conWidth` and `conHeight` specify the desired console dimensions (default 60x16), but they will only change the initial values of @conWidth and @conHeight instance variables but will not affect the actual console size, so `resize` needs to be called explicitly after initialization.
+# - #===(activated): Checks if the console is shown. Ex:
+#   - $console === true: Returns `true` only if the console is currently shown; `false` if the console is hidden or not initialized (nil).
+#   - $console === false: Returns `true` only if the console is currently hidden; `false` if the console is shown or not initialized (nil).
+#   - $console === nil: Returns `false` only if the console is currently shown; `true` if the console is hidden or not initialized (nil).
+# - #switchLang(): According to the current state of `$isCHN`, resets interface output modes to Chinese or English (for Chinese mode, use the "W" (Unicode) versions of functions; for English mode, use the "A" (ANSI) functions). Returns `true` if the language has changed and the interface needs to be reloaded; `false` otherwise.
+# - #setConWinProp(): Sets console window properties, including title and style.
+# - #resize(w, h): Resizes the console buffer and window size to `w` x `h`. If resizing fails (returns `false` or `nil`), a message box is shown to inform the user. Returns:
+#   - `0` if no resizing needed because the old size is the same as the new size;
+#   - `1` if fully successful;
+#   - `false` if the requested window size exceeds the maximum allowed size on the screen, although the buffer size is set successfully.
+#   - `nil` if any error occurs during resizing.
+# - #show(active [Boolean], tswActive=true [Boolean]): Shows or hides the console window (according to `active`); manages focus and window position / state. By default, additional operations are necessary to coordinate with TSW, but if `tswActive` is set to `false`, it indicates that TSW has already quitted, so no further operations involving TSW should be performed. Returns `true` if the operation is successful; `false` if the operation is unnecessary (e.g., trying to show an already shown console); `nil` if TSW is running with an active child window so the operation fails.
+# - #title(title, *argv): Sets the console window title, using ANSI (`SetConsoleTitleA`) or Unicode (`SetConsoleTitleW`) based on the current language mode. The title string is formatted as `title % argv`.
+# - #gets(strip=true): Reads a line of input from the console.
+# - #print(s, *argv): Prints the formatted text `s % argv` (`s` will be converted to a String if it is not) to the console at the current cursor position, using ANSI (`WriteConsoleA`) or Unicode (`WriteConsoleW`) based on the current language mode.
+# - #p_rect(x, y, w, h, str, attr): Prints a rectangle of text `str` at a specific position with a given style `attr`, using low-level console output functions.
+# - #cls(clearAttr=true): Clears the console screen and moves the cursor to the top left. Attributes are reset to normal style by default, but can be skipped by setting `clearAttr` to `false`.
+# - #cls_pos(x, y, len, clearAttr=true): Clears a specific area of the console screen, defined by the coordinate (x and y) and length (len). Attributes are reset to normal style by default, but can be skipped by setting `clearAttr` to `false`.
+# - #cursor(x, y): Sets the current cursor position.
+# - #get_cursor(): Gets the current cursor position.
+# - #show_cursor(visible, size=100): Shows or hides the cursor and sets the cursor size.
+# - #attr(attribute): Sets the current console text attribute (Only affects `print`; low-level print functions like `print_pos` won't be affected).
+# - #fprint(attribute, s, *argv): Prints text `s` at the current cursor position using the specified attribute. (The string is formatted as `s % argv` like above.)
+# - #print_pos(x, y, s, *argv): Prints text `s` at a specific position (`x`, `y`), using ANSI (`WriteConsoleA`) or Unicode (`WriteConsoleW`) based on the current language mode. This low-level print function won't be affected by the current console text attribute (`#attr`), but can be used in conjunction with `#attr_pos` to set the attribute for the specific position.
+# - #attr_pos(x, y, attribute, len): Sets the console text attribute for a specific area defined by the coordinate (`x`, `y`) and length (`len`).
+# - #pause(prompt=nil): Blocks the current thread until a single key press is read from the console. `prompt` can be optionally provided to display a message printed in the console.
+# - #choice(choices, beepOnEnd=true, allowESC=true): Reads a single key press from a set of allowed key choices; disallowed keys will be rejected (and will trigger an error beep) until a valid key is pressed. If `beepOnEnd` is `true`, a beep sound is played when the input is completed. If `allowESC` is `true`, pressing the ESC/ENTER/SPACE key will return -1 to indicate cancellation. Otherwise, the return value is the index of the selected choice.
+# - #get_num(digits): Prompts for numeric input with a specified number of digits. If the pressed keystroke is not a valid number 0-9, an error beep is played, and the process won't finish until either the number of digits of the input value reaches `digits`, or the user confirms the current input value by pressing ENTER/SPACE. A beep sound is played when the input is completed. If the BACKSPACE key is pressed, the last digit will be removed. Pressing the ESC key will return -1 to indicate cancellation. Otherwise, the return value is the entered numeric value.
+# - #beep(msg=MB_ICONASTERISK): Plays a system beep sound.
 
   attr_reader :hConIn
   attr_reader :hConOut
@@ -143,7 +190,7 @@ class Console
     hConMenu = GetSystemMenu.call(@hConWin, 0)
     DeleteMenu.call(hConMenu, SC_CLOSE, 0) # disable close (For Windows XP and 7, graying out the close sysmenu of a console window by using EnableMenuItem can be counteracted by the system! DeleteMenu is safer)
     SetWindowLong.call(@hConWin, GWL_HWNDOWNER, $hWndTApp) # make TSW the owner of the console window so the console can be hidden from the taskbar (caveat: XP won't work for console win)
-# note: this will be executed everytime the console window is shown, which can revert the effect of `SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)` in Line 198
+# note: this will be executed everytime the console window is shown, which can revert the effect of `SetWindowLong.call(@hConWin, GWL_HWNDOWNER, 0)` in the `show(false)` method below
 # also, I tried setting the owner window to $hWndDialogParent, but then the app will easily freeze, maybe because potential conflicts with the current message loop? So $hWndTApp is the next available convenient owner
     SetWindowLong.call(@hConWin, GWL_EXSTYLE, exstl & ~ WS_EX_APPWINDOW) # hide from taskbar for owned window (caveat: XP won't work for console win)
     SetWindowLong.call(@hConWin, GWL_STYLE, stl & ~ WS_ALLRESIZE) # disable resize/maximize/minimize (caveat: XP won't work for console win)
@@ -152,17 +199,18 @@ class Console
 # this implementation of this function is through reverse engineering Windows OS' `mode.com` and `ulib.dll`
 # mode.com#main -> GetRequest -> ConLine -> ConRc -> MakeRequest --> ConHandler -> ConSetRolCol --> ulib.com#ChangeScreenSize
 # see also: https://github.com/tongzx/nt5src/blob/master/Source/XPSP1/NT/base/fs/utils/ulib/src/screen.cxx#L211-L375
+    return_val = 0
     GetConsoleScreenBufferInfo.call_r(@hConOut, $buf)
     b_w, b_h, c_x, c_y, a, w_l, w_t, w_r, w_b, max_w_w, max_w_h = $buf.unpack('s11')
     w_w = w_r - w_l + 1
     w_h = w_b - w_t + 1
     return 0 if w_w == w and w_h == h and b_w == w and b_h == h
 
+    return_val = nil
     coord = GetLargestConsoleWindowSize.call(@hConOut)
     return if coord.zero? # for legacy console, this call (as well as SetConsoleWindowInfo/SetConsoleScreenBufferSize) may fail in the full screen mode, and GetLastError will return ERROR_FULLSCREEN_MODE, but there's nothing we can do about it
     max_s_w = coord & 0xFFFF
     max_s_h = coord >> 16 & 0xFFFF
-    @conWidth = w; @conHeight = h # update class variables
 
     if (w < w_w) or (h < w_h) # If the desired window size is smaller than the current window size, we have to resize the current window first. (The buffer size cannot be smaller than the window size)
       max_w = [w, b_w, max_s_w].min
@@ -170,9 +218,17 @@ class Console
       return if SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, max_w-1, max_h-1].pack('S4')).zero? # -1 is necessary because the last row/col is included
     end
     return if SetConsoleScreenBufferSize.call(@hConOut, packS2(w, h)).zero?
-    w = max_s_w if w > max_s_w
-    h = max_s_h if h > max_s_h
-    return !SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, w-1, h-1].pack('S4')).zero?
+    # update class variables
+    @conWidth = w
+    @conHeight = h
+    @conSize = w*h
+    return_val = 1 # 1=fully success
+    if w > max_s_w then w = max_s_w; return_val = false end # false=partially success (screen size is not big enough to accommodate the desired console size)
+    if h > max_s_h then h = max_s_h; return_val = false end
+    return if SetConsoleWindowInfo.call(@hConOut, 1, [0, 0, w-1, h-1].pack('S4')).zero?
+    return return_val
+  ensure
+    msgboxTxt(49, MB_ICONEXCLAMATION) unless return_val
   end
   def show(active, tswActive=true) # active=true/false : show/hide console window; tswActive: if TSW is still running, determining whether to do further operations
     return false if self === active
@@ -243,8 +299,9 @@ class Console
     cursor(0, 0)
   end
   def cls_pos(x, y, len, clearAttr=true)
-    FillConsoleOutputCharacter.call_r(@hConOut, VK_SPACE, len, packS2(x, y), $bufDWORD)
-    FillConsoleOutputAttribute.call_r(@hConOut, STYLE_NORMAL, len, packS2(x, y), $bufDWORD) if clearAttr
+    pos = packS2(x, y)
+    FillConsoleOutputCharacter.call_r(@hConOut, VK_SPACE, len, pos, $bufDWORD)
+    FillConsoleOutputAttribute.call_r(@hConOut, STYLE_NORMAL, len, pos, $bufDWORD) if clearAttr
   end
   def cursor(x, y)
     SetConsoleCursorPosition.call_r(@hConOut, packS2(x, y))
@@ -349,7 +406,7 @@ class Console
     return s % argv
   end
   def get_input(timeout=-1) # -1 means no timeout
-    case MsgWaitForMultipleObjects.call_r(2, $bufHWait, 0, timeout, QS_HOTKEY | QS_POSTMESSAGE)
+    case MsgWaitForMultipleObjects.call_r1(2, $bufHWait, 0, timeout, QS_HOTKEY | QS_POSTMESSAGE)
     when 0 # TSW has quitted
       raise TSWQuitedError
     when 1 # console input

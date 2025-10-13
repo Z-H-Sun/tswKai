@@ -3,6 +3,7 @@
 # CHN strings encoding is GBK
 
 module Str
+# Supplementary Strings used in this app. Because TSW uses the "A" (ANSI) version of Windows API, meaning that strings are encoded in the system's default codepage (e.g., GBK for Simplified Chinese Windows), we need to provide GBK-encoded strings here for Chinese TSW games. These include some texts used in the SL module, which involve direct assembly-level patching of TSW code; as well as some Mod module checks, because the string in the TSW memory (in ANSI encoding) needs to be displayed. In addition, some Ruby traceback error messages are also included here, for low-version Ruby (e.g., 1.8) which does not support Unicode in exception messages
   OFFSET_TTSW10_TITLE_STR = 0x88E74
   APP_TARGET_VERSION = '1.2'
   module StrEN

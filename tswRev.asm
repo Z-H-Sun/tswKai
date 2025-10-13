@@ -501,14 +501,41 @@ BASE:24114		;lea edx, [ebp-0101]	; original bytes: from filename
 		TApplication.Create	endp
 
 
-BASE:172C0	; first byte=length; followed by string
-		; Referenced by THintWindow.Create @ BASE:17284
-		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
-		07, 'Verdana'	; patched bytes: English Ver, or
-		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
-	; ...
+BASE:17208	THintWindow.Create	proc near
+		; change popup tooltips' font
+		; originally, will use the system font; now will use the specified program default font
+		; ...
+BASE:17243		push 0	; fWinIni
+BASE:17245		lea eax, [ebp-0158]	; buffer space for NONCLIENTMETRICSA structure
+BASE:1724B		push eax	; pvParam
+BASE:1724C		push 0	; uiParam
+BASE:1724E		push 29	; uiAction=SPI_GETNONCLIENTMETRICS [in order to get system tooltip font]
+BASE:17250		call BASE:0522C	; user32.SystemParametersInfoA
+BASE:17255		test eax, eax	; whether the above call succeeds [i.e., system tooltip font is obtained]
+
+BASE:17257		;je loc_manual_tooltip_font	; original bytes: only if cannot get system tooltip font, set the font manually
+			jmp loc_manual_tooltip_font	; patched bytes: do not use the system tooltip font; always use the custom font
+
+BASE:17259		mov esi, [ebx+0100]	; THintWindow.??? structure
+BASE:1725F		lea eax, [ebp-7C]	; NONCLIENTMETRICSA.lfStatusFont (system status bar / tooltips font)
+BASE:17262		push eax	; LOGFONTA
+BASE:17263		call BASE:04C94	; gdi32.CreateFontIndirectA
+		; ...
+BASE:1727E	loc_manual_tooltip_font:
+			mov esi, [ebx+0100]	; THintWindow.??? structure
+
+BASE:17284		;mov edx, offset BASE:172C0	; original bytes; points to a pascal string (first byte=length; followed by string): 0F, 'ＭＳ Ｐゴシック' (Code Page 932 (Shift-JIS))
+			mov edx, offset BASE:894A6	; patched bytes; point to the program default font (see comments below)
+
+BASE:17289		mov eax, [esi+0C]
+BASE:1728C		call BASE:19DEC	; TFont.SetName
+		; ...
+BASE:172BF	THintWindow.Create	endp
+BASE:172C0	db 0F, 'ＭＳ Ｐゴシック'	; Code Page 932 (Shift-JIS)
+
 BASE:894A6	; first byte=length; followed by string
-		; likely part of the structure @ BASE:8949C, referenced by TFont.Create and TFont.SetHandle
+		; part of the TFontData(legacy) structure @ BASE:8949C, referenced by TFont.Create and TFont.SetHandle
+		; TFontData(legacy) (44 bytes): {(+0)DWORD handle; (+4)DWORD Height; (+8)BYTE Pitch; (+9)BYTE Style(1/2/4/8=Bold/Italic/Underline/Deleteline); (+A)struct PascalString {BYTE StringLen; BYTE String[StringLen+1]} Name(at most 32 bytes)}
 		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
 		07, 'Verdana'	; patched bytes: English Ver, or
 		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
@@ -522,7 +549,7 @@ BASE:894A6	; first byte=length; followed by string
 		; Therefore, I will do the following two changes here:
 		; * Sleep several milliseconds before drawing the next frame to make the transition animation appear more natural without noticeable lag (which also requires less CPU usage)
 		; * Cut down the number of interpolation frames to 4, because as discussed above, only 4 of them are useful (i.e., different from other bitmaps)
-		
+
 BASE:4C04C	TTSW10.idou	proc near	; rōmaji of 移動; movement; of hero
 		; ...
 BASE:4C0CD		mov eax, [ebx+0254]	; TTSW10.Image6: TImage (icon for OrbOfHero)
@@ -1293,7 +1320,7 @@ BASE:60C0F	; ...
 BASE:60C63	; Up key pressed ([esi]==0x26)
 			mov eax, [ebx+03F8]	; TTSW10.Image22:TImage
 BASE:60C69		cmp byte ptr [eax+37], 0	; checks if you are choosing an item
-BASE:60C6D		jne BASE:60CB8	; if so, arrow keys are used to select an item to use
+BASE:60C6D		jne BASE:60CBB	; if so, arrow keys are used to select an item to use
 BASE:60C6F	; original bytes:
 		; ...
 		; briefly, these codes make "hero move left," which is more or less the same with TTSW10.BitBtn1Click, so we can reuse that subroutine to save space here

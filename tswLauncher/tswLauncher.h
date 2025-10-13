@@ -1,12 +1,34 @@
-// encoding: GBK
+#ifdef _WIN64
+#error Must use 32-bit C compiler!
+#endif
+#define WT(text) __WT(text) // convert to wide char unicode string
+#define __WT(text) L##text
+#define STRINGIFY(x) __S(x) // convert number to text
+#define __S(x) #x
+
+#include "msg.h"
 #define APP_TITLE "tswLauncher"
-#define APP_TITLE_CN "ƒßÀ˛∆Ù∂Ø∆˜"
-#define APP_VERSION 1,0,0,0
-#define APP_VERSION_STR "v1.0"
+#define APP_TITLE_CN "È≠îÂ°îÂêØÂä®Âô®"
+#define APP_CONF_TITLE TARGET_TITLE " Game Executable Patch Configuration"
+#define APP_CONF_TITLE_CN TARGET_TITLE_CN "Á®ãÂ∫è‰øÆÊ≠£ÈÖçÁΩÆ"
+#define APP_VERSION_MAJOR 3
+#define APP_VERSION_MINOR 0
+#define APP_VERSION APP_VERSION_MAJOR,APP_VERSION_MINOR,0,0
+#define APP_VERSION_STR "v" STRINGIFY(APP_VERSION_MAJOR) "." STRINGIFY(APP_VERSION_MINOR)
 #define APP_MUTEX APP_TITLE "_MuTeX"
 #define APP_MUTEX_BUFSIZE sizeof(MUTEXINFO)
-#define TARGET_TITLE "TSW"
-#define TARGET_TITLE_CN "ƒßÀ˛"
+#define TARGET_SIGNATURE "Tower of the Sorcerer"
+#define TARGET_SIGNATURE_CN "\xC4\xA7\xCB\xFE" // "È≠îÂ°î", GBK encoded
+#define TARGET_VERSION_STR "1.2"
+#define TARGET_RUN is_chinese ? L"ËøêË°å" : L"run"
+#define TARGET_CONFIG is_chinese ? L"ÈÖçÁΩÆ" : L"configure"
+#define TARGET_CLS_NAME "TTSW10"
+#define TARGET_EXE_1 "TSW.exe"
+#define TARGET_EXE_2 "TSW.EN.exe"
+#define TARGET_EXE_3 "TSW.CN.exe"
+#define TARGET_EXE_4 "TSW.CNJP.exe"
+#define TITLE_SEPARATOR " - "
+#define FONT_LIST_SEPARATOR "---"
 #define TARGET_PTR_LEN sizeof(DWORD)
 #define TARGET_BASE_ADDR 0x400000
 #define TARGET_HWND_OFFSET 0xC0
@@ -14,52 +36,180 @@
 #define TARGET_STATUS_ADDR (TARGET_BASE_ADDR + 0x0B8688)
 #define TARGET_WAIT_CYCLES 20
 #define TARGET_WAIT_INTERVAL 200
+
 #define IDI_APP 1
+#define IDI_OPEN 101
+#define IDI_MGRT 102
+#define IDI_INIT 103
+#define IDI_CONF 104
+
 #define IDD_APP 1
+#define IDD_CONFIG 2
+#define IDC_STATIC (-1)
+
 #define IDS_TITLE 1
-#define IDS_ENTRY1 101
-#define IDS_ENTRY2 102
-#define IDS_ENTRY3 103
-#define IDS_ENTRY4 104
-#define IDS_TIP1 201
-#define IDS_TIP2 202
-#define IDS_TIP3 203
-#define IDS_ERR1 301
-#define IDS_ERR2 302
-#define IDS_ERR3 303
-#define IDS_ERR4 304
-#define IDS_ERR5 305
-#define IDS_ERR6 306
-#define IDS_ERR7 307
-#define IDS_ERR8 308
-#define IDS_ERR9 309
-#define IDS_ERRA 310
-#define IDS_ERRB 311
-#define IDS_ERRC 312
-#define IDS_ERRD 313
-#define IDC_TYPE 101
-#define IDC_OPEN 102
-#define IDC_INIT 103
+#define IDS_CONF_TITLE 2
+#define IDS_ENTRY_TYPE_BEGIN 101
+#define IDS_ENTRY_TYPE_CUSTOM IDS_ENTRY_TYPE_BEGIN
+#define IDS_ENTRY_TYPE_EN (IDS_ENTRY_TYPE_BEGIN+1)
+#define IDS_ENTRY_TYPE_BEGIN_2 IDS_ENTRY_TYPE_EN // IDS_ENTRY_TYPE_CUSTOM will not be in the dropdown list
+#define IDS_ENTRY_TYPE_EN_REV (IDS_ENTRY_TYPE_BEGIN+2)
+#define IDS_ENTRY_TYPE_CN (IDS_ENTRY_TYPE_BEGIN+3)
+#define IDS_ENTRY_TYPE_CN_REV (IDS_ENTRY_TYPE_BEGIN+4)
+#define IDS_ENTRY_TYPE_END IDS_ENTRY_TYPE_CN_REV
+#define IDS_TIP_BEGIN 201
+#define IDS_TIP_TYPE IDS_TIP_BEGIN
+#define IDS_TIP_OPEN (IDS_TIP_BEGIN+1)
+#define IDS_TIP_MGRT (IDS_TIP_BEGIN+2)
+#define IDS_TIP_INIT (IDS_TIP_BEGIN+3)
+#define IDS_TIP_CONF (IDS_TIP_BEGIN+4)
+#define IDS_TIP_CONF_BEGIN 401
+#define IDS_TIP_(x) IDC_CONF_##x - IDC_CONF_BEGIN + IDS_TIP_CONF_BEGIN
+#define IDS_TIP_BUTTON_OK_2 499
+
+#define IDC_BEGIN 101
+#define IDC_TYPE IDC_BEGIN
+#define IDC_OPEN (IDC_BEGIN+1)
+#define IDC_MGRT (IDC_BEGIN+2)
+#define IDC_INIT (IDC_BEGIN+3)
+#define IDC_CONF (IDC_BEGIN+4)
+#define IDC_END IDC_CONF
+#define IDC_PROGRESS 199
+
+#define IDC_CONF_BEGIN 801
+#define IDC_CONF_STATIC_FONT IDC_CONF_BEGIN
+#define IDC_CONF_STATIC_INTV (IDC_CONF_BEGIN+1)
+#define IDC_CONF_STATIC_TILE (IDC_CONF_BEGIN+2)
+#define IDC_CONF_STATIC_EVENT (IDC_CONF_BEGIN+3)
+#define IDC_CONF_STATIC_HIGH (IDC_CONF_BEGIN+4)
+#define IDC_CONF_STATIC_MID (IDC_CONF_BEGIN+5)
+#define IDC_CONF_STATIC_LOW (IDC_CONF_BEGIN+6)
+#define IDC_CONF_BUTTON_BEGIN (IDC_CONF_BEGIN+7)
+#define IDC_CONF_BUTTON_OK IDC_CONF_BUTTON_BEGIN
+#define IDC_CONF_BUTTON_MORE (IDC_CONF_BUTTON_BEGIN+1)
+#define IDC_CONF_BUTTON_EXE_MORE (IDC_CONF_BUTTON_BEGIN+2)
+#define IDC_CONF_BUTTON_END IDC_CONF_BUTTON_EXE_MORE
+#define IDC_CONF_EDIT_EXE_NAME (IDC_CONF_BUTTON_END+1)
+
+#define IDC_CONF_CHECK_BEGIN (IDC_CONF_BUTTON_END+2)
+#define IDC_CONF_CHECK_MISOP IDC_CONF_CHECK_BEGIN
+#define IDC_CONF_CHECK_SUPER (IDC_CONF_CHECK_BEGIN+1)
+#define IDC_CONF_CHECK_BEGIN_2 IDC_CONF_CHECK_SUPER // IDC_CONF_CHECK_MISOP will be set separately
+#define IDC_CONF_CHECK_PROLOG (IDC_CONF_CHECK_BEGIN+2)
+#define IDC_CONF_CHECK_MOVE (IDC_CONF_CHECK_BEGIN+3)
+#define IDC_CONF_CHECK_BATTLE (IDC_CONF_CHECK_BEGIN+4)
+#define IDC_CONF_CHECK_STAIR (IDC_CONF_CHECK_BEGIN+5)
+#define IDC_CONF_CHECK_DOOR (IDC_CONF_CHECK_BEGIN+6)
+#define IDC_CONF_CHECK_KEYBD (IDC_CONF_CHECK_BEGIN+7)
+#define IDC_CONF_CHECK_WINDOW (IDC_CONF_CHECK_BEGIN+8)
+#define IDC_CONF_CHECK_33F (IDC_CONF_CHECK_BEGIN+9)
+#define IDC_CONF_CHECK_40F (IDC_CONF_CHECK_BEGIN+10)
+#define IDC_CONF_CHECK_GOLD (IDC_CONF_CHECK_BEGIN+11)
+#define IDC_CONF_CHECK_49F (IDC_CONF_CHECK_BEGIN+12)
+#define IDC_CONF_CHECK_LOAD (IDC_CONF_CHECK_BEGIN+13)
+#define IDC_CONF_CHECK_SE (IDC_CONF_CHECK_BEGIN+14)
+#define IDC_CONF_CHECK_BGM (IDC_CONF_CHECK_BEGIN+15)
+#define IDC_CONF_CHECK_END IDC_CONF_CHECK_BGM
+
+#define IDC_CONF_COMBO_FONT (IDC_CONF_CHECK_END+1)
+#define IDC_CONF_STATIC_BUG (IDC_CONF_CHECK_END+2)
+#define IDC_CONF_EDIT_TILE_SUP (IDC_CONF_CHECK_END+3) // this two controls are ...
+#define IDC_CONF_SPIN_TILE_SUP (IDC_CONF_CHECK_END+4) // ... always disabled and not responsive
+#define IDC_CONF_NUM_BEGIN IDC_CONF_SPIN_TILE_SUP
+#define IDC_CONF_SPIN_BEGIN IDC_CONF_SPIN_TILE_SUP
+#define IDC_CONF_SPIN_BEGIN_2 (IDC_CONF_SPIN_BEGIN+1) // IDC_CONF_SPIN_TILE_SUP is disabled
+#define IDC_CONF_SPIN_TILE_HIGH IDC_CONF_SPIN_BEGIN_2
+#define IDC_CONF_SPIN_TILE_MID (IDC_CONF_SPIN_BEGIN_2+1)
+#define IDC_CONF_SPIN_TILE_LOW (IDC_CONF_SPIN_BEGIN_2+2)
+#define IDC_CONF_SPIN_EVENT_SUP (IDC_CONF_SPIN_BEGIN_2+3)
+#define IDC_CONF_SPIN_EVENT_HIGH (IDC_CONF_SPIN_BEGIN_2+4)
+#define IDC_CONF_SPIN_EVENT_MID (IDC_CONF_SPIN_BEGIN_2+5)
+#define IDC_CONF_SPIN_EVENT_LOW (IDC_CONF_SPIN_BEGIN_2+6)
+#define IDC_CONF_SPIN_MOVE_SUP (IDC_CONF_SPIN_BEGIN_2+7)
+#define IDC_CONF_SPIN_MOVE_HIGH (IDC_CONF_SPIN_BEGIN_2+8)
+#define IDC_CONF_SPIN_MOVE_MID (IDC_CONF_SPIN_BEGIN_2+9)
+#define IDC_CONF_SPIN_MOVE_LOW (IDC_CONF_SPIN_BEGIN_2+10)
+#define IDC_CONF_SPIN_KEYBD_SUP (IDC_CONF_SPIN_BEGIN_2+11)
+#define IDC_CONF_SPIN_KEYBD_HIGH (IDC_CONF_SPIN_BEGIN_2+12)
+#define IDC_CONF_SPIN_KEYBD_MID (IDC_CONF_SPIN_BEGIN_2+13)
+#define IDC_CONF_SPIN_KEYBD_LOW (IDC_CONF_SPIN_BEGIN_2+14)
+#define IDC_CONF_SPIN_END IDC_CONF_SPIN_KEYBD_LOW
+#define IDC_CONF_SLIDER_BEGIN (IDC_CONF_SPIN_END+1)
+#define IDC_CONF_SLIDER_MISOP_SUP IDC_CONF_SLIDER_BEGIN
+#define IDC_CONF_SLIDER_MISOP_HIGH (IDC_CONF_SLIDER_BEGIN+1)
+#define IDC_CONF_SLIDER_MISOP_MID (IDC_CONF_SLIDER_BEGIN+2)
+#define IDC_CONF_SLIDER_MISOP_LOW (IDC_CONF_SLIDER_BEGIN+3)
+#define IDC_CONF_SLIDER_END IDC_CONF_SLIDER_MISOP_LOW
+#define IDC_CONF_NUM_END IDC_CONF_SLIDER_END
+
+#define IDC_CONF_EDIT_BEGIN_2 (IDC_CONF_NUM_END+1) // IDC_CONF_EDIT_TILE_SUP is disabled
+#define IDC_CONF_EDIT_TILE_HIGH IDC_CONF_EDIT_BEGIN_2
+#define IDC_CONF_EDIT_TILE_MID (IDC_CONF_EDIT_BEGIN_2+1)
+#define IDC_CONF_EDIT_TILE_LOW (IDC_CONF_EDIT_BEGIN_2+2)
+#define IDC_CONF_EDIT_EVENT_SUP (IDC_CONF_EDIT_BEGIN_2+3)
+#define IDC_CONF_EDIT_EVENT_HIGH (IDC_CONF_EDIT_BEGIN_2+4)
+#define IDC_CONF_EDIT_EVENT_MID (IDC_CONF_EDIT_BEGIN_2+5)
+#define IDC_CONF_EDIT_EVENT_LOW (IDC_CONF_EDIT_BEGIN_2+6)
+#define IDC_CONF_EDIT_MOVE_SUP (IDC_CONF_EDIT_BEGIN_2+7)
+#define IDC_CONF_EDIT_MOVE_HIGH (IDC_CONF_EDIT_BEGIN_2+8)
+#define IDC_CONF_EDIT_MOVE_MID (IDC_CONF_EDIT_BEGIN_2+9)
+#define IDC_CONF_EDIT_MOVE_LOW (IDC_CONF_EDIT_BEGIN_2+10)
+#define IDC_CONF_EDIT_KEYBD_SUP (IDC_CONF_EDIT_BEGIN_2+11)
+#define IDC_CONF_EDIT_KEYBD_HIGH (IDC_CONF_EDIT_BEGIN_2+12)
+#define IDC_CONF_EDIT_KEYBD_MID (IDC_CONF_EDIT_BEGIN_2+13)
+#define IDC_CONF_EDIT_KEYBD_LOW (IDC_CONF_EDIT_BEGIN_2+14)
+#define IDC_CONF_EDIT_END IDC_CONF_EDIT_KEYBD_LOW
+#define IDC_CONF_END IDC_CONF_EDIT_END
+
 #define IDM_MANIFEST 1
 #define DLG_FONT_SIZE 9
-#define DAT_DIR "\\Savedat"
-#define TSW_DIR "\\TSW1.2r1"
-#define TSW_EXE {"\\TSW.exe", "\\TSW.EN.exe", "\\TSW.CN.exe", "\\TSW.CNJP.exe"}
-#define TSW_INI "\\TSW12.INI"
-#define TSW_INI_BAK "\\TSW12.BAK.INI"
-#define TSW_CLS "TTSW10"
 
-#define WINVER 0x0500 // minimum windows 2000
-#define _WIN32_IE 0x0500 // minimal version 5.8 for common control
+#define WM_MIGRATE WM_APP+0
+#define WM_SHOWMSGBOX WM_APP+1
+#define WM_SAVECONFIG WM_APP+2
+
+#define CP_SHIFTJIS 932
+#define CP_GB2312 936
+
+#define WINVER 0x0501 // minimum windows xp
+#define _WIN32_IE 0x0600 // minimal version 6.0 for common control
+#undef UNICODE // must use ASNI code page to read/write TSW.INI file, because TSW is not unicode-compatible
 #include <windows.h>
 #include <commctrl.h>
+// in case the marquee progress bar style is not defined
+#ifndef PBS_MARQUEE
+#define PBS_MARQUEE 0x8
+#endif
+#ifndef PBM_SETMARQUEE
+#define PBM_SETMARQUEE (WM_USER+10)
+#endif
+// in case the trackbar styles are not defined
+#ifndef TBS_TOOLTIPS
+#define TBS_TOOLTIPS 0x100
+#endif
+#ifndef TBS_NOTIFYBEFOREMOVE
+#define TBS_NOTIFYBEFOREMOVE 0x800
+#endif
 
 #include <stdio.h>
 #include <stdint.h>
+#include <wchar.h>
 
-int msgbox(unsigned int uType, unsigned int uID, ...);
+int msgbox(HWND hwnd, unsigned int uType, unsigned int uID, ...);
 void centerTSW(HWND hwndTSW);
 void safe_exit(int status);
 void init_path();
+BOOL migrate_data();
 BOOL delete_ini();
 BOOL launch_tsw(int type);
+
+// for gui.c
+#define SetFocusedItemAsync(id) PostMessageW(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd, id), TRUE) // set focus; ref: https://devblogs.microsoft.com/oldnewthing/20040802-00/?p=38283
+#define SetFocusedItemSync(id) SendMessageW(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd, id), TRUE) // this will cause the thread to wait until the set-focus message is processed
+#define GetUpdownVal(id) SendDlgItemMessageW(hwnd, id, UDM_GETPOS32, 0, (LPARAM)NULL)
+#define SetUpdownVal(id, val) SendDlgItemMessageW(hwnd, id, UDM_SETPOS32, 0, (LPARAM)(val))
+#define GetTrackbarVal(id) SendDlgItemMessageW(hwnd, id, TBM_GETPOS, 0, 0)
+#define SetTrackbarVal(id, val) SendDlgItemMessageW(hwnd, id, TBM_SETPOS, TRUE, (LPARAM)(val))
+#define GetComboboxVal(id) SendDlgItemMessageW(hwnd, id, CB_GETCURSEL, 0, 0)
+#define SetComboboxVal(id, val) SendDlgItemMessageW(hwnd, id, CB_SETCURSEL, (WPARAM)(val), 0)
+#define EnableItem(id, state) EnableWindow(GetDlgItem(hwnd, id), state)

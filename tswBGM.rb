@@ -31,9 +31,22 @@ BGM_DIRNAME = 'BGM' # the folder that contains the mp3 BGM files
 BGM_FADE_STEPS = 10 # fade out BGM in 10 steps; 1 means no fading out effect
 BGM_FADE_INTERVAL = 150 # each step takes 150 ms
 
-$BGMtakeOver = true
+$BGMtakeOver = true # whether to take over and improve BGM functions of TSW
 
 module BGM
+# This module provides functionality for patching and controlling background music (BGM) functions in the TSW game.
+
+# Module Functions:
+# - bgm_path: Returns the current BGM directory path.
+# - _bgm_filename: Returns the memory address of the current BGM filename (including the entire path).
+# - _bgm_basename: Returns the memory address of the current BGM filename (without the path).
+# - init: Initializes the BGM component, resolves the BGM path, checks file existence, and injects custom assembly routines into TSW.
+# - takeOverBGM(bEnable [Boolean]): Applies or reverts all memory patches for taking over the BGM functions. If enabled, it also calls the sub_initBGM routine; if disabled, it finalizes and cleans up BGM state.
+
+# Usage:
+# - Call BGM.init at the beginning of the tswKai3 program.
+# - Use BGM.takeOverBGM(true) to enable advanced BGM control, or BGM.takeOverBGM(false) to revert patches and use TSW's own BGM functions.
+
   MCI_CLOSE = 0x804
   MCI_SETAUDIO = 0x873
   MCI_DGV_SETAUDIO_VOLUME = 0x4002
@@ -177,7 +190,6 @@ module BGM
     @_sub_resetTTimer4 = $lpNewAddr + 0xd0c
     @_sub_initBGM = $lpNewAddr + 0xd38
     @_sub_finalizeBGM = $lpNewAddr + 0xd90
-    @_sub_save_excludeBGM = $lpNewAddr + 0xdd8
 
     injBuf = bgm_filename.ljust(MAX_PATH, "\0") + BGM_PHANTOMFLOOR +
 [1, 0xff].pack('LL') + # 0B0C byte isInProlog; 0B10 byte last_bgmid
@@ -278,6 +290,7 @@ BGM_CHECK_EXT.map {|i| [0xf883, i[0], 0x75, i[7], 0xb8, 0, i[5], i[6], 0xa0,
     end
   end
   def raiseInvalDir(reason)
+  # Handles invalid BGM directory scenarios, prompting the user with a message box (text index given by `reason`) and resetting the BGM path.
     quit() if $BGMtakeOver and msgboxTxt(23, MB_ICONEXCLAMATION | MB_OKCANCEL, $str::STRINGS[reason]) == IDCANCEL
     @bgm_path = nil
   end

@@ -28,6 +28,11 @@ end
 
 module Mod
   module Static
+  # Extension to the Mod module: Provides methods for "static" checking and patching in a TSW executable file.
+  # Methods:
+  # - checkChkStates(staticIO [IO object]): Similar to `Mod.checkChkStates`, checks the current state of each patch option in the executable and updates the corresponding UI checkbox.
+  # - patch(i, staticIO [IO object]): Similar to `Mod.patch`, toggles the patch state for the specified patch with an index of `i`, writes the appropriate bytes to the binary file, and sets the corresponding checkbox UI state. Special cases for certain options (2nd round 45F merchant patch) will also be handled. Unlike `Mod.patch`, this method does not take a `s` (new state) parameter, and the state is toggled automatically.
+
     @CONmodStatus = Array.new(5) # in replacement of $CONmodStatus
     module_function
     def checkChkStates(staticIO)
@@ -62,6 +67,9 @@ module Mod
   end
 end
 def earlyQuit(staticIO=nil, quit=true)
+# If the current static patching process is going to quit early (i.e. without continuing to the normal tswKai3 flow), cleanup of resources (GDI and IO objects) is needed.
+# @param staticIO [IO, nil] The IO object to close. If nil, no action is taken.
+# @param quit [Boolean] Whether to exit the program after cleaning up resources. Defaults to true.
   DeleteObject.call($hGUIFont2)
   staticIO.close if staticIO
   exit() if quit
@@ -102,7 +110,7 @@ rescue Errno::EACCES
   $bufHWait[0, POINTER_SIZE] = shellExecuteInfoBuf[-POINTER_SIZE, POINTER_SIZE]
   MOD_ADMIN_PATCH_MSG = RegisterWindowMessage.call_r(MOD_ADMIN_PATCH_SIGNATURE)
   loop do
-    earlyQuit() if MsgWaitForMultipleObjects.call_r(1, $bufHWait, 0, -1, QS_POSTMESSAGE).zero? # admin patch subprocess exited without sending the "success" message, then exit current process too
+    earlyQuit() if MsgWaitForMultipleObjects.call_r1(1, $bufHWait, 0, -1, QS_POSTMESSAGE).zero? # admin patch subprocess exited without sending the "success" message, then exit current process too
     while !PeekMessage.call($buf, 0, 0, 0, 1).zero?
       msg = $buf.unpack(MSG_INFO_STRUCT)
       next unless msg[0] == $hWndDialog and msg[1] == MOD_ADMIN_PATCH_MSG # admin patch subprocess sent the "success" message right before exiting
@@ -116,7 +124,7 @@ rescue Errno::EACCES
   hPrc = $bufHWait.unpack(HANDLE_STRUCT)[0]
   TerminateProcess.call(hPrc, 0) # now that we have received the "success" message from the subprocess, we can safely kill it
   CloseHandle.call(hPrc)
-  $hWndDialogParent = CreateWindowEx.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # re-create the parent window
+  $hWndDialogParent = CreateWindowExW.call_r(0, DIALOG_CLASS_NAME, APP_MUTEX_TITLE, 0, 0, 0, 0, 0, 0, 0, 0, 0) # re-create the parent window
   SetWindowLong.call($hWndDialog, GWL_HWNDOWNER, $hWndDialogParent)
 rescue
   send(msgbox, 44, MB_ICONERROR)
@@ -130,7 +138,11 @@ unless delegateAdminSubproc # or else, can manage all patch-related actions with
   earlyQuit(staticIO) if msgboxTxt(46, MB_ICONASTERISK|MB_YESNO) == IDNO
   (MOD_PATCH_OPTION_COUNT...MOD_TOTAL_OPTION_COUNT).each {|i| ShowWindow.call($hWndChkBoxes[i], SW_HIDE)} # change dialog layout because the last 3 options are not meaningful in static mode
   Mod::Static.checkChkStates(staticIO)
-  Mod::MOD_PATCH_BYTES_1.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[3])} # must-do patches
+  Mod::MOD_PATCH_BYTES_1.each_with_index do |x, n| # must-do patches
+    next if $CONrevStatus[n].nil?
+    k = $CONrevStatus[n] ? 3 : 2
+    x.each {|i| staticIO.seek(i[0]+BASE_ADDRESS_STATIC); staticIO.write(i[k])}
+  end
 
   GetClientRect.call_r(GetDesktopWindow.call(), $buf).zero? # center dialog on screen
   w, h = $buf[8, 8].unpack('ll')
