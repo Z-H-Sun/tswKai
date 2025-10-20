@@ -318,10 +318,8 @@ static BOOL wait_read_mem_dword(PROCESS_INFORMATION *p_pi, LPCVOID lpAddr, void 
 
 BOOL launch_tsw(int type) { // launches the TSW executable of the specified type (0-based index of the selected item in combobox), waits until the TSW game is ready (otherwise terminates it on failure), and centers the TSW window; returns TRUE if successful
   strcpy(tsw_exe_path+cur_path_len+1, tsw_exe[type]);
-  STARTUPINFO si = {sizeof(si)};
-  si.dwFlags = STARTF_FORCEONFEEDBACK;
   PROCESS_INFORMATION pi;
-  BOOL success = CreateProcess(tsw_exe_path, NULL, NULL, NULL, FALSE, 0, NULL, cur_path, &si, &pi);
+  BOOL success = CreateProcessLE(type, &pi);
 
   if (success) {
     MessageBeep(MB_ICONINFORMATION);

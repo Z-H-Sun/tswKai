@@ -533,7 +533,26 @@ defaultFontEntry:
           msgbox(hwnd, MB_ICONEXCLAMATION, IDS_ERR_FONT_TOO_LONG);
           goto defaultFontEntry;
         }
-        // TODO: fontName might have an alias in a different language. Check?
+        if (id == CB_ERR) { // no matching item selected, need to do further checks
+          id = isFontDefaultFont(buf);
+          if (id != CB_ERR)
+            goto equivalentFontEntry; // user typed in the default font name (in any language), so select that entry
+          val = getFontNameLang(buf, LANG_NEUTRAL, buf+LF_FACESIZE); // get font name in user's default language, stored in `buf+LF_FACESIZE` (the check above has guaranteed that `buf` has a length < LF_FACESIZE)
+          if (val == CB_ERR) { // font not found
+            if (msgbox(hwnd, MB_ICONEXCLAMATION | MB_YESNO, IDS_ERR_FONT_MISSING) == IDYES)
+              goto defaultFontEntry;
+          } else if (val) { // valid font, but user typed in a font name that is not in the list, likely an alias of the font in a different language; otherwise, val == 0 means unknown error, in which case no further action is needed
+            val = SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_FINDSTRINGEXACT, (WPARAM)-1, (LPARAM)(buf+LF_FACESIZE));
+            if (val == CB_ERR) { // rare case: font found on the system, but not in the combobox list, likely because the user chose a font that does not support the current charset
+              if (msgbox(hwnd, MB_ICONEXCLAMATION | MB_YESNO, IDS_ERR_FONT_CHARSET) == IDYES)
+                goto defaultFontEntry;
+            } else {
+              id = val;
+equivalentFontEntry:
+              SetComboboxVal(IDC_CONF_COMBO_FONT, id); // select the found entry
+            }
+          }
+        }
       //HIWORD(wparam) == CBN_SELENDOK: // user selects an item by either mouse, or by expanding the dropdown and pressing enter, or by using arrow keys without expanding the dropdown
       //HIWORD(wparam) == CBN_SELENDCANCEL: // user expands the dropdown and uses arrow keys to select an item, but does not press enter and leaves the combobox; however, in this case, the item is still selected, without triggering CBN_SELENDOK [in this case, the current selection returned by CB_GETCURSEL might be incorrect: It won't be the item shown in the associated edit box, but rather, the item that user's mouse last "touches" (not clicked, though) before CBN_SELENDCANCEL (i.e. the dropdown closes); therefore, must directly compare the text]
       } else if (readFontIndex == CB_ERR && HIWORD(wparam) == CBN_DROPDOWN) {
@@ -650,8 +669,11 @@ static LRESULT CALLBACK dialog_main_proc(HWND hwnd, UINT message, WPARAM wparam,
       }
       if (checkTSWrunning())
         return TRUE;
+      BOOL is_chinese_old = is_chinese; // below: temporarily change `is_chinese` according to selected type, but need to restore it later, so save old value
+      is_chinese = (type >= 2); // 0,1: English; 2,3: Chinese
       if (launch_tsw(type))
         EndDialog(hwnd, IDOK); // quit if successful
+      is_chinese = is_chinese_old; // restore
       return TRUE;
     case IDC_MGRT: // migrate
       if (msgbox(hwnd, MB_YESNO | MB_ICONINFORMATION, IDS_INFO_MIGRATION, data_path) == IDNO)
@@ -714,8 +736,8 @@ int main() {
   app_title[0] = (WORD)LoadStringLangW(IDS_TITLE, APP_LANGUAGE, app_title+1); // set unicode string length at the same time
 
   HRSRC hrsrc_dlg[3] = {
-    FindResourceEx(hIns, RT_DIALOG, MAKEINTRESOURCE(IDD_CONFIG), MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT)),
-    FindResourceEx(hIns, RT_DIALOG, MAKEINTRESOURCE(IDD_CONFIG), MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)),
+    FindResourceEx(hIns, RT_DIALOG, MAKEINTRESOURCE(IDD_CONFIG), ID_en_US),
+    FindResourceEx(hIns, RT_DIALOG, MAKEINTRESOURCE(IDD_CONFIG), ID_zh_CN),
     FindResourceEx(hIns, RT_DIALOG, MAKEINTRESOURCE(IDD_APP), APP_LANGUAGE)
   };
   HGLOBAL hdlg;

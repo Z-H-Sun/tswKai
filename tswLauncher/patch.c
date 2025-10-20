@@ -4,6 +4,12 @@
 extern HWND hWndConf;
 extern char tsw_exe_conf_path[];
 
+// from font.c
+extern ULONG_PTR gpToken;
+void __stdcall GdiplusShutdown(ULONG_PTR gpToken);
+void initGdip();
+BOOL getFontNameLang(WCHAR* fontName, WORD lang, WCHAR* outFontName);
+
 BOOL has_item_changed, is_chinese_exe, is_v_3_1_0;
 FILE* tsw_exe_conf_f = NULL;
 struct __pascal_short_string {
@@ -34,6 +40,16 @@ BOOL isFontNameTooLong(WCHAR* fontName_w) { // when the Unicode font name is too
   return (len >= LF_FACESIZE);
 }
 
+int isFontDefaultFont(WCHAR* fontName_w) { // check if the Unicode `fontName_w` is one of the 3 default fonts used by TSW; return 0 for English, 1 for Chinese, 2 for Japanese, or -1 otherwise
+  if (memicmp(fontName_w, WT(EN_FONT_NAME_A), sizeof(WT(EN_FONT_NAME_A))) == 0)
+    return 0;
+  if (memicmp(fontName_w, WT(CN_FONT_NAME_E), sizeof(WT(CN_FONT_NAME_E))) == 0 || memcmp(fontName_w, CN_FONT_NAME, sizeof(CN_FONT_NAME)) == 0)
+    return 1;
+  if (memicmp(fontName_w, WT(JA_FONT_NAME_E), sizeof(WT(JA_FONT_NAME_E))) == 0 || memcmp(fontName_w, JA_FONT_NAME, sizeof(JA_FONT_NAME)) == 0)
+    return 2;
+  return CB_ERR;
+}
+
 /**
  * This function is called by the Windows API during font enumeration.
  * It processes information about each font found on the system.
@@ -48,9 +64,7 @@ static int CALLBACK EnumFontFamProc(ENUMLOGFONTW *lpelfe, NEWTEXTMETRICW *lpntme
   WCHAR* fontName = (WCHAR*)(lpelfe->elfLogFont.lfFaceName);
   if (fontName[0] == L'@' || // exclude vertically oriented fonts
       // the following fonts will be added to the top of the whole list later, so no need to add them
-      memicmp(fontName, WT(EN_FONT_NAME_A), sizeof(WT(EN_FONT_NAME_A)))==0 ||
-      memicmp(fontName, WT(CN_FONT_NAME_E), sizeof(WT(CN_FONT_NAME_E)))==0 || memcmp(fontName, CN_FONT_NAME, sizeof(CN_FONT_NAME))==0 ||
-      memicmp(fontName, WT(JA_FONT_NAME_E), sizeof(WT(JA_FONT_NAME_E)))==0 || memcmp(fontName, JA_FONT_NAME, sizeof(JA_FONT_NAME))==0)
+      isFontDefaultFont(fontName) != CB_ERR)
     return 1;
   if (!isFontNameTooLong(fontName))
     SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_ADDSTRING, (WPARAM)0, (LPARAM)fontName);
@@ -58,16 +72,17 @@ static int CALLBACK EnumFontFamProc(ENUMLOGFONTW *lpelfe, NEWTEXTMETRICW *lpntme
 }
 
 static void checkFonts() { // get the game's default font (for messagbox, tooltip, etc.) in the executable
+  LOGFONTW lf = {0};
   if (SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_GETCOUNT, 0, 0) <= 0) { // the list not yet initialized
     // the following 2 lines speed up the initialization of combobox with #items > 100
     SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_INITSTORAGE, (WPARAM)MAX_FONT_NUM, (LPARAM)LF_FACESIZE*sizeof(WCHAR)); // by pre-allocation of memory
     SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, WM_SETREDRAW, (WPARAM)FALSE, (LPARAM)0); // by temporarily disabling redrawing contents after change
 
     HDC hDC = GetDC(NULL);
-    LOGFONTW lf = {0};
     lf.lfCharSet = (is_chinese_exe ? GB2312_CHARSET : ANSI_CHARSET); // hide fonts with other charsets
     EnumFontFamiliesExW(hDC, &lf, (FONTENUMPROCW)EnumFontFamProc, (LPARAM)0, 0);
     ReleaseDC(NULL, hDC);
+    initGdip(); // initialize GDI+ environment (for obtaining font name in a specific language)
 
     // the following items are inserted in the last, in order not to mess up the order (other font names have been sorted in the alphabetic order)
     SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_INSERTSTRING, (WPARAM)0, (LPARAM)WT(FONT_LIST_SEPARATOR)); // add "---"
@@ -79,7 +94,15 @@ static void checkFonts() { // get the game's default font (for messagbox, toolti
   }
 
   if (!readFontIndex) {
-    readFontIndex = SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_FINDSTRINGEXACT, (WPARAM)-1, (LPARAM)readFontName_w); // TODO: fontName might have an alias in a different language. Check?
+    readFontIndex = getFontNameLang(readFontName_w, LANG_NEUTRAL, (WCHAR*)lf.lfFaceName); // get font name in user's default language, stored in `lf.lfFaceName`
+    // if successful, the return value, `readFontIndex`, will be TRUE; otherwise, `readFontIndex` will be FALSE on unknown failure, or -1 if font is not found
+    if (readFontIndex >= 0) { // otherwise, if readFontIndex == -1, meaning font not found, then no need to try further
+      readFontIndex = CB_ERR; // reset to CB_ERR, meaning not found yet
+      if (readFontIndex) // otherwise, if readFontIndex == 0, meaning unknown failure, fallback to old treatment, i.e., direct comparison between the original value of `readFontName_w` with the list items
+        readFontIndex = SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_FINDSTRINGEXACT, (WPARAM)-1, (LPARAM)lf.lfFaceName);
+      if (readFontIndex == CB_ERR) // not yet found (which means that either `getFontNameLang` failed for an unknown reason, or the localized font name is not in the font list, both of which are unlikely)
+        readFontIndex = SendDlgItemMessageW(hwnd, IDC_CONF_COMBO_FONT, CB_FINDSTRINGEXACT, (WPARAM)-1, (LPARAM)readFontName_w); // anyways, try again with the original `readFontName_w`
+    }
   }
   SetComboboxVal(IDC_CONF_COMBO_FONT, readFontIndex);
   if (readFontIndex == CB_ERR) // in this case, the code above selects item index -1, i.e., deselects any existing item in the dropdown, then a custom text can be set below
@@ -223,7 +246,7 @@ BOOL checkInit(char* exe_path) { // initial compatibility check; return whether 
     readFontName_s.fontName[readFontName_s.fontName_len] = '\0';
   if (memcmp(readFontName_s.fontName, CN_FONT_NAME_A, readFontName_s.fontName_len+1) == 0 || memicmp(readFontName_s.fontName, CN_FONT_NAME_E, readFontName_s.fontName_len+1) == 0)
     readFontIndex = 1; // MSYH
-  else if (memcmp(readFontName_s.fontName, JA_FONT_NAME_A, readFontName_s.fontName_len+1) == 0 || memcmp(readFontName_s.fontName, JA_FONT_NAME_A_2, readFontName_s.fontName_len+1) == 0 || memcmp(readFontName_s.fontName, JA_FONT_NAME_E, readFontName_s.fontName_len+1) == 0)
+  else if (memcmp(readFontName_s.fontName, JA_FONT_NAME_A, readFontName_s.fontName_len+1) == 0 || memcmp(readFontName_s.fontName, JA_FONT_NAME_A_2, readFontName_s.fontName_len+1) == 0 || memicmp(readFontName_s.fontName, JA_FONT_NAME_E, readFontName_s.fontName_len+1) == 0)
     readFontIndex = 2; // MS Gothic
   else {
     if (!is_chinese_exe_new || // non-Chinese exe: use system code page for transcoding
@@ -441,11 +464,18 @@ void checkAllPatches() { // initialize checkbox, updown, trackbar, and dropdown 
 
 BOOL saveFont() { // save user-defined font as default font (for messagbox, tooltip, etc.) in the executable
   int ret;
+  WCHAR* readFontName_w_fin = (WCHAR*)readFontName_w;
+  WCHAR readFontName_w_loc[LF_FACESIZE];
   GetDlgItemTextW(hwnd, IDC_CONF_COMBO_FONT, (WCHAR*)readFontName_w, sizeof(readFontName_w)/sizeof(WCHAR));
+  if (isFontDefaultFont(readFontName_w) == CB_ERR &&
+      getFontNameLang(readFontName_w, is_chinese_exe ? ID_zh_CN : ID_en_US, readFontName_w_loc) > 0 &&
+      _wcsicmp(readFontName_w, readFontName_w_loc) &&
+      msgbox(hwnd, MB_ICONINFORMATION | MB_YESNO, IDS_INFO_FONT_ALIAS, readFontName_w_loc) == IDYES)
+    readFontName_w_fin = readFontName_w_loc;
   memset(&readFontName_s, 0, sizeof(readFontName_s));
   if (!is_chinese_exe || // non-Chinese exe: use system code page for transcoding
-      !(ret = WideCharToMultiByte(CP_GB2312, 0, readFontName_w, -1, readFontName_s.fontName, sizeof(readFontName_s.fontName), NULL, NULL))) // otherwise: use GB2312 code page; and if on fail, try again with system code page
-    ret = WideCharToMultiByte(CP_ACP, 0, readFontName_w, -1, readFontName_s.fontName, sizeof(readFontName_s.fontName), NULL, NULL);
+      !(ret = WideCharToMultiByte(CP_GB2312, 0, readFontName_w_fin, -1, readFontName_s.fontName, sizeof(readFontName_s.fontName), NULL, NULL))) // otherwise: use GB2312 code page; and if on fail, try again with system code page
+    ret = WideCharToMultiByte(CP_ACP, 0, readFontName_w_fin, -1, readFontName_s.fontName, sizeof(readFontName_s.fontName), NULL, NULL);
   if (!ret) // fail to transcode
     return FALSE;
   // set window default font
@@ -582,6 +612,9 @@ void closeDlg(INT_PTR res) { // close dialog with IDOK/IDCANCEL/IDTRYAGAIN
   tsw_exe_conf_f = NULL;
   // no longer accept drag-drop
   DragAcceptFiles(hwnd, TRUE);
+  // free GDI+ resources
+  if (gpToken)
+    GdiplusShutdown(gpToken);
   // close window
   EndDialog(hwnd, res);
   hwnd = NULL;

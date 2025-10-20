@@ -1,8 +1,6 @@
 #include "tswLauncher.h"
 #include <stdarg.h>
 
-#define ID_zh_CN MAKELANGID(LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED)
-#define ID_en_US MAKELANGID(LANG_ENGLISH, SUBLANG_DEFAULT)
 #define APP_LANGUAGE is_chinese ? ID_zh_CN : ID_en_US
 #define APP_CONF_LANGUAGE is_chinese_exe ? ID_zh_CN : ID_en_US
 
@@ -67,6 +65,7 @@ extern INT_PTR readFontIndex;
 extern const int interval_min_vals[], interval_max_vals[], interval_default_vals[];
 extern UCHAR misop_vals[];
 BOOL isFontNameTooLong(WCHAR* fontName_w);
+int isFontDefaultFont(WCHAR* fontName_w);
 BOOL checkInit(char* exe_path);
 void checkSuper(BOOL chkState, BOOL setAll);
 void checkMove(BOOL chkState);
@@ -75,3 +74,7 @@ void checkKeybd(BOOL chkState);
 void checkAllPatches();
 BOOL saveAllPatches(INT_PTR res);
 void closeDlg(INT_PTR res);
+
+// from font.c
+extern ULONG_PTR gpToken;
+BOOL getFontNameLang(WCHAR* fontName, WORD lang, WCHAR* outFontName);

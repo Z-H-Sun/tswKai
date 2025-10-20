@@ -294,3 +294,56 @@ Successfully configured the __TARGET_TITLE__ executable: "%1!S!".
 Language=CH
 __CONCAT(已成功配置, __TARGET_TITLE_CN__)程序："%1!S!"。
 .
+
+MessageId=IDS_ERR_FONT_MISSING
+Language=EN
+Warning: The font does not seem to be installed.
+__EMPTY_LINE__
+Do you want to use default font instead?
+.
+Language=CH
+警告：系统可能并未安装该字体。
+__EMPTY_LINE__
+是否回退至默认字体？
+.
+
+MessageId=IDS_ERR_FONT_CHARSET
+Language=EN
+Warning: The font does not seem to support ANSI charset.
+As a result, texts may not display correctly with this font.
+__EMPTY_LINE__
+Do you want to use default font instead?
+.
+Language=CH
+警告：该字体可能并不支持简体中文字符集，
+从而可能将会导致程序内的文本显示不正确。
+__EMPTY_LINE__
+是否回退至默认字体？
+.
+
+MessageId=IDS_INFO_FONT_ALIAS
+Language=EN
+This font has an English alias, "%1."
+__EMPTY_LINE__
+Do you want to use this name instead (highly recommended)?
+.
+Language=CH
+该字体存在一个中文别名："%1"。
+__EMPTY_LINE__
+是否要使用上述名称？
+.
+
+MessageId=IDS_INFO_EMULATE_LOCALE
+Language=EN
+This __TARGET_TITLE__ program contains Japanese-encoded characters,
+which may not display properly as the system locale is not Japanese.
+__EMPTY_LINE__
+Do you want to emulate a Japanese locale for this process to fix this issue?
+.
+Language=CH
+__CONCAT(该, __TARGET_TITLE_CN__)程序中的文本以简体中文内码 GBK 编码，但当前系统的
+区域语言设置（非 Unicode 的程序语言）并非简体中文。
+__EMPTY_LINE__
+为解决可能出现的乱码问题，是否令该进程在简体中文模拟环境
+中运行（推荐）？
+.

@@ -203,7 +203,19 @@ BOOL migrate_data();
 BOOL delete_ini();
 BOOL launch_tsw(int type);
 
+// for tswLauncher.c (from LE.c)
+BOOL CreateProcessLE(int type, PROCESS_INFORMATION* p_pi);
+
 // for gui.c
+#define LANG_nt    LANG_NEUTRAL, SUBLANG_NEUTRAL
+#define LANG_zh_CN LANG_CHINESE, SUBLANG_CHINESE_SIMPLIFIED
+#define LANG_en_US LANG_ENGLISH, SUBLANG_ENGLISH_US
+#define LANG_ja_JP LANG_JAPANESE, SUBLANG_JAPANESE_JAPAN
+#define __MAKELANGID(...) MAKELANGID(__VA_ARGS__)
+#define ID_zh_CN __MAKELANGID(LANG_zh_CN)
+#define ID_en_US __MAKELANGID(LANG_en_US)
+#define ID_ja_JP __MAKELANGID(LANG_ja_JP)
+
 #define SetFocusedItemAsync(id) PostMessageW(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd, id), TRUE) // set focus; ref: https://devblogs.microsoft.com/oldnewthing/20040802-00/?p=38283
 #define SetFocusedItemSync(id) SendMessageW(hwnd, WM_NEXTDLGCTL, (WPARAM)GetDlgItem(hwnd, id), TRUE) // this will cause the thread to wait until the set-focus message is processed
 #define GetUpdownVal(id) SendDlgItemMessageW(hwnd, id, UDM_GETPOS32, 0, (LPARAM)NULL)
