@@ -60,7 +60,7 @@ extern const char* tsw_exe[];
 extern int cur_path_len;
 
 // from patch.c
-extern BOOL has_item_changed, is_chinese_exe, is_v_3_1_0;
+extern BOOL has_item_changed, is_chinese_exe, is_v_3_1_0, is_font_effective_for_all;
 extern INT_PTR readFontIndex;
 extern const int interval_min_vals[], interval_max_vals[], interval_default_vals[];
 extern UCHAR misop_vals[];

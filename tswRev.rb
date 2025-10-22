@@ -1,5 +1,8 @@
 # encoding: binary
 # asm codes: tswRev.asm
+# THIS FILE IS NOT PART OF THE TSWKAI3 MAIN PROGRAM
+# Note: Rev1-11 are NOT taken care of in the tswKai3 main program, but rather, statically patched
+# You can use this Ruby script, or the patch function in tswLauncher, to fine tune these patches
 # Other fixes:
 # - Solve 49F sorcerer show-up animation bug: addressed in tswMod.asm [tswMod #0 (12)]
 # - Allow data loading during events: addressed in tswSL.asm [tswSL (13)]
@@ -17,13 +20,13 @@ $interval1 = [120, 135, 150, 225] # initial waiting time when you first press an
 $interval2 = [ 50,  70, 150, 225] # interval for consecutive unidirectional movement when you hold down an arrow key (keyboard repeat rate) in Superhigh/High/Middle/Low speed modes
 # note: for $interval0 and $interval2 elements, their value should not be less than 50 nor greater than 305
 $pause     = [  2,   2,   0,   0] # to avoid misoperation, before opening a door or battling with a monster, pause this number of cycles of intervals when holding an arrow key, in Superhigh/High/Middle/Low speed mode. A larger number can better avoid misoperation but increase the feeling of lag; 0 means no pause
-$font      = ["Verdana", "Î¢ÈíÑÅºÚ"] # default popup message box font for English/Chinese version (the latter one, 'Microsoft YaHei', should be encoded in GBK), whose length should not exceed 31
+$font      = [[0, "Verdana"], [0, "Î¢ÈíÑÅºÚ"]] # default font for English/Chinese version: for each version, the first element defines the effects [can be 0 or combination of the following values: 1=Bold, 2=Italic, 4=Underline, and 8=Strikethrough]; the second element is the font name [its length should not exceed 31; the Chinese font (e.g., 'Microsoft YaHei' in the example), should be encoded in GBK]
 
 class Rev
   @@address = [[0x41c1f, 0x425ef, 0x42613,    0x7f464], # Rev0
     [0x41bfe,    0x7f47f, 0x7f534,    0x7f548, 0x7f558, 0x7f568, 0x7f5a5,    0x7d387,    0x7d7fa,    0x839dc, 0x83c96, 0x83e64, 0x846f8,    0x7f5ab], # Rev1
     [0x42b23], # Rev2
-    [0x24114,    0x17257, 0x17285,  0x894a6], # Rev3
+    [0x24114,    0x17257, 0x17285,  0x894a5,    0x2e000], # Rev3
     [0x4c0d6, 0x4c114,    0x803e6, 0x807b2], # Rev4
     [0x52c26, 0x52c96,    0x53029, 0x53167], # Rev5
     [0x42e78, 0x42eee,    0x5433b, 0x54492, 0x544d5, 0x547b4], # Rev6
@@ -49,7 +52,7 @@ class Rev
     "\x8B\x83\xAC\x03\x00\x00\x80\x78\x28\x01\x75\x07\x8B\xC3\xE8\x22\xFF\xFF\xFF\x8B\x83\xA8\x03\x00\x00\x80\x78\x28\x01\x75\x07\x8B\xC3\xE8\xAB\xFE\xFF\xFF\x8B\x83\xB0\x03\x00\x00\x80\x78\x28\x01\x75\x07\x8B\xC3\xE8\x60\xFF\xFF\xFF\x5B\xC3"], # Rev1
     ["\x8B\x45\xFC\x8B\x80\x20\x04\x00\x00"], # Rev2
     ["\x8D\x95\xFF\xFE\xFF\xFF",
-    "\x74", "\xC0\x72\x41\0",  "\x0F‚l‚r ‚oƒSƒVƒbƒN\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"], # Rev3 ('MS PGothic')
+    "\x74", "\xC0\x72\x41\0",  "\0\x0F‚l‚r ‚oƒSƒVƒbƒN\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0",    "\x8D\x55\xBE"], # Rev3 ('MS PGothic')
     ["\x8B\x83\xA8\x03\x00\x00\x80\x78\x28\x01\x75\x0A\x85\xF6", "\x89\x3D\x5C\xC5\x48\x00\x8B\x83\x54\x02\x00\x00\x8B\x40\x2C\x85\xC0\x79\x03\x83\xC0\x03\xC1\xF8\x02\x3B\xF0\x75\x0D\xA1\x5C\xC5\x48\x00\xC1\xE0\x02\xA3\x5C\xC5\x48\x00\x8B\x83\x54\x02\x00\x00\x8B\x40\x2C\xD1\xF8\x79\x03\x83\xD0\x00\x3B\xF0\x75\x0C\xA1\x5C\xC5\x48\x00\x03\xC0\xA3\x5C\xC5\x48\x00",
     "\x85\xED\x0F\x8E\xCE\x03\x00\x00\xC7\x04\x24\x01\x00\x00\x00", "\xFF\x04\x24\x4D\x0F\x85\x39\xFC\xFF\xFF\x8B\x83\x54\x02\x00\x00\x8B\x40\x2C"], # Rev4
     ["\xBE\x1B", "\x4E\x1B",
@@ -82,7 +85,7 @@ class Rev
     "\x0F\xB6\x0D\x9F\x9B\x48\x00\x83\xF9\x03\x74\x90\x51\xE9\xC4\xFE\xFF\xFF\xC3\x66\x90\x0F\xB6\x0D\x9F\x9B\x48\x00\x85\xC9\x74\xF2\x41\x0F\xAF\xD1\xC1\xEA\x02\xE9\x8D\xCE\xFA\xFF\x90\x8B\x46\x48\x31\xD2\xE8\x96\x0D\xF9\xFF\x8B\xC3\xEB\xC2"], # Rev1
     ["\x80\x3D\xA1\x9B\x48\x00\x01\xEB\x04"], # Rev2
     ["\xBA\x74\x8E\x48\x00\x90",
-    "\xEB", "\xA6\x94\x48\0",  nil], # Rev3 (the second and third one will be processed later)
+    "\xEB", "\xA6\x94\x48\0",  nil,    "\xEB\x19\x90"], # Rev3 (the fourth one, `nil`, will be processed later)
     ["\xC1\xEE\x02\xBD\x04\x00\x00\x00\xEB\x29" +
       $sleep.pack('C4'), # sleep durations for SpeedMode 0/1/2/3
     "\x8B\xC7\xF7\xE6\xA3\x5C\xC5\x48\x00\x68\x5E\xC1\x44\x00\x66\x90\x0F\xB6\x05\x9F\x9B\x48\x00\x8A\x80\xE0\xC0\x44\x00\x50\xA1\xFC\x9B\x48\x00\x85\xC0\x75\x1A\x68\xFC\xB5\x4B\x00\xE8\x6B\x51\xFB\xFF\x68\x58\xC1\x44\x00\x50\xE8\x34\x8A\xFB\xFF\xA3\xFC\x9B\x48\x00\xFF\xD0\xC3Sleep\0",
@@ -133,7 +136,7 @@ class Rev
     @f = open(filename, 'r+b')
     @c = chinese
     font = $font[@c ? 1 : 0]
-    @ft = [font.size, font].pack('Ca31')
+    @ft = [font[0], font[1].size, font[1]].pack('C2a31')
     puts('
 
 %s:
@@ -210,6 +213,7 @@ end
 # to revise all items:
 Rev.new('TSW.exe').revAll().close()
 Rev.new('TSW.EN.exe').revAll().close()
+# for Chinese TSW, pass a `true` value to the second parameter when initializing a Rev instance
 Rev.new('TSW.CN.exe', true).revAll().close()
 Rev.new('TSW.CNJP.exe', true).revAll().close()
 system('pause')

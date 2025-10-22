@@ -489,6 +489,7 @@ BASE:42B30	; ...
 
 ;============================================================
 		; Rev3: Default window title and font
+		; Rev3-a: Default title
 BASE:23FFC	TApplication.Create	proc near
 		; ...
 		; The default app title, before main form initialization (for example, the "Sorry, cannot execute plural TSW" msgbox is shown before TSW main form creation), is determined by the TApplication.Create procedure in the following rule:
@@ -503,6 +504,7 @@ BASE:24114		;lea edx, [ebp-0101]	; original bytes: from filename
 		TApplication.Create	endp
 
 
+		; Rev3-b: Default font
 BASE:17208	THintWindow.Create	proc near
 		; change popup tooltips' font
 		; originally, will use the system font; now will use the specified program default font
@@ -535,12 +537,39 @@ BASE:1728C		call BASE:19DEC	; TFont.SetName
 BASE:172BF	THintWindow.Create	endp
 BASE:172C0	db 0F, 'ＭＳ Ｐゴシック'	; Code Page 932 (Shift-JIS)
 
+BASE:894A5	db 00	; BYTE Style (1/2/4/8=Bold/Italic/Underline/Strikethrough)
 BASE:894A6	; first byte=length; followed by string
 		; part of the TFontData(legacy) structure @ BASE:8949C, referenced by TFont.Create and TFont.SetHandle
 		; TFontData(legacy) (44 bytes): {(+0)DWORD handle; (+4)DWORD Height; (+8)BYTE Pitch; (+9)BYTE Style(1/2/4/8=Bold/Italic/Underline/Deleteline); (+A)struct PascalString {BYTE StringLen; BYTE String[StringLen+1]} Name(at most 32 bytes)}
 		;0F, 'ＭＳ Ｐゴシック'	; original bytes: Code Page 932 (Shift-JIS)
 		07, 'Verdana'	; patched bytes: English Ver, or
 		08, '微软雅黑'	; Code Page 936 (GBK): Chinese Ver
+
+
+		; Rev3-c: Patch TRichEdit font bug
+		; if the default font has more than one available charsets, the TRichEdit's text won't display correctly using that font
+BASE:2DFA0	TTextAttributes.SetName	proc near	; change the font name of the TRichEdit's TTextAttributes
+		; at the beginning of this subroutine, it calls TTextAttributes.InitFormat, which allocates a CHARFORMAT(A) structure, with a size of 60 and its first member [UINT] cbSize = 60
+		; at the end of this subroutine, it calls TTextAttributes.SetAttributes, which sends a EM_SETCHARFORMAT message to the TRichEdit window
+		; in the middle, it copies the font name in the parameter to [char] CHARFORMATA.szFaceName[LF_FACESIZE], and sets [DWORD] CHARFORMATA.dwMask = 0x20000000 (CFM_FACE; indicating that the font name will be changed)
+		; the problem lies in the post-treatment that follows. It will call sub_42D360 to obtain the font's charset, set [BYTE] CHARFORMATA.bCharSet to that value, and let CHARFORMATA.dwMast |= 0x8000000 (CFM_CHARSET; indicating that the font charset will be specified)
+		; however, some fonts support more than one charsets, and due to the faulty method in sub_42D360 (explained below in more detail), it may return an undesired charset. For example, 'Adobe Heiti Std R' supports simplified Chinese and also Japanese, but sub_42D360 will usually return 0x80 (Japanese) rather than the desired value 0x86 (simplified Chinese); for 'Segoe UI', it will return 0 (ANSI_CHARSET); in both cases, Chinese texts won't display correctly with that font since a different charset is specified, and Windows will fall back on system's default font, e.g., SimSun
+		; ...
+BASE:2E000		;lea edx, [ebp-42]	; original bytes: [ebp-42]=CHARFORMATA.szFaceName
+			jmp loc_setattributes	; patched bytes: skip the entire code block below
+BASE:2E003		mov eax, [esi+4]	; hWnd
+BASE:2E006		call BASE:2D360	; call sub_42D360(hWnd, fontName)
+				; this function uses Gdi32.EnumFontFamiliesA, and in its callback function (BASE:2D348), an INT on the stack receives the font's ENUMLOGFONTA.LOGFONTA.lfCharSet
+				; this method is quite problematic, because you can't control which charset will be provided by the API, if the font has multiple charsets available
+				; so, simply don't do this. By default, the RichEdit control can automatically deal with charset stuff
+BASE:2E00B		mov ebx, eax	; eax is the return value of the above subroutine, i.e., lfCharSet (or -1 if failed)
+BASE:2E00D		mov [ebp-44], bl	; [ebp-44]=CHARFORMATA.bCharSet
+BASE:2E010		test bl, bl
+BASE:2E012		jb loc_setattributes	; this is very weird: it is just a no-op. `test bl, bl` above clears the CF register flag, while `jb` only jumps when CF is set, so this conditional jump will never occur
+BASE:2E014		or [ebp-58], 08000000	; [ebp-58]=CHARFORMATA.dwMast |= 0x8000000
+BASE:2E01B	loc_setattributes:
+			; ...
+		TTextAttributes.SetName	endp
 
 
 ;============================================================

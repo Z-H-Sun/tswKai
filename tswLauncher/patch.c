@@ -10,7 +10,10 @@ void __stdcall GdiplusShutdown(ULONG_PTR gpToken);
 void initGdip();
 BOOL getFontNameLang(WCHAR* fontName, WORD lang, WCHAR* outFontName);
 
-BOOL has_item_changed, is_chinese_exe, is_v_3_1_0;
+// from gui.c
+size_t LoadStringLangW(DWORD id, WORD lang, WCHAR* buf);
+
+BOOL has_item_changed, is_chinese_exe, is_v_3_1_0, is_font_effective_for_all;
 FILE* tsw_exe_conf_f = NULL;
 struct __pascal_short_string {
   unsigned char fontName_len;
@@ -107,6 +110,9 @@ static void checkFonts() { // get the game's default font (for messagbox, toolti
   SetComboboxVal(IDC_CONF_COMBO_FONT, readFontIndex);
   if (readFontIndex == CB_ERR) // in this case, the code above selects item index -1, i.e., deselects any existing item in the dropdown, then a custom text can be set below
     SetDlgItemTextW(hwnd, IDC_CONF_COMBO_FONT, readFontName_w);
+
+  LoadStringLangW(is_font_effective_for_all ? IDS_CAPTION_STATIC_FONT_2 : IDS_CAPTION_STATIC_FONT_1, is_chinese_exe ? ID_zh_CN : ID_en_US, (WCHAR*)lf.lfFaceName); // lf.lfFaceName temporarily stores the label control caption
+  SetDlgItemTextW(hwnd, IDC_CONF_STATIC_FONT, (WCHAR*)lf.lfFaceName); // set label caption to indicate whether the font is for messagebox/tooltip only, or for all game UI components
 }
 
 /**
@@ -223,6 +229,7 @@ BOOL checkInit(char* exe_path) { // initial compatibility check; return whether 
     goto fail_check_init;
   if (fread(sig, sizeof(char), LEN_SIGNATURE, tsw_exe_conf_f_new) < LEN_SIGNATURE) // fail to read
     goto fail_check_init;
+  is_font_effective_for_all = (sig[LEN_SIGNATURE-1] == FONT_FLAG); // check if the flag for default-font-effective-for-all-game-UI-components is set
   sig[LEN_SIGNATURE-1] = '\0'; // make sure it is \0 terminated, because `strnstr` is not implemented
   if (!strstr(sig, TARGET_VERSION_STR)) // incorrect version
     goto fail_check_init;
@@ -486,8 +493,10 @@ BOOL saveFont() { // save user-defined font as default font (for messagbox, tool
   else
     ret = TRUE;
 
-  // extra patch (Rev3-b and Rev3-a)
+  // extra patch (Rev3-b and Rev3-a; and Rev3-c if necessary)
   for (int i = 0; i < sizeof(tHintWindowFont)/sizeof(patchStruct); ++i) {
+    if (i == sizeof(tHintWindowFont)/sizeof(patchStruct)-1 && (!is_font_effective_for_all)) // skip the last patch if font is not effective for all game UI components
+      break;
     patchStruct patch = tHintWindowFont[i];
     if (fseek(tsw_exe_conf_f, patch.exeOffset, SEEK_SET) || // fail to seek
         fwrite(patch.revBytes, sizeof(char), patch.lenBytes, tsw_exe_conf_f) < patch.lenBytes) // fail to write

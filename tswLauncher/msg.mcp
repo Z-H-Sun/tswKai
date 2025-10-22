@@ -341,9 +341,9 @@ __EMPTY_LINE__
 Do you want to emulate a Japanese locale for this process to fix this issue?
 .
 Language=CH
-__CONCAT(该, __TARGET_TITLE_CN__)程序中的文本以简体中文内码 GBK 编码，但当前系统的
-区域语言设置（非 Unicode 的程序语言）并非简体中文。
+__CONCAT(该, __TARGET_TITLE_CN__)程序中的文本以简体中文内码 GBK 编码，但当前系统
+的区域语言设置（非 Unicode 的程序语言）并非简体中文。
 __EMPTY_LINE__
-为解决可能出现的乱码问题，是否令该进程在简体中文模拟环境
-中运行（推荐）？
+为解决可能出现的乱码问题，是否令该进程在简体中文模拟
+环境中运行（推荐）？
 .

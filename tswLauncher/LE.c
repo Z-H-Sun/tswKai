@@ -1,4 +1,7 @@
 // LE = Locale Emulator
+// Since LE uses LGPLv3 license while tswKai3 uses MIT license, no source code from LE is integrated into this project;
+// Rather, compiled locale emulator core DLLs (located in the "LE" subfolder) are directly used and loaded.
+// https://github.com/xupefei/Locale-Emulator-Core
 #include "tswLauncher.h"
 extern DWORD winVer; extern HWND hWndMain; // from gui.c
 extern char cur_path[], tsw_exe_path[]; // from tswLauncher.c

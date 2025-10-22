@@ -75,7 +75,7 @@ static WCHAR* _LoadStringLang(DWORD id, WORD lang) {
  *             Note: The buffer must be large enough to hold the string; no length checking is performed.
  * @return     The number of wide characters copied into the buffer (excluding the null terminator).
  */
-static size_t LoadStringLangW(DWORD id, WORD lang, WCHAR* buf) { // be careful: make sure `buf` is large enough; will not check length to copy to it
+size_t LoadStringLangW(DWORD id, WORD lang, WCHAR* buf) { // be careful: make sure `buf` is large enough; will not check length to copy to it
   WCHAR* pWch = _LoadStringLang(id, lang);
   if (!pWch) { msgbox(NULL, MB_ICONEXCLAMATION, IDS_ERR_WINAPI, GetLastError(), L"FindResourceEx"); buf[0] = L'\0'; return 0; } // fail
   size_t len = *pWch;
@@ -362,7 +362,10 @@ static LRESULT CALLBACK dialog_conf_proc(HWND hwnd, UINT message, WPARAM wparam,
         }
       }
       SendMessageW(nmh->hwndFrom, TTM_SETTITLEW, (id == IDC_CONF_STATIC_INTV || id == IDC_CONF_STATIC_BUG) ? TTI_WARNING : TTI_INFO, (LPARAM)bufTitle);
-      LoadStringLangW((id == IDC_CONF_BUTTON_OK && has_item_changed) ? IDS_TIP_BUTTON_OK_2 : IDS_TIP_CONF_BEGIN-IDC_CONF_BEGIN + id, APP_CONF_LANGUAGE, (WCHAR*)tooltip_descr);
+      newState = LoadStringLangW((id == IDC_CONF_BUTTON_OK && has_item_changed) ? IDS_TIP_BUTTON_OK_2 : IDS_TIP_CONF_BEGIN-IDC_CONF_BEGIN + id, APP_CONF_LANGUAGE, (WCHAR*)tooltip_descr);
+      if (id == IDC_CONF_STATIC_FONT && is_font_effective_for_all && // if the default font is effective for all game UI components, not just for the message boxes / tooltips
+          (id = (UINT_PTR)wmemchr(tooltip_descr, L'\n', newState))) // find the newLine char in the corresponding tooltip description
+        *(WCHAR*)id = L'\0'; // and remove the later caveats in the tooltip
       ((NMTTDISPINFOW*)lparam)->lpszText = (WCHAR*)tooltip_descr;
       return TRUE;
     }

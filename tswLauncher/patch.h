@@ -4,6 +4,7 @@
 #define EXEFILE_OFFSET(addr) addr+EXEFILE_BASE_ADDR
 #define ADDR_SIGNATURE 0x88E74 // title (Tower of the Sorcerer / 魔塔)
 #define LEN_SIGNATURE 64
+#define FONT_FLAG 'F' // the last character in the signature: whether it is this byte indicates whether the default font is effective for all game UI components (otherwise, the font is only for message boxes and tooltips)
 #define ADDR_FONT 0x894A6 // default: db 0F, 'ＭＳ Ｐゴシック' (in Shift-JIS encoding)
 
 #define MAX_LEN_PATCH_BYTES 512 // used to determine buffer size; no patch item will be longer than 512 bytes
@@ -109,7 +110,9 @@ const int offset_old_rev_1_2[] = OFFSET_NO_REV_1_2;
 const int index_no_rev_1_2[] = INDEX_NO_REV_1_2;
 patchStruct lowSpeedIntv = {EXEFILE_OFFSET(0x7f548), 17, NULL, NULL, (UINT[]){8, 0, 16}, 3, {.varWords = (WORD[]){0, 0, 0}}};
 // instead of typical CHAR arrays, this patchStruct contains WORD arrays: the actual offsets (lowSpeedIntv.vars.varWords) are 0 (Timer1->0x7f548), 2*8 (Timer2->0x7f558), and 2*16 (Timer3->0x7f568); since the shortest consecutive bytes that can cover all 3 vars need a space of 32+2 = 34 bytes, so 17 WORDs (lowSpeedIntv.lenBytes) need to be read
-patchStruct tHintWindowFont[] = {{EXEFILE_OFFSET(0x17257), 1, "\x74", "\xEB"}, {EXEFILE_OFFSET(0x17285), 4, "\xC0\x72\x41", "\xA6\x94\x48"}, {EXEFILE_OFFSET(0x24114), 6, "\x8D\x95\xFF\xFE\xFF\xFF", "\xBA\x74\x8E\x48\x00\x90"}}; // Rev3-b and Rev3-a (just revise Rev3-a (default title) anyway; it's not a big deal)
+patchStruct tHintWindowFont[] = {{EXEFILE_OFFSET(0x17257), 1, "\x74", "\xEB"}, {EXEFILE_OFFSET(0x17285), 4, "\xC0\x72\x41", "\xA6\x94\x48"}, // Rev3-b
+  {EXEFILE_OFFSET(0x24114), 6, "\x8D\x95\xFF\xFE\xFF\xFF", "\xBA\x74\x8E\x48\x00\x90"}, // Rev3-a (just revise Rev3-a (default title) anyway; it's not a big deal)
+  {EXEFILE_OFFSET(0x2e000), 3, "\x8D\x55\xBE", "\xEB\x19\x90"}}; // Rev3-c (only necessary for TSW with the default-font-effective-for-all-game-UI-components flag set)
 
 const int interval_min_vals[] = INTERVAL_MIN_VALS;
 const int interval_max_vals[] = INTERVAL_MAX_VALS;

@@ -11,7 +11,7 @@ tswLauncher.exe should be placed in a folder with a subfolder called `TSW1.2r3`,
 
 For the detailed introduction of the four subtypes and the usage of tswLauncher, see: https://github.com/Z-H-Sun/tswKai/wiki/1.1-%E2%80%90-Run-TSW-Game
 
-Only one instance of tswLauncher or TSW can be running at a time. If a specified subtype of TSW starts successfully, its window will be repositioned in the center of the screen (instead of the top left corner); if it fails to start, the process will be terminated within 4 seconds.
+Only one instance of tswLauncher or TSW can be running at a time. If a specified subtype of TSW starts successfully, its window will be repositioned in the center of the screen (instead of the top left corner); if it fails to start, the process will be terminated within 4 seconds. If the current system locale setting is incompatible with the subtype of TSW selected, and if the `LE` (LocaleEmulator) plugin is present and functional (which requires Windows 7 Service Pack 1 or higher), you can choose to emulate a compatible locale for this TSW process to solve the mojibake issue.
 
 TSW records the data storage path and program installation path in the following config file: %windir%/TSW12.INI
 For Windows Vista or later systems with user access control (UAC) enabled, the path is instead %localappdata%/VirtualStore/Windows/TSW12.INI
