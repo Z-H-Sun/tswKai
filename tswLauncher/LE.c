@@ -24,6 +24,9 @@ typedef DWORD WINAPI _LeCreateProcess(LOCALE_ENUMLATOR_ENVIRONMENT_BLOCK* Leb, W
 
 #define CP_SHIFTJIS 932
 #define CP_GB2312 936
+#ifndef _WIN32_WINNT_WIN7 // in case the macro is not defined in <Windows.h>...
+#define _WIN32_WINNT_WIN7 0x0601
+#endif
 
 /**
  * Based on the specified type and other information, determines whether to initialize the LeCreateProcess call pointer:
